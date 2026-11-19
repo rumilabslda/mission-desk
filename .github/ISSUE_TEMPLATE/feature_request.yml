@@ -1,0 +1,16 @@
+name: Idea
+description: Something Mission Desk could do better, or an app it should support.
+labels: [idea]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: What would help you
+      description: The problem or the situation, in your own words. How you'd solve it is welcome too, but the need matters most.
+    validations:
+      required: true
+  - type: input
+    id: apps
+    attributes:
+      label: Apps involved
+      placeholder: e.g. Notion, Outlook

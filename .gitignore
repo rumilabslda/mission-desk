@@ -1,0 +1,5 @@
+node_modules
+out
+dist
+# Internal design notes, kept locally only
+docs/superpowers/

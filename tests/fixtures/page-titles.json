@@ -1,0 +1,17 @@
+[
+  { "service": "google", "title": "Inbox (3) - user@example.com - Gmail", "expected": 3 },
+  { "service": "google", "title": "Caixa de entrada (12) - user@example.com - Gmail", "expected": 12 },
+  { "service": "google", "title": "Inbox - user@example.com - Gmail", "expected": 0 },
+  { "service": "google", "title": "Caixa de entrada - user@example.com - Gmail", "expected": 0 },
+  { "service": "google", "title": "Sent Mail - user@example.com - Gmail", "expected": null },
+  { "service": "google", "title": "Gmail", "expected": null },
+  { "service": "slack", "title": "Find your workspace | Slack", "expected": 0 },
+  { "service": "slack", "title": "Slack", "expected": 0 },
+  { "service": "slack", "title": "general (Channel) - Acme - Slack", "expected": 0 },
+  { "service": "slack", "title": "* general (Channel) - Acme - Slack", "expected": "dot" },
+  { "service": "slack", "title": "! Person (DM) - Acme - Slack", "expected": "dot" },
+  { "service": "slack", "title": "(2) general (Channel) - Acme - Slack", "expected": 2 },
+  { "service": "whatsapp", "title": "(3) WhatsApp", "expected": 3 },
+  { "service": "whatsapp", "title": "WhatsApp", "expected": 0 },
+  { "service": "whatsapp", "title": "WhatsApp Web", "expected": null }
+]

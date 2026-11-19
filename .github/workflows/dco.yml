@@ -1,0 +1,35 @@
+# Checks that every commit in a pull request is signed off by its author (Developer Certificate of
+# Origin, see DCO and CONTRIBUTING.md): a "Signed-off-by: Name <email>" line matching the commit's author.
+name: DCO
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  dco:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Every commit is signed off by its author
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          missing=0
+          for c in $(git rev-list --no-merges "$BASE..$HEAD"); do
+            author="$(git log -1 --format='%an <%ae>' "$c")"
+            if ! git log -1 --format='%(trailers:key=Signed-off-by,valueonly,unfold)' "$c" | grep -qxF "$author"; then
+              echo "::error::Commit $(git log -1 --format='%h' "$c") has no 'Signed-off-by: $author' line."
+              missing=1
+            fi
+          done
+          if [ "$missing" = 1 ]; then
+            echo "Sign off with 'git commit --amend -s --no-edit' (last commit) or 'git rebase --signoff $BASE' (all), then push with --force-with-lease."
+            exit 1
+          fi
+          echo "All commits are signed off."

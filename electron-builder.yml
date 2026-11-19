@@ -1,0 +1,64 @@
+# Builds for macOS, Windows and Linux. See docs/RELEASING.md.
+# appId (APP_ID in src/shared/about.ts) and package.json's "name": installed copies only accept an
+# update with the same id (macOS signature, Windows installer, Linux package). Never change them.
+appId: pt.rumilabs.missiondesk
+productName: Mission Desk
+copyright: Copyright © 2026 Rumi Labs, Lda.
+directories:
+  output: dist
+  buildResources: build
+files:
+  - out/**
+  - package.json
+artifactName: Mission-Desk-${version}-${os}-${arch}.${ext}
+
+mac:
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+    - target: zip
+      arch: [arm64, x64]
+  category: public.app-category.productivity
+  # Signed with the "Developer ID Application" certificate found in the keychain (or CSC_LINK in CI),
+  # and notarized when APPLE_API_KEY / APPLE_API_KEY_ID / APPLE_API_ISSUER (or APPLE_ID,
+  # APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID) are set. `npm run dist` makes an unsigned local build.
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  extendInfo:
+    NSCameraUsageDescription: Mission Desk uses the camera for video calls in Google Meet, Microsoft Teams, Slack and WhatsApp.
+    NSMicrophoneUsageDescription: Mission Desk uses the microphone for calls in Google Meet, Microsoft Teams, Slack and WhatsApp.
+    NSBluetoothAlwaysUsageDescription: Mission Desk uses Bluetooth for security keys when you sign in.
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+
+appImage:
+  # One name for every version: an update replaces the file in place, so shortcuts keep working.
+  artifactName: Mission-Desk-${os}-${arch}.${ext}
+
+linux:
+  target:
+    - target: AppImage
+      arch: [x64]
+    - target: deb
+      arch: [x64]
+  category: Office
+  syncDesktopName: true # the window groups with its launcher in the taskbar
+  maintainer: Rumi Labs, Lda.
+  synopsis: All your web apps side by side, organised in spaces.
+
+# CI uploads to a draft GitHub release; it goes public only when someone publishes it.
+# Also where installed copies look for new versions (latest-mac.yml, latest.yml, latest-linux.yml).
+publish:
+  provider: github
+  owner: rumilabslda
+  repo: mission-desk
+  releaseType: draft
