@@ -2,6 +2,22 @@
 
 All notable changes to Mission Desk. Versions follow [Semantic Versioning](https://semver.org). Until 1.0.0 Mission Desk is an early preview: a new minor number (0.2.0) adds features and may change how things work, a patch (0.1.1) fixes bugs. 1.0.0 will be the first version ready for everyone.
 
+## 0.1.1 — 2026-11-21
+
+### Quick actions
+- The floating button is now a **+** for the quick actions: the page dims and **New meeting link**, **New event**, **New to-do** and **Ask the assistant** fan out from it (keys 1–4, arrows and Enter, Esc). ⌘J still opens the assistant directly. The sidebar's ⚡ button shows only when the floating button is turned off.
+- **New meeting link** shows its progress beside the button, then "Meeting link copied" with the link, ready to paste. Adding a to-do or saving an event is confirmed there too.
+- New to-do and New event pop-ups: a to-do picks its space with one click; an event has quick lengths (15 min to 2 h), All day, Google Meet and guests up front, with the calendar, place and notes under **More options**.
+
+### Home
+- The agenda shows **Next hours** on a time scale, from half an hour ago to four hours ahead, with a line for now and the free time between meetings. It stretches to the whole day on request.
+
+### Fixes
+- Repeating events: **This event** was missing from the Delete, Move and Edit questions (its button was white on white), so a single occurrence couldn't be changed on its own.
+
+### Look
+- A new app icon.
+
 ## 0.1.0 — 2026-11-19
 
 The first version: an early preview, not yet a beta. (While it was being built, the app was called Weavedock.)
