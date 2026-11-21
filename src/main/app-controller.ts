@@ -12,6 +12,7 @@ import { IPC } from '../shared/ipc';
 import { CLAUDE_BANNER_HEIGHT } from '../shared/layout';
 import { type Account, type Todo, type CalendarData, type CalendarRange, type EditableEvent, type EventDraft, type Reply, type SendUpdates, type WritableCalendar, type WriteError, type WriteResult, type WriteScope, type SubApp, type ViewKind, kindToSubApp, subAppToKind } from '../shared/types';
 import { effectiveWeekStart, weekStartFrom } from '../shared/week-start';
+import type { DialAction } from '../shared/quick';
 import { actionContext, type DragRef, type DropZone, googleAccountFor, moveWithinContainer } from '../shared/spaces';
 import type { SidebarStyle, UnreadCount } from '../shared/types';
 import { createCalendarFetcher } from './calendar/fetcher';
@@ -188,6 +189,8 @@ export interface AppController {
   showAddMenu(): void;
   /** The ⚡ button's menu of one-click actions for the current space. */
   showActionsMenu(): void;
+  /** One of the floating button's quick actions was picked. */
+  quickPick(action: DialAction): void;
   /** A pop-up over the current page for a new event, with the current space's Google account. */
   newEvent(): void;
   /** A pop-up over the current page for a new to-do, tagged with the current space. */
@@ -473,6 +476,15 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     unsupported: 'Google could not create a meeting for this account.',
     error: 'Google could not create a meeting. Try again in a moment.',
   };
+  /**
+   * A quick action finished: a tick on the ⚡ button, and a toast beside the floating button.
+   * False when the floating button isn't there to show it.
+   */
+  function actionDone(message: string, detail?: string): boolean {
+    if (!win.webContents.isDestroyed()) win.webContents.send(IPC.actionDone, message);
+    return assistantOverlay?.toast({ state: 'done', title: message, ...(detail ? { detail } : {}) }) ?? false;
+  }
+
   let meetBusy = false;
   async function copyMeetingLink(from?: { spaceId: string }): Promise<void> {
     if (meetBusy) return; // a second press while one is on its way
@@ -480,11 +492,16 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     const activeId = st.activeAccountId && account(st.activeAccountId) ? st.activeAccountId : undefined;
     const source = from ?? (activeId ? { accountId: activeId } : undefined);
     const id = source ? googleAccountFor(st.accounts, st.spaces ?? [], source) : null;
+    // Beside the floating button when it's on screen, else a system notification.
     const tell = (title: string, body: string): void => {
       if (Notification.isSupported()) new Notification({ title, body, silent: true }).show();
     };
-    if (!id) return tell('No meeting link', 'This space has no Google account. Add one to make Google Meet links.');
+    const fail = (body: string): void => {
+      if (!assistantOverlay?.toast({ state: 'error', title: 'No meeting link', detail: body })) tell('No meeting link', body);
+    };
+    if (!id) return fail('This space has no Google account. Add one to make Meet links.');
     meetBusy = true;
+    assistantOverlay?.toast({ state: 'busy', title: 'Creating a meeting link…' });
     try {
       let url = '';
       const r = await calendarWrite(id, async () => {
@@ -495,10 +512,11 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       });
       if (r.ok) {
         clipboard.writeText(url);
-        win.webContents.send(IPC.actionDone, 'Meet link copied');
-        tell('Meeting link copied', `${url} — paste it with ${process.platform === 'darwin' ? '⌘V' : 'Ctrl+V'}.`);
-      }
-      else tell('No meeting link', MEET_ERRORS[r.error]);
+        const paste = process.platform === 'darwin' ? '⌘V' : 'Ctrl+V';
+        if (!actionDone('Meeting link copied', `${url.replace(/^https:\/\//, '')} · ${paste} to paste`)) tell('Meeting link copied', `${url} — paste it with ${paste}.`);
+      } else fail(MEET_ERRORS[r.error]);
+    } catch {
+      fail(MEET_ERRORS.error);
     } finally {
       meetBusy = false;
     }
@@ -2186,7 +2204,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
 
     quickDone(message) {
       quick?.hide();
-      win.webContents.send(IPC.actionDone, message);
+      actionDone(message);
     },
 
     quickWebContents: () => quick?.webContents() ?? null,
@@ -2194,6 +2212,14 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     showActionsMenu() {
       const st = store.state();
       const ctx = actionContext(st.accounts, st.spaces ?? [], st.activeAccountId ?? null);
+      // With the floating button on screen, the actions fan out from it (drawn by the quick overlay).
+      if (assistantOverlay && st.assistant?.button !== false && quick) {
+        const { rect, side } = assistantOverlay.fab();
+        const actions: DialAction[] = [...(ctx.googleId ? (['meet'] as const) : []), ...(st.accounts.some((a) => a.service === 'google') ? (['event'] as const) : []), 'todo', 'assistant'];
+        spacePanel?.close();
+        quick.show({ kind: 'dial', fab: rect, side, label: ctx.label, actions });
+        return;
+      }
       const mac = process.platform === 'darwin';
       const hasGoogle = st.accounts.some((a) => a.service === 'google');
       // The shortcuts are the app menu's; shown here so people learn them.
@@ -2219,6 +2245,14 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
         { type: 'separator' },
         { label: 'Ask the Assistant', ...shortcut('CmdOrCtrl+J'), click: () => controller.toggleAssistant(true) },
       ]).popup({ window: win });
+    },
+
+    quickPick(action) {
+      if (action === 'event') return controller.newEvent(); // the dial turns into the pop-up
+      if (action === 'todo') return controller.newTodo();
+      quick?.hide();
+      if (action === 'meet') void controller.copyMeetingLink();
+      else setAssistantOpen(true);
     },
 
     showSpaceMenu(id) {

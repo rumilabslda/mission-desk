@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { IPC, type SpaceNameRequest, type UiApi, type UiSnapshot } from '../shared/ipc';
-import type { QuickRequest } from '../shared/quick';
+import type { FabToastShown, QuickRequest } from '../shared/quick';
 
 function subscribe<T>(channel: string, cb: (value: T) => void): () => void {
   const listener = (_e: Electron.IpcRendererEvent, value: T): void => cb(value);
@@ -39,6 +39,8 @@ const api: UiApi = {
   onActionDone: (cb) => subscribe<string>(IPC.actionDone, cb),
   onQuickRequest: (cb) => subscribe<QuickRequest | null>(IPC.quickRequest, cb),
   quickClose: () => ipcRenderer.send(IPC.quickClose),
+  quickPick: (action) => ipcRenderer.send(IPC.quickPick, action),
+  onFabToast: (cb) => subscribe<FabToastShown | null>(IPC.fabToast, cb),
   quickDone: (message) => ipcRenderer.send(IPC.quickDone, message),
   setSpaceOpen: (id, open) => ipcRenderer.send(IPC.setSpaceOpen, id, open),
   calendarCalendars: (a) => ipcRenderer.invoke(IPC.calendarCalendars, a),

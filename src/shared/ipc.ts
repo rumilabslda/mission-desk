@@ -1,5 +1,5 @@
 import type { AssistantEffort, AssistantEvent, AssistantModel, ClaudeStatus } from './assistant';
-import type { QuickRequest } from './quick';
+import type { DialAction, FabToastShown, QuickRequest } from './quick';
 import type { ChatMessage, ConversationMeta } from './assistant-history';
 import type { AssistantMode } from './assistant-scope';
 import type { AssistantEngine, ScopeConfig } from './assistant-engines';
@@ -145,6 +145,10 @@ export interface UiApi {
   onQuickRequest(cb: (request: QuickRequest | null) => void): () => void;
   /** The quick-entry pop-up closes (Esc, Cancel, a click outside). */
   quickClose(): void;
+  /** The floating button's menu: one of its actions was picked. */
+  quickPick(action: DialAction): void;
+  /** The floating button's page: a confirmation to show beside it, or null to clear it. */
+  onFabToast(cb: (toast: FabToastShown | null) => void): () => void;
   /** The quick-entry pop-up saved: it closes and the ⚡ button confirms with `message`. */
   quickDone(message: string): void;
   /** Opens or closes a space in the Folders style (remembered). */
@@ -294,6 +298,8 @@ export const IPC = {
   actionDone: 'ui:action-done',
   quickRequest: 'ui:quick-request',
   quickClose: 'ui:quick-close',
+  quickPick: 'ui:quick-pick',
+  fabToast: 'ui:fab-toast',
   quickDone: 'ui:quick-done',
   setSpaceOpen: 'ui:set-space-open',
   calendarCalendars: 'ui:calendar-calendars',

@@ -51,7 +51,7 @@ A space signs in to Google once for all its apps. When Gmail in the space is sig
 
 The house at the top of the sidebar (⌘T). Mission Desk opens on Home unless you turn that off in **Settings → General**.
 
-- **Agenda:** what's next today across your Google calendars, with **Join** for Meet, Teams, Zoom and other calls.
+- **Agenda:** what's next today across your Google calendars, with **Join** for Meet, Teams, Zoom and other calls. Below it, **Next hours** shows the meetings from half an hour ago to four hours ahead on a time scale, with a line for now and the free time between them. **Earlier today** and **more later today** stretch it to the whole day.
 - **Messages:** the latest chat or email of each conversation, from every app, as they arrive. Click a line to open that conversation. A line goes when you read it in the app, when the app's unread count drops, or when you clear it. Apps with unread messages but no line are shown below as "Also unread".
   - Messages come from the apps' own notifications. Gmail and Outlook only send them if desktop notifications are on in their own settings.
   - Nothing is saved: the list clears when Mission Desk quits. To hide the text and see only who wrote, turn off **Show message previews on Home** in **Settings → General**.
@@ -73,7 +73,7 @@ It reads and writes the calendar the same way Google's own Calendar web page doe
 
 ## Assistant
 
-The round ✦ button floats over your apps (⌘J opens and closes it). Drag it to move it; drag the chat's edges to resize it.
+The round **+** button floats over your apps. Click it for the quick actions: **New meeting link** (copied for you, with a confirmation beside the button), **New event**, **New to-do** and **Ask the assistant**. Press 1–4 or the arrows and Enter to pick one, Esc to close. ⌘J opens and closes the assistant directly. Drag the button to move it; drag the chat's edges to resize it. With the button turned off, the ⚡ button in the sidebar holds the quick actions.
 
 - **Which assistant:** connect one or more in **Settings → Integrations**: Claude (your own Claude Code and Claude plan), OpenAI Codex (your own Codex CLI and ChatGPT plan) or OpenRouter (GPT, Gemini, Llama, Claude and more, with your own key). Then choose which one each space uses in **Settings → Assistant**.
 - **Per space:** by default each space has its own assistant, which sees only that space's apps. "All spaces" sees everything you share, for briefs across your day. Or choose one assistant for everything.

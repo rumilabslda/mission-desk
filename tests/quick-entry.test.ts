@@ -1,4 +1,4 @@
-import { eventDraftAt, parseQuickRequest } from '../src/shared/quick';
+import { eventDraftAt, isDialAction, parseQuickRequest } from '../src/shared/quick';
 
 describe('quick entry pop-ups', () => {
   test('a new event starts at the next half hour and lasts an hour', () => {
@@ -22,5 +22,16 @@ describe('quick entry pop-ups', () => {
     expect(parseQuickRequest({ kind: 'todo', tag: { kind: 'planet', id: 'x' } })).toBeNull();
     expect(parseQuickRequest({ kind: 'nope' })).toBeNull();
     expect(parseQuickRequest(null)).toBeNull();
+  });
+
+  test('the floating button menu: where the button is, and only known actions', () => {
+    const dial = { kind: 'dial', fab: { x: 900, y: 500, width: 52, height: 52 }, side: 'right', label: 'Rumi', actions: ['meet', 'event', 'todo', 'assistant'] };
+    expect(parseQuickRequest(dial)).toEqual(dial);
+    expect(parseQuickRequest({ ...dial, label: null })).toEqual({ ...dial, label: null });
+    expect(parseQuickRequest({ ...dial, actions: ['todo', 'rm -rf'] })).toBeNull();
+    expect(parseQuickRequest({ ...dial, side: 'top' })).toBeNull();
+    expect(parseQuickRequest({ ...dial, fab: { x: 'a', y: 0, width: 52, height: 52 } })).toBeNull();
+    expect(isDialAction('assistant')).toBe(true);
+    expect(isDialAction('settings')).toBe(false);
   });
 });

@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { UiSnapshot } from '../../shared/ipc';
 import { eventDraftAt, type QuickRequest } from '../../shared/quick';
 import type { SendUpdates, WriteError } from '../../shared/types';
 import type { Owner } from './calendar/CalendarView';
 import { type Choice, ChoiceDialog } from './calendar/ChoiceDialog';
 import { distinctColors } from './calendar/colors';
-import { type EditorResult, EventEditor } from './calendar/EventEditor';
+import type { EditorResult } from './calendar/EventEditor';
+import { QuickEventCard, QuickTodoCard } from './QuickCards';
+import { QuickDial } from './QuickDial';
 
 const CREATE_ERROR: Record<WriteError, string> = {
   'signed-out': 'Signed out of that Google account. Sign in again, then retry.',
@@ -16,8 +18,9 @@ const CREATE_ERROR: Record<WriteError, string> = {
 };
 
 /**
- * The #quick page: the ⚡ quick actions' pop-ups (new to-do, new event), drawn over the
- * page the user is on (main/views/quick-overlay.ts). Saving or cancelling closes it.
+ * The #quick page: the quick actions drawn over the page the user is on
+ * (main/views/quick-overlay.ts): the floating button's menu, and the new to-do and new event
+ * pop-ups. Saving or cancelling closes it.
  */
 export function QuickEntry(): React.JSX.Element | null {
   const [snap, setSnap] = useState<UiSnapshot | null>(null);
@@ -36,6 +39,7 @@ export function QuickEntry(): React.JSX.Element | null {
   }, []);
 
   if (!snap || !req) return null;
+  if (req.request.kind === 'dial') return <QuickDial key={req.n} request={req.request} />;
   return req.request.kind === 'todo' ? (
     <QuickTodo key={req.n} snap={snap} tag={req.request.tag} />
   ) : (
@@ -46,47 +50,14 @@ export function QuickEntry(): React.JSX.Element | null {
 const close = (): void => window.missiondesk.quickClose();
 
 function QuickTodo({ snap, tag }: { snap: UiSnapshot; tag: { kind: 'space' | 'account'; id: string } | null }): React.JSX.Element {
-  const options = [
-    ...snap.spaces.map((s) => ({ value: `space:${s.id}`, label: s.name })),
-    ...snap.accounts.filter((a) => !a.spaceId).map((a) => ({ value: `account:${a.id}`, label: a.name })),
-  ];
-  const first = tag ? `${tag.kind}:${tag.id}` : '';
-  const [text, setText] = useState('');
-  const [where, setWhere] = useState(options.some((o) => o.value === first) ? first : '');
-  const input = useRef<HTMLInputElement>(null);
-  useEffect(() => input.current?.focus(), []);
-
-  function add(): void {
-    if (!text.trim()) return;
+  function add(text: string, where: string): void {
     const [kind, id] = where.split(':');
     window.missiondesk.todoAdd(text, where ? { kind: kind as 'space' | 'account', id } : undefined);
     window.missiondesk.quickDone('To-do added');
   }
-
   return (
     <div className="overlay quick-overlay" onMouseDown={(e) => e.target === e.currentTarget && close()}>
-      <form
-        className="quick-todo"
-        onSubmit={(e) => {
-          e.preventDefault();
-          add();
-        }}
-        onKeyDown={(e) => e.key === 'Escape' && close()}
-      >
-        <svg className="quick-todo-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <rect x="4" y="4" width="16" height="16" rx="4" />
-          <path d="m8.5 12 2.5 2.5 4.5-5" />
-        </svg>
-        <input ref={input} value={text} maxLength={500} placeholder="Add a to-do and press Enter" aria-label="New to-do" onChange={(e) => setText(e.target.value)} />
-        <select value={where} onChange={(e) => setWhere(e.target.value)} title="Space">
-          <option value="">No space</option>
-          {options.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      </form>
+      <QuickTodoCard snap={snap} tag={tag} onAdd={add} onClose={close} />
     </div>
   );
 }
@@ -129,7 +100,9 @@ function QuickEvent({ snap, accountId }: { snap: UiSnapshot; accountId: string |
   ];
   return (
     <>
-      <EventEditor seed={seed} accounts={google} owners={owners} onClose={close} onSave={(r) => void save(r)} />
+      <div className="overlay quick-overlay" onMouseDown={(e) => e.target === e.currentTarget && close()}>
+        <QuickEventCard seed={seed} accounts={google} owners={owners} saving={saving} onClose={close} onSave={(r) => void save(r)} />
+      </div>
       {error && (
         <div className="quick-error" role="alert">
           {error}

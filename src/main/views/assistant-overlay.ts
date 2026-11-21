@@ -1,6 +1,11 @@
 import path from 'node:path';
 import { type BrowserWindow, type WebContents, WebContentsView, screen } from 'electron';
 import { type FabPlace, type Rect, chatRect, fabRect, resizeRect, snapFab, FAB } from './assistant-layout';
+import { IPC } from '../../shared/ipc';
+import type { FabToast } from '../../shared/quick';
+
+/** Room beside the button for its confirmation toast. */
+const TOAST_WIDTH = 330;
 
 export interface AssistantOverlay {
   /** Places the button and the chat window (window resized, button shown or hidden). */
@@ -20,6 +25,13 @@ export interface AssistantOverlay {
   /** The user drags the chat window's edges: they follow the pointer; the size is kept. */
   resizeStart(edges: ResizeEdges): void;
   resizeEnd(): void;
+  /** Where the button is now (window coordinates) and the side it sits on. */
+  fab(): { rect: Rect; side: 'left' | 'right' };
+  /**
+   * A confirmation beside the button (null clears it); "done" and "error" go away by themselves.
+   * False when the button isn't on screen to show it (the caller tells the user another way).
+   */
+  toast(t: FabToast | null): boolean;
 }
 
 export type ResizeEdges = { x?: 'left' | 'right'; y?: 'top' | 'bottom' };
@@ -44,6 +56,9 @@ export function createAssistantOverlay(
 ): AssistantOverlay {
   let open = false;
   let suppressed = false;
+  let toasting = false;
+  let toastTimer: NodeJS.Timeout | undefined;
+  const sideNow = (): 'left' | 'right' => (deps.place()?.side === 'left' ? 'left' : 'right');
 
   function makeView(hash: string): WebContentsView {
     const v = new WebContentsView({
@@ -82,7 +97,9 @@ export function createAssistantOverlay(
     const { width, height } = win.getContentBounds();
     fab.y = Math.max(0, fab.y);
     const showFab = !suppressed && (deps.buttonVisible() || open);
-    fabView.setBounds(fab);
+    // With a toast the view widens towards the window's middle; the button stays where it is.
+    const wide = toasting && !drag;
+    fabView.setBounds(wide ? { ...fab, x: side === 'right' ? fab.x - TOAST_WIDTH : fab.x, width: fab.width + TOAST_WIDTH } : fab);
     fabView.setVisible(showFab);
     if (chatView) {
       if (!resizing) chatView.setBounds(chatRect({ width, height }, fab, side, deps.width(), deps.height()));
@@ -140,6 +157,28 @@ export function createAssistantOverlay(
       // A dialog of the main UI opened: keystrokes must reach it, not the hidden chat.
       if (s && (chatView?.webContents.isFocused() || fabView.webContents.isFocused()) && !win.isDestroyed()) win.webContents.focus();
       if (!s && open && chatView) chatView.webContents.focus();
+    },
+    fab: () => {
+      const r = fabView.getBounds();
+      // Without the toast's extra room (the button is FAB wide, at the end towards its side).
+      return { rect: { ...r, x: sideNow() === 'right' ? r.x + r.width - FAB : r.x, width: FAB }, side: sideNow() };
+    },
+    toast(t) {
+      clearTimeout(toastTimer);
+      const shown = !!t && !suppressed && (deps.buttonVisible() || open) && !fabView.webContents.isDestroyed();
+      if (shown) {
+        // The page first (so the button keeps its place), then the wider view.
+        fabView.webContents.send(IPC.fabToast, { ...t, side: sideNow() });
+        toasting = true;
+        layout();
+        toastTimer = setTimeout(() => this.toast(null), t.state === 'busy' ? 30_000 : t.state === 'error' ? 6000 : 4000);
+      } else if (toasting) {
+        // The narrower view first, then the page.
+        toasting = false;
+        layout();
+        if (!fabView.webContents.isDestroyed()) fabView.webContents.send(IPC.fabToast, null);
+      }
+      return shown;
     },
     chat: () => (chatView && !chatView.webContents.isDestroyed() ? chatView.webContents : null),
     webContents: () => [fabView.webContents, ...(chatView ? [chatView.webContents] : [])].filter((w) => !w.isDestroyed()),

@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
 import type { AccountView } from '../../../shared/ipc';
 import { type JoinLink, type MeetingProvider, PROVIDER_NAME } from '../../../shared/meetings';
-import { agendaView, clashes } from '../../../shared/today';
+import { agendaView, clashes, timelineView } from '../../../shared/today';
 import type { AccountCalendarStatus, CalEvent } from '../../../shared/types';
 import { LOGOS } from '../logos';
+import { Timeline } from './Timeline';
 
 const timeFmt = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
 
@@ -47,7 +48,9 @@ export function Agenda({
   now: Date;
 }): React.JSX.Element {
   const [showEarlier, setShowEarlier] = useState(false);
+  const [showLater, setShowLater] = useState(false);
   const v = useMemo(() => agendaView(events, now), [events, now]);
+  const tl = useMemo(() => timelineView(events, now, { earlier: showEarlier, later: showLater }), [events, now, showEarlier, showLater]);
   const clashWith = useMemo(() => {
     const m = new Map<string, Set<string>>();
     for (const [a, b] of clashes(events)) {
@@ -134,6 +137,8 @@ export function Agenda({
   };
 
   const nothingNow = v.current.length === 0 && !v.next;
+  // The timeline once there's something on it (or after it, or asked for).
+  const showTimeline = tl.blocks.length > 0 || tl.later > 0 || showEarlier;
   return (
     <section className="td-card td-agenda">
       <div className="ag-head">
@@ -180,29 +185,22 @@ export function Agenda({
           </>
         ))}
 
-      {v.upcoming.length > 0 && (
+      {hasGoogle && loaded && (showTimeline || tl.earlier > 0) && (
         <>
           <div className="ag-sub">
-            <h3>Later today</h3>
-          </div>
-          <ul className="ag-list">{v.upcoming.map((e) => row(e))}</ul>
-        </>
-      )}
-
-      {(v.recent.length > 0 || v.earlier.length > 0) && (
-        <>
-          <div className="ag-sub">
-            <h3>{v.recent.length > 0 ? 'Just ended' : 'Earlier'}</h3>
-            {v.earlier.length > 0 && (
-              <button className="td-link" onClick={() => setShowEarlier((s) => !s)}>
-                {showEarlier ? 'Hide earlier' : `Earlier today (${v.earlier.length})`}
+            <h3>{showEarlier || showLater ? 'Today' : 'Next hours'}</h3>
+            {(tl.earlier > 0 || showEarlier) && (
+              <button className="td-link" onClick={() => setShowEarlier((x) => !x)}>
+                {showEarlier ? 'Hide earlier' : `Earlier today (${tl.earlier})`}
               </button>
             )}
           </div>
-          <ul className="ag-list">
-            {v.recent.map((e) => row(e, ' past'))}
-            {showEarlier && v.earlier.map((e) => row(e, ' past'))}
-          </ul>
+          {showTimeline && <Timeline view={tl} now={now} color={color} />}
+          {(tl.later > 0 || showLater) && (
+            <button className="td-link ag-later" onClick={() => setShowLater((x) => !x)}>
+              {showLater ? 'Show less' : `${tl.later} more later today`}
+            </button>
+          )}
         </>
       )}
 

@@ -198,7 +198,8 @@ export function Sidebar({ snapshot, onAdd, onCreateSpace }: Props): React.JSX.El
         </button>
       )}
       <ul className="accounts">{items.map((it) => (it.kind === 'account' ? accountButton(it.account) : space(it.space, it.accounts)))}</ul>
-      {snapshot.accounts.length > 0 && (
+      {/* The floating button holds the quick actions; this one stands in when it's hidden. */}
+      {snapshot.accounts.length > 0 && !snapshot.assistant.button && (
         <button
           className={`actions-btn${done ? ' copied' : ''}`}
           title={done ?? 'Quick actions: Meet link, event, to-do, assistant'}

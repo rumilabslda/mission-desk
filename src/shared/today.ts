@@ -83,3 +83,98 @@ export function greeting(now: Date): string {
 export function opensOnToday(state: { accounts: unknown[]; openOnToday?: boolean }): boolean {
   return state.accounts.length > 0 && state.openOnToday !== false;
 }
+
+/** An event placed on the Today timeline (minutes from the window's start, clipped to it). */
+export interface TimelineBlock {
+  event: CalEvent;
+  top: number;
+  bottom: number;
+  col: number;
+  cols: number;
+}
+
+/** Free time from now on, at least FREE_MINUTES long. `open`: it runs to the window's edge (its true length is unknown). */
+export interface TimelineGap {
+  top: number;
+  bottom: number;
+  open: boolean;
+}
+
+export interface TimelineView {
+  start: Date;
+  end: Date;
+  blocks: TimelineBlock[];
+  gaps: TimelineGap[];
+  /** Today's meetings outside the window, before and after it. */
+  earlier: number;
+  later: number;
+}
+
+export const TIMELINE_BACK_MINUTES = 30;
+export const TIMELINE_AHEAD_MINUTES = 4 * 60;
+const FREE_MINUTES = 30;
+
+/**
+ * Today's timed events on a scale, around now: from half an hour back to a few hours ahead,
+ * stretched to the start or end of the day's events on request. Overlaps sit side by side.
+ */
+export function timelineView(events: CalEvent[], now: Date, opts: { earlier?: boolean; later?: boolean } = {}): TimelineView {
+  const t = now.getTime();
+  const MIN = 60_000;
+  const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime();
+  const s = (e: CalEvent) => Date.parse(e.start);
+  const e_ = (e: CalEvent) => Date.parse(e.end);
+  const timed = events
+    .filter((e) => !e.allDay && e_(e) - s(e) < 24 * 60 * MIN && e_(e) > dayStart && s(e) < dayEnd)
+    .sort((a, b) => s(a) - s(b) || e_(b) - e_(a));
+
+  const quarter = 15 * MIN;
+  let start = Math.floor((t - TIMELINE_BACK_MINUTES * MIN) / quarter) * quarter;
+  let end = Math.ceil((t + TIMELINE_AHEAD_MINUTES * MIN) / quarter) * quarter;
+  if (opts.earlier && timed.length) start = Math.min(start, Math.max(dayStart, Math.floor(s(timed[0]) / quarter) * quarter));
+  if (opts.later && timed.length) end = Math.max(end, Math.min(dayEnd, Math.ceil(Math.max(...timed.map(e_)) / quarter) * quarter));
+
+  const inside = timed.filter((e) => e_(e) > start && s(e) < end);
+  const earlier = timed.filter((e) => !e.free && e_(e) <= start).length;
+  const later = timed.filter((e) => !e.free && s(e) >= end).length;
+
+  // Side-by-side columns within each run of overlapping events.
+  const blocks: TimelineBlock[] = [];
+  let cluster: TimelineBlock[] = [];
+  let colEnds: number[] = [];
+  let clusterEnd = -Infinity;
+  const flush = (): void => {
+    for (const b of cluster) b.cols = colEnds.length;
+    blocks.push(...cluster);
+    cluster = [];
+    colEnds = [];
+  };
+  for (const e of inside) {
+    const top = Math.max(0, (s(e) - start) / MIN);
+    const bottom = Math.min(end - start, e_(e) - start) / MIN;
+    if (top >= clusterEnd) {
+      flush();
+      clusterEnd = -Infinity;
+    }
+    let col = colEnds.findIndex((c) => c <= top);
+    if (col < 0) col = colEnds.push(bottom) - 1;
+    else colEnds[col] = bottom;
+    cluster.push({ event: e, top, bottom, col, cols: 1 });
+    clusterEnd = Math.max(clusterEnd, bottom);
+  }
+  flush();
+
+  // Free time from now to the window's end ("free" events don't take time).
+  const gaps: TimelineGap[] = [];
+  let cursor = Math.max(0, (t - start) / MIN);
+  for (const b of blocks.filter((x) => !x.event.free)) {
+    if (b.bottom <= cursor) continue;
+    if (b.top - cursor >= FREE_MINUTES) gaps.push({ top: cursor, bottom: b.top, open: false });
+    cursor = Math.max(cursor, b.bottom);
+  }
+  const total = (end - start) / MIN;
+  if (total - cursor >= FREE_MINUTES) gaps.push({ top: cursor, bottom: total, open: true });
+
+  return { start: new Date(start), end: new Date(end), blocks, gaps, earlier, later };
+}

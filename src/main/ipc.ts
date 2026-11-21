@@ -6,6 +6,7 @@ import { IPC } from '../shared/ipc';
 import type { ViewKind } from '../shared/types';
 import type { AppController } from './app-controller';
 import { cleanSpaceName } from '../shared/spaces';
+import { isDialAction } from '../shared/quick';
 import { parseTodoTag, isGoogleId, parseAccountPatch, parseEventDraft, parseReply, parseScope, parseSendUpdates, parseSidebarStyle, parseTimes, parseWeekStart, parseCalendarRange, parseDragRef, parseDropZone, parseNewAccount, parseSetupPlan } from './ipc-validation';
 
 const isString = (v: unknown): v is string => typeof v === 'string';
@@ -253,6 +254,9 @@ export function registerIpc(win: BrowserWindow, controller: AppController): void
   });
   ipcMain.on(IPC.quickClose, (e) => {
     if (fromQuick(e) || fromUi(e)) controller.quickClose();
+  });
+  ipcMain.on(IPC.quickPick, (e, action: unknown) => {
+    if (fromQuick(e) && isDialAction(action)) controller.quickPick(action);
   });
   ipcMain.on(IPC.quickDone, (e, message: unknown) => {
     if (fromQuick(e) && typeof message === 'string' && message.length <= 80) controller.quickDone(message);

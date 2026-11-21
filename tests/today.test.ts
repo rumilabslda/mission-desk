@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createTodoStore } from '../src/main/todos/store';
-import { clashes, greeting, nextEvent, todayView, opensOnToday } from '../src/shared/today';
+import { clashes, greeting, nextEvent, todayView, opensOnToday, timelineView } from '../src/shared/today';
 import type { CalEvent, Todo } from '../src/shared/types';
 
 let dir: string;
@@ -114,4 +114,60 @@ test('Mission Desk opens on Today only when there is something to show and the s
   expect(opensOnToday({ accounts: [], openOnToday: true })).toBe(false); // first run: the welcome screen
   expect(opensOnToday({ accounts: [{}], openOnToday: false })).toBe(false);
   expect(opensOnToday({ accounts: [{}] })).toBe(true); // on by default
+});
+
+describe('timelineView', () => {
+  // Local times, so the day's bounds line up whatever the test machine's zone.
+  const at = (h: number, m = 0, d = 18): string => new Date(2026, 10, d, h, m).toISOString();
+  const now = new Date(2026, 10, 18, 10, 10);
+
+  test('from half an hour back (to the quarter) to four hours ahead', () => {
+    const v = timelineView([], now);
+    expect(v.start.toISOString()).toBe(at(9, 30));
+    expect(v.end.toISOString()).toBe(at(14, 15));
+  });
+
+  test('clips events to the window and counts the meetings outside it', () => {
+    const list = [
+      ev('early', 'A', at(8), at(9)),
+      ev('edge', 'A', at(9), at(10)),
+      ev('late', 'A', at(16), at(17)),
+      ev('lateFree', 'A', at(17), at(18), { free: true }),
+      ev('tomorrow', 'A', at(9, 0, 19), at(10, 0, 19)),
+    ];
+    const v = timelineView(list, now);
+    expect(v.blocks.map((b) => [b.event.id, b.top, b.bottom])).toEqual([['edge', 0, 30]]);
+    expect(v.earlier).toBe(1);
+    expect(v.later).toBe(1); // free blocks don't count
+  });
+
+  test('stretches to the start or end of the day on request', () => {
+    const list = [ev('early', 'A', at(8, 5), at(9)), ev('late', 'A', at(16), at(17, 10))];
+    const v = timelineView(list, now, { earlier: true, later: true });
+    expect(v.start.toISOString()).toBe(at(8));
+    expect(v.end.toISOString()).toBe(at(17, 15));
+    expect(v.earlier + v.later).toBe(0);
+    expect(v.blocks.map((b) => b.event.id)).toEqual(['early', 'late']);
+  });
+
+  test('overlapping events share the width; the next run starts over', () => {
+    const list = [ev('a', 'A', at(10), at(11)), ev('b', 'B', at(10, 30), at(11, 30)), ev('c', 'A', at(11), at(11, 15)), ev('d', 'A', at(12), at(13))];
+    const cols = Object.fromEntries(timelineView(list, now).blocks.map((b) => [b.event.id, [b.col, b.cols]]));
+    expect(cols).toEqual({ a: [0, 2], b: [1, 2], c: [0, 2], d: [0, 1] });
+  });
+
+  test('free time from now on: 30 minutes or more, the last one open-ended', () => {
+    const list = [
+      ev('past', 'A', at(9, 30), at(10)),
+      ev('soon', 'A', at(10, 20), at(11)), // 10 min from now: too short to mention
+      ev('busy', 'A', at(12), at(12, 30)), // 1 h free before it
+      ev('ignored', 'A', at(12, 30), at(14), { free: true }),
+    ];
+    const v = timelineView(list, now);
+    const min = (iso: string) => (Date.parse(iso) - v.start.getTime()) / 60_000;
+    expect(v.gaps).toEqual([
+      { top: min(at(11)), bottom: min(at(12)), open: false },
+      { top: min(at(12, 30)), bottom: min(at(14, 15)), open: true },
+    ]);
+  });
 });

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ClaudeStatus } from "../../../shared/assistant";
 import type { UiSnapshot } from "../../../shared/ipc";
+import type { FabToastShown } from "../../../shared/quick";
 import { AssistantPanel } from "./AssistantPanel";
 import { AssistantSetup } from "./AssistantSetup";
 
@@ -189,13 +190,50 @@ export function AssistantWindow(): React.JSX.Element | null {
   );
 }
 
-/** The floating round button: a click opens or closes the assistant; a drag moves it (up, down, either side). */
+/** The + on the button; it turns 45° into × when the menu or the chat is open. */
+export const PlusIcon = (): React.JSX.Element => (
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+    <path d="M12 5v14M5 12h14" />
+  </svg>
+);
+
+/** A confirmation beside the button: "Creating a meeting link…", then "Meeting link copied". */
+function FabToast({ toast }: { toast: FabToastShown }): React.JSX.Element {
+  return (
+    <div className={`fab-toast ${toast.state} ${toast.side}`} role="status" aria-live="polite">
+      <span className="fab-toast-mark" aria-hidden="true">
+        {toast.state === "busy" ? <span className="fab-spin" /> : toast.state === "done" ? "✓" : "!"}
+      </span>
+      <span className="fab-toast-text">
+        <strong>{toast.title}</strong>
+        {toast.detail && <span>{toast.detail}</span>}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * The floating round button: a click opens the quick actions (the assistant among them), or
+ * closes the assistant when it's open; a drag moves it (up, down, either side).
+ */
 export function AssistantFab(): React.JSX.Element {
   const snap = useSnapshot();
   const open = snap?.assistant.open ?? false;
   const press = useRef<{ x: number; y: number; dragging: boolean } | null>(
     null,
   );
+  const [toast, setToast] = useState<FabToastShown | null>(null);
+  // The side is kept after the toast goes, so the button doesn't jump while the view narrows.
+  const [side, setSide] = useState<"left" | "right">("right");
+  useEffect(
+    () =>
+      window.missiondesk.onFabToast((t) => {
+        setToast(t);
+        if (t) setSide(t.side);
+      }),
+    [],
+  );
+  const click = (): void => (open ? window.missiondesk.toggleAssistant(false) : window.missiondesk.showActionsMenu());
   const end = (): void => {
     const p = press.current;
     press.current = null;
@@ -203,37 +241,37 @@ export function AssistantFab(): React.JSX.Element {
     return void 0;
   };
   return (
-    <button
-      className={`fab${open ? " open" : ""}`}
-      title="Assistant  (⌘J) · drag to move"
-      aria-label={open ? "Close the assistant" : "Open the assistant"}
-      onPointerDown={(e) => {
-        e.currentTarget.setPointerCapture(e.pointerId);
-        press.current = { x: e.screenX, y: e.screenY, dragging: false };
-      }}
-      onPointerMove={(e) => {
-        const p = press.current;
-        if (
-          p &&
-          !p.dragging &&
-          Math.hypot(e.screenX - p.x, e.screenY - p.y) > 4
-        ) {
-          p.dragging = true;
-          window.missiondesk.assistantFabDrag("start"); // main follows the pointer from here
-        }
-      }}
-      onPointerUp={() => {
-        const wasDrag = press.current?.dragging;
-        end();
-        if (!wasDrag) window.missiondesk.toggleAssistant();
-      }}
-      onLostPointerCapture={end}
-      onKeyDown={(e) =>
-        (e.key === "Enter" || e.key === " ") &&
-        window.missiondesk.toggleAssistant()
-      }
-    >
-      {open ? "×" : "✦"}
-    </button>
+    <>
+      {toast && <FabToast toast={toast} />}
+      <button
+        className={`fab ${side}${open ? " open" : ""}`}
+        title={open ? "Close the assistant  (⌘J)" : "Quick actions · drag to move"}
+        aria-label={open ? "Close the assistant" : "Quick actions"}
+        onPointerDown={(e) => {
+          e.currentTarget.setPointerCapture(e.pointerId);
+          press.current = { x: e.screenX, y: e.screenY, dragging: false };
+        }}
+        onPointerMove={(e) => {
+          const p = press.current;
+          if (
+            p &&
+            !p.dragging &&
+            Math.hypot(e.screenX - p.x, e.screenY - p.y) > 4
+          ) {
+            p.dragging = true;
+            window.missiondesk.assistantFabDrag("start"); // main follows the pointer from here
+          }
+        }}
+        onPointerUp={() => {
+          const wasDrag = press.current?.dragging;
+          end();
+          if (!wasDrag) click();
+        }}
+        onLostPointerCapture={end}
+        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && click()}
+      >
+        <PlusIcon />
+      </button>
+    </>
   );
 }
