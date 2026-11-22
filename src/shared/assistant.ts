@@ -66,7 +66,7 @@ export const COMMANDS: Command[] = [
   command(
     'waiting',
     'assistant.command.waiting',
-    "Find who is waiting on me: start with recent_messages, then check the inbox and recent conversations of the accounts with unread messages (read_page; for Gmail you can open https://mail.google.com/mail/u/0/#inbox). List threads where the last message is from someone else and asks me something or expects an answer. Group by client/account, oldest first, with one line each saying what they need.",
+    "Find who is waiting on me, and who I'm waiting on: start with recent_messages and the to-dos marked waiting on someone (from meetings), then check the inbox and recent conversations of the accounts with unread messages (read_page; for Gmail you can open https://mail.google.com/mail/u/0/#inbox). List threads where the last message is from someone else and asks me something or expects an answer. Group by client/account, oldest first, with one line each saying what they need.",
   ),
   command(
     'prep',

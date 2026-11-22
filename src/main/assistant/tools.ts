@@ -254,7 +254,7 @@ export function assistantTools(host: AssistantToolHost): ExtraTool[] {
       run: async (a) => {
         const list = host.todos().filter((t) => a.include_done === true || !t.done);
         const sorted = [...list.filter((t) => !t.done), ...list.filter((t) => t.done)];
-        return text(sorted.map((t) => `[${t.id}] ${t.done ? '(done) ' : ''}${t.text} (added ${t.day})`).join('\n') || 'No to-dos in this space.');
+        return text(sorted.map((t) => `[${t.id}] ${t.done ? '(done) ' : ''}${t.waitingOn ? `(waiting on ${t.waitingOn}) ` : ''}${t.text} (added ${t.day})`).join('\n') || 'No to-dos in this space.');
       },
     },
     {

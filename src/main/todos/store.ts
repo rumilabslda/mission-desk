@@ -48,11 +48,14 @@ export function createTodoStore(file: string, now: () => Date = () => new Date()
 
   return {
     list: (): Todo[] => todos,
-    add(text: string, tag?: Todo['tag']): Todo | null {
+    /** `extra`: the meeting it came from, and who owes it (a "Waiting on" item). */
+    add(text: string, tag?: Todo['tag'], extra?: { meetingId?: string; waitingOn?: string }): Todo | null {
       const t = clean(text);
       if (!t) return null;
       const d = now();
-      const todo: Todo = { id: randomUUID(), text: t, done: false, createdAt: d.toISOString(), day: localDay(d), ...(tag ? { tag } : {}) };
+      const waitingOn = extra?.waitingOn ? clean(extra.waitingOn)?.slice(0, 80) : undefined;
+      const meetingId = extra?.meetingId && /^[\w-]{1,40}$/.test(extra.meetingId) ? extra.meetingId : undefined;
+      const todo: Todo = { id: randomUUID(), text: t, done: false, createdAt: d.toISOString(), day: localDay(d), ...(tag ? { tag } : {}), ...(meetingId ? { meetingId } : {}), ...(waitingOn ? { waitingOn } : {}) };
       todos = [...todos, todo];
       save();
       return todo;
