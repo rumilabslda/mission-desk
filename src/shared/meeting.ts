@@ -141,3 +141,6 @@ export function meetingLocale(uiLocale: string, format: string): string {
   const region = format.split('-')[1]?.toUpperCase();
   return `${lang}-${region && regions.includes(region) ? region : regions[0]}`;
 }
+
+/** The meeting languages offered on the bar (the engines may support more). */
+export const MEETING_LOCALES = ['pt-PT', 'pt-BR', 'en-US', 'en-GB', 'es-ES', 'fr-FR', 'de-DE', 'it-IT', 'nl-NL'];

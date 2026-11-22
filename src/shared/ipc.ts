@@ -87,6 +87,10 @@ export interface UiSnapshot {
   meetings: {
     list: MeetingListItem[];
     live: LiveMeeting | null;
+    /** The Ask bar's question (a meeting started in an Ask space, or a second call). */
+    asking: { scope: string; title: string; switchTo: boolean } | null;
+    /** An Apple language being downloaded from the bar or Settings. */
+    localeInstall: { locale: string; fraction: number } | null;
     settings: MeetingGlobalSettings;
     /** Per scope ('space:<id>', 'nospace'), with the default filled in. */
     spaces: Record<string, SpaceMeetingSettings>;
@@ -278,6 +282,14 @@ export interface UiApi {
   setWeekStart(v: 0 | 1 | 'auto'): void;
   setSpaceMeetings(scope: string, s: SpaceMeetingSettings): void;
   setMeetingGlobal(patch: Partial<MeetingGlobalSettings>): void;
+  /** The transcription bar. */
+  meetingAnswer(yes: boolean, never: boolean): void;
+  meetingPause(): void;
+  meetingResume(): void;
+  meetingStop(): void;
+  meetingSetLanguage(locale: string): void;
+  meetingCopyNotice(): void;
+  meetingInstallLocale(locale: string): void;
   /** The hidden capture page only: main asks it to record a meeting view (tab audio) and the microphone. */
   onCaptureStart(cb: (o: { callSourceId: string | null }) => void): () => void;
   onCaptureStop(cb: () => void): () => void;
@@ -417,6 +429,13 @@ export const IPC = {
   setWeekStart: 'ui:set-week-start',
   setLanguage: 'ui:set-language',
   setSpaceMeetings: 'ui:set-space-meetings',
+  meetingAnswer: 'ui:meeting-answer',
+  meetingPause: 'ui:meeting-pause',
+  meetingResume: 'ui:meeting-resume',
+  meetingStop: 'ui:meeting-stop',
+  meetingSetLanguage: 'ui:meeting-set-language',
+  meetingCopyNotice: 'ui:meeting-copy-notice',
+  meetingInstallLocale: 'ui:meeting-install-locale',
   setMeetingGlobal: 'ui:set-meeting-global',
   getLocale: 'ui:get-locale',
   showDataFolder: 'ui:show-data-folder',

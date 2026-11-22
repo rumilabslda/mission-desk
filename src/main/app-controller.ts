@@ -4,6 +4,8 @@ import { createMeetingStore } from './meetings/store';
 import { createTranscriber, type Transcriber } from './meetings/transcriber';
 import { createOrchestrator } from './meetings/orchestrator';
 import { createDetector } from './meetings/detector';
+import { createMeetingOverlay } from './views/meeting-overlay';
+import { meetingBarBounds } from './views/meeting-bar-bounds';
 import { matchEvent } from '../shared/meeting-detect';
 import { PROVIDER_NAME } from '../shared/meetings';
 import { PROBE_RELIABLE } from '../shared/meeting-probes';
@@ -206,6 +208,9 @@ export interface AppController {
   meetingResume(): void;
   meetingStop(): void;
   meetingSetLanguage(locale: string): void;
+  meetingCopyNotice(): void;
+  meetingInstallLocale(locale: string): void;
+  meetingBarWebContents(): WebContents | null;
   /** The recorder (the hidden capture page and its audio). */
   captureHost(): CaptureHost;
   /** Listens to the recorder's audio frames and state. */
@@ -419,7 +424,10 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       wireView(a, kind, view);
       assistantOverlay?.raise(); // the floating assistant stays above every page
     },
-    onVisibilityChanged: (accountId, kind, visible) => scheduler.setVisible(key(accountId, kind), visible),
+    onVisibilityChanged: (accountId, kind, visible) => {
+      scheduler.setVisible(key(accountId, kind), visible);
+      if (meetingsOn) setImmediate(placeMeetingBar);
+    },
     // A page closed itself: an extra tab closes like a browser tab; an app's own page comes back
     // where it was (it would otherwise stay blank until a restart).
     onViewGone: (a, kind, onScreen) => {
@@ -600,6 +608,18 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     ended: () => push(),
     now: () => Date.now(),
   });
+  let localeInstall: { locale: string; fraction: number } | null = null;
+  let modalOpen = false;
+  const meetingBar = createMeetingOverlay(win, { uiPreloadPath });
+  /** The bar follows the live (or asking) meeting's view: on it while it's on screen, hidden otherwise. */
+  function placeMeetingBar(): void {
+    if (!meetingsOn) return;
+    const target = orchestrator.liveView() ?? orchestrator.asking();
+    const view = target ? registry.get(target.accountId, target.kind) : undefined;
+    if (!target || !view || !view.getVisible() || modalOpen) return meetingBar.place(null);
+    const lines = !orchestrator.asking() && orchestrator.live()?.notice ? 2 : 1;
+    meetingBar.place(meetingBarBounds(view.getBounds(), lines));
+  }
   const detector = createDetector({
     onStart: (m) => void orchestrator.start(m),
     onEnd: (accountId, kind, key) => void orchestrator.end(accountId, kind, key),
@@ -1553,6 +1573,12 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       meetings: {
         list: meetingStore.listAll(meetingScopes(), orchestrator.live()?.id),
         live: orchestrator.live(),
+        asking: (() => {
+          const q = orchestrator.asking();
+          const a = q ? account(q.accountId) : undefined;
+          return q && a ? { scope: scopeOfAccount(a, 'space'), title: q.title, switchTo: q.switchTo } : null;
+        })(),
+        localeInstall,
         settings: (({ nospace: _n, ...rest }) => rest)(s.meetings ?? {}),
         spaces: Object.fromEntries([
           ...(s.spaces ?? []).map((sp) => [`space:${sp.id}`, spaceMeetingSettings(sp)] as const),
@@ -1626,6 +1652,9 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     for (const wc of assistantOverlay?.webContents() ?? []) if (!wc.isLoading()) wc.send(IPC.snapshot, snap);
     const quickWc = quick?.webContents();
     if (quickWc && !quickWc.isLoading()) quickWc.send(IPC.snapshot, snap);
+    const barWc = meetingBar.webContents();
+    if (barWc && !barWc.isLoading()) barWc.send(IPC.snapshot, snap);
+    placeMeetingBar();
     app.dock?.setBadge(dockBadgeText(store.state().accounts.map((a) => unread.get(a.id))));
     syncGoogle(); // cheap when spaces haven't changed
   }
@@ -1797,6 +1826,8 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     setModalOpen(open) {
       if (open) spacePanel?.close();
       viewManager.setModalOpen(open);
+      modalOpen = open;
+      placeMeetingBar();
       assistantOverlay?.setSuppressed(open); // the dialog is in the main UI, under the floating views
     },
 
@@ -1922,6 +1953,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       viewManager.layout();
       assistantOverlay?.layout();
       quick?.layout();
+      placeMeetingBar();
     },
 
     copyMeetingLink,
@@ -2492,6 +2524,29 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     meetingResume: () => orchestrator.resume(),
     meetingStop: () => void orchestrator.stop(),
     meetingSetLanguage: (locale) => void orchestrator.setLanguage(locale),
+    meetingCopyNotice() {
+      clipboard.writeText(store.state().meetings?.notice || t('meetings.notice.default'));
+    },
+    meetingInstallLocale(locale) {
+      if (localeInstall) return;
+      localeInstall = { locale, fraction: 0 };
+      push();
+      void transcriberNow()
+        .installLocale(locale, (f) => {
+          localeInstall = { locale, fraction: f };
+          pushSoon();
+        })
+        .then(() => {
+          const live = orchestrator.live();
+          if (live?.notice?.code === 'localeMissing' && live.notice.locale === locale) void orchestrator.setLanguage(locale);
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          localeInstall = null;
+          push();
+        });
+    },
+    meetingBarWebContents: () => meetingBar.webContents(),
 
     onCapture(pcm, state) {
       capturePcmCbs.add(pcm);

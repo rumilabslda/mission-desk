@@ -6,6 +6,7 @@ import { isCodexModel, isEngine, isOpenRouterModel, type ScopeConfig } from '../
 import { IPC } from '../shared/ipc';
 import { CAPTURE_IPC } from '../shared/capture-ipc';
 import { isLanguageSetting } from '../shared/i18n/locales';
+import { isMeetingLocale } from '../shared/meeting';
 import { t } from '../shared/i18n';
 import type { ViewKind } from '../shared/types';
 import type { AppController } from './app-controller';
@@ -36,7 +37,21 @@ export function registerIpc(win: BrowserWindow, controller: AppController): void
   ipcMain.on(IPC.getLocale, (e) => {
     e.returnValue = fromUi(e) || fromPanel(e) || fromQuick(e) ? controller.localeInfo() : null;
   });
-  ipcMain.handle(IPC.getSnapshot, (e) => (fromUi(e) || fromPanel(e) || fromQuick(e) ? controller.snapshot() : null));
+  // The transcription bar over a meeting may only read the snapshot and use its own buttons.
+  const fromMeetingBar = (e: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent): boolean => e.sender === controller.meetingBarWebContents();
+  ipcMain.handle(IPC.getSnapshot, (e) => (fromUi(e) || fromPanel(e) || fromQuick(e) || fromMeetingBar(e) ? controller.snapshot() : null));
+  const bar = (channel: string, handler: (...args: unknown[]) => void): void => {
+    ipcMain.on(channel, (e, ...args: unknown[]) => {
+      if (fromMeetingBar(e) || fromUi(e)) handler(...args);
+    });
+  };
+  bar(IPC.meetingAnswer, (yes, never) => typeof yes === 'boolean' && typeof never === 'boolean' && controller.meetingAnswer(yes, never));
+  bar(IPC.meetingPause, () => controller.meetingPause());
+  bar(IPC.meetingResume, () => controller.meetingResume());
+  bar(IPC.meetingStop, () => controller.meetingStop());
+  bar(IPC.meetingSetLanguage, (l) => isMeetingLocale(l) && controller.meetingSetLanguage(l));
+  bar(IPC.meetingCopyNotice, () => controller.meetingCopyNotice());
+  bar(IPC.meetingInstallLocale, (l) => isMeetingLocale(l) && controller.meetingInstallLocale(l));
   ipcMain.handle(IPC.addAccount, (e, input: unknown) => {
     const parsed = fromUi(e) ? parseNewAccount(input) : null;
     if (!parsed) throw new Error('Invalid account');

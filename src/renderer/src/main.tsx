@@ -5,6 +5,7 @@ import { AssistantFab, AssistantWindow } from './assistant/AssistantWindow';
 import { QuickEntry } from './QuickEntry';
 import { SpacePanel } from './SpacePanel';
 import { startCapturePage } from './meetings/capture';
+import { MeetingBar } from './meetings/MeetingBar';
 import './styles.css';
 
 // The same page also renders the small views drawn above the account pages:
@@ -12,7 +13,7 @@ import './styles.css';
 // assistant (main/views/assistant-overlay.ts) and the ⚡ quick-entry pop-ups (main/views/quick-overlay.ts).
 const page = location.hash.slice(1);
 if (page === 'capture') startCapturePage();
-if (page === 'space-panel' || page === 'assistant' || page === 'assistant-fab' || page === 'quick') document.documentElement.classList.add('overlay-page', `${page}-page`);
+if (page === 'space-panel' || page === 'assistant' || page === 'assistant-fab' || page === 'quick' || page === 'meeting-bar') document.documentElement.classList.add('overlay-page', `${page}-page`);
 if (page !== 'capture') createRoot(document.getElementById('root')!).render(
-  page === 'space-panel' ? <SpacePanel /> : page === 'quick' ? <QuickEntry /> : page === 'assistant' ? <AssistantWindow /> : page === 'assistant-fab' ? <AssistantFab /> : <App />,
+  page === 'space-panel' ? <SpacePanel /> : page === 'meeting-bar' ? <MeetingBar /> : page === 'quick' ? <QuickEntry /> : page === 'assistant' ? <AssistantWindow /> : page === 'assistant-fab' ? <AssistantFab /> : <App />,
 );

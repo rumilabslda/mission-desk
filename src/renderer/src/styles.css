@@ -1376,3 +1376,29 @@ html.assistant-fab-page body, html.assistant-page body { overflow: hidden; }
 .qk-primary:disabled { opacity: 0.45; cursor: default; }
 @media (prefers-reduced-motion: reduce) { .qk { animation: none; } }
 .quick-error { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); max-width: calc(100% - 32px); background: #b42318; color: #fff; border-radius: 10px; padding: 10px 16px; font-size: 14px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3); z-index: 10; }
+
+/* ── Transcription bar (#meeting-bar), over a meeting's view ─────────────────────────── */
+html.meeting-bar-page #root { height: 100vh; }
+.mb-bar {
+  display: flex; flex-direction: column; justify-content: center; gap: 2px;
+  height: 100vh; box-sizing: border-box; padding: 0 6px 0 12px;
+  background: rgba(24, 25, 30, 0.92); color: #f3f4f6; border-radius: 18px;
+  font: 500 12.5px/1.2 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.28); -webkit-user-select: none; user-select: none;
+}
+.mb-bar:not(.two) { flex-direction: row; align-items: center; gap: 6px; }
+.mb-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.mb-sub { font-weight: 400; font-size: 11.5px; color: #c7c9d1; }
+.mb-sub span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mb-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mb-dot { width: 8px; height: 8px; border-radius: 50%; background: #ef4444; flex: none; animation: mb-pulse 1.6s ease-in-out infinite; }
+.mb-dot.paused { background: #9ca3af; animation: none; }
+.mb-dot.ask { background: #6366f1; animation: none; }
+@keyframes mb-pulse { 50% { opacity: 0.35; } }
+.mb-bar button, .mb-lang {
+  flex: none; height: 24px; padding: 0 9px; border: 0; border-radius: 12px;
+  background: rgba(255, 255, 255, 0.12); color: inherit; font: inherit; cursor: pointer;
+}
+.mb-bar button:hover, .mb-lang:hover { background: rgba(255, 255, 255, 0.2); }
+.mb-bar .mb-primary, .mb-bar .mb-notice.fresh { background: #4f46e5; }
+.mb-lang { max-width: 130px; appearance: none; -webkit-appearance: none; }
