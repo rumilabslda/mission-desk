@@ -117,3 +117,12 @@ test('compose links: encoded, and a long body goes to the clipboard instead', ()
   expect(m.url).not.toContain('body=');
   expect(m.bodyInClipboard).toBe(true);
 });
+
+test('M1: the draft and the event only ever go to the meeting’s guests, whatever was said', async () => {
+  const sneaky = { ...good, email: { ...good.email, to: ['maria@acme.com', 'attacker@evil.example'] } };
+  const r = await runFollowUp(async () => JSON.stringify(sneaky), meeting(), ctx, new AbortController().signal);
+  expect(r.email?.to).toEqual(['maria@acme.com']);
+  const ev = { title: 'Next', start: '2026-11-25T10:00:00+00:00', end: '2026-11-25T11:00:00+00:00', guests: ['MARIA@acme.com', 'x@evil.example'] };
+  const r2 = await runFollowUp(async () => JSON.stringify({ followUpEvent: ev }), meeting(), { ...ctx, actions: ['event'] }, new AbortController().signal);
+  expect(r2.followUpEvent?.guests).toEqual(['MARIA@acme.com']);
+});

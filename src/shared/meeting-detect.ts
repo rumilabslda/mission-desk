@@ -37,7 +37,8 @@ export function meetingKey(raw: string): { provider: MeetingProviderId; key: str
     return null;
   }
   if (host === 'zoom.us' || host.endsWith('.zoom.us')) {
-    const m = /^\/wc\/(?:join\/)?(\d{9,12})(?:\/|$)/.exec(u.pathname);
+    // The web client (/wc/<id>), and the links calendar invites carry (/j/<id>, /s/<id>).
+    const m = /^\/(?:wc\/(?:join\/)?|j\/|s\/)(\d{9,12})(?:\/|$)/.exec(u.pathname);
     return m ? { provider: 'zoom', key: `zoom:${m[1]}` } : null;
   }
   return null;
@@ -59,4 +60,9 @@ export function matchEvent<E extends { start: string; end: string; join?: { url:
     if (!best || Math.abs(start - at) < Math.abs(Date.parse(best.start) - at)) best = e;
   }
   return best;
+}
+
+/** The events whose calendar account is in `scope`: a meeting is never matched to another space's calendar. */
+export function eventsOfScope<E extends { accountId: string }>(events: E[], scopeOf: (accountId: string) => string | null, scope: string): E[] {
+  return events.filter((e) => scopeOf(e.accountId) === scope);
 }

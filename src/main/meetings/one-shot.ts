@@ -9,7 +9,11 @@ const TIMEOUT_MS = 10 * 60_000;
  * Runs one request through a fresh assistant session (made by `make`, with no tools) and closes it.
  * Rejects on an error, an answer that ends in error, an abort, or after 10 minutes.
  */
-export function createOneShot(make: (system: () => string) => Promise<Pick<AssistantSession, 'send' | 'stop' | 'close' | 'onEvent'>>): Ask {
+export function createOneShot(
+  make: (system: () => string) => Promise<Pick<AssistantSession, 'send' | 'stop' | 'close' | 'onEvent'> & Partial<Pick<AssistantSession, 'sessionId'>>>,
+  /** Removes what the engine kept of the session (e.g. Codex's rollout file), once it's closed. */
+  cleanup?: (sessionId: string | null) => void,
+): Ask {
   return async (system, user, signal) => {
     const session = await make(() => system);
     let text = '';
@@ -44,6 +48,7 @@ export function createOneShot(make: (system: () => string) => Promise<Pick<Assis
       });
     } finally {
       session.close();
+      cleanup?.(session.sessionId?.() ?? null);
     }
   };
 }

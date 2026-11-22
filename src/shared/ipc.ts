@@ -92,6 +92,8 @@ export interface UiSnapshot {
     live: LiveMeeting | null;
     /** The Ask bar's question (a meeting started in an Ask space, or a second call). */
     asking: { scope: string; title: string; switchTo: boolean } | null;
+    /** What the bar is showing: the Ask question or the live controls (null: hidden). */
+    barMode: 'ask' | 'live' | null;
     /** An Apple language being downloaded from the bar or Settings. */
     localeInstall: { locale: string; fraction: number } | null;
     settings: MeetingGlobalSettings;

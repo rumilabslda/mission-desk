@@ -224,3 +224,64 @@ test('changing the language restarts the engine in it', async () => {
   expect(store.get('space:s1', o.live()!.id)!.language).toBe('en-US');
   await flush();
 });
+
+// ── Final review fixes ─────────────────────────────────────────────────────────────────
+
+test('C1: the last segments of a meeting that is finishing never land in the next one, even in another space', async () => {
+  const s = setup();
+  let release!: () => void;
+  s.tr.finish = () => new Promise<void>((r) => (release = () => (s.tr.finishes++, r())));
+  await s.o.start(s.meet());
+  const a = s.o.live()!.id;
+  now += 5 * 60_000;
+  const stopping = s.o.stop();
+  s.settings['nospace'] = { mode: 'always' };
+  const next = s.o.start(s.meet('n1', 'meet:xyz-abcd-efg')); // another space
+  await flush(); // B may have begun by now
+  s.tr.segment('call', { start: 0, end: 900, text: 'last words of A' });
+  release();
+  await stopping;
+  await next;
+  expect(s.store.get('space:s1', a)!.segments.map((x) => x.text)).toEqual(['last words of A']);
+  const b = s.o.live();
+  if (b) expect(s.store.get(b.scope, b.id)!.segments).toEqual([]);
+});
+
+test('C1: two calls detected at once never both begin', async () => {
+  const s = setup();
+  s.settings['nospace'] = { mode: 'always' };
+  await Promise.all([s.o.start(s.meet()), s.o.start(s.meet('n1', 'meet:xyz-abcd-efg'))]);
+  expect(s.tr.starts).toHaveLength(1);
+  expect(s.o.asking()).toMatchObject({ accountId: 'n1', switchTo: true });
+});
+
+test('I5: after hanging up (still in the 2-minute hold) nothing is transcribed, and the gap is marked', async () => {
+  const s = setup();
+  await s.o.start(s.meet());
+  const id = s.o.live()!.id;
+  now += 60_000;
+  s.o.callChanged('g1', 'meet', false);
+  s.pcm('me', new Int16Array([5, 5]));
+  s.pcm('call', new Int16Array([5, 5]));
+  expect(s.tr.fed.slice(-2).map(([, d]) => [...d])).toEqual([
+    [0, 0],
+    [0, 0],
+  ]);
+  now += 30_000;
+  s.o.callChanged('g1', 'meet', true);
+  s.pcm('me', new Int16Array([7]));
+  expect([...s.tr.fed.at(-1)![1]]).toEqual([7]);
+  expect(s.store.get('space:s1', id)!.gaps).toEqual([{ start: 60_000, end: 90_000 }]);
+});
+
+test('M4: an accidental join is measured to when it ended, not to when the engine finished', async () => {
+  const s = setup();
+  s.tr.finish = async () => {
+    now += 60_000; // a slow flush
+  };
+  await s.o.start(s.meet());
+  now += 40_000;
+  s.tr.segment('me', { start: 0, end: 1000, text: 'oops' });
+  await s.o.end('g1', 'meet', 'meet:abc-defg-hij');
+  expect(s.ended).toEqual([]);
+});

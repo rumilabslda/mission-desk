@@ -1,3 +1,4 @@
+import { t } from '../../shared/i18n';
 import { DEFAULT_ACTIONS, type Meeting, type MeetingAction } from '../../shared/meeting';
 import type { Todo } from '../../shared/types';
 import { applyFollowUp } from './apply';
@@ -29,8 +30,13 @@ export function createMeetingRunner(deps: {
   return {
     async run(scope: string, id: string, actions: MeetingAction[]): Promise<void> {
       const m = deps.store.get(scope, id);
+      if (!m || running.has(id) || actions.length === 0) return;
       const ask = deps.askFor(scope);
-      if (!m || !ask || running.has(id) || actions.length === 0) return;
+      if (!ask) {
+        failed.set(id, t('meetings.ended.noAssistant'));
+        deps.progress(m, 'error', t('meetings.ended.noAssistant'));
+        return deps.push();
+      }
       const ac = new AbortController();
       running.set(id, ac);
       failed.delete(id);

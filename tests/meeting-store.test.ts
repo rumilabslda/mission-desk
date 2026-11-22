@@ -107,3 +107,21 @@ test('the list says how long and in what state, newest first', () => {
   const live = s.create({ ...base('nospace'), startedAt: '2026-11-22T09:50:00Z' });
   expect(s.list('nospace', live.id)[0]).toMatchObject({ id: live.id, state: 'transcribing', minutes: 10 });
 });
+
+import { vi } from 'vitest';
+
+test('I8: listing (every snapshot) reads no files once a scope is known; writes keep the list current', () => {
+  const s = store();
+  const m = s.create(base('space:a'));
+  s.create(base('space:a'));
+  expect(s.list('space:a')).toHaveLength(2);
+  const reads = vi.spyOn(fs, 'readFileSync');
+  for (let i = 0; i < 5; i++) s.list('space:a');
+  s.count('space:a');
+  expect(reads).not.toHaveBeenCalled();
+  reads.mockRestore();
+  s.update('space:a', m.id, { endedAt: '2026-11-22T09:30:00Z', result: { myTodos: ['x'] } });
+  expect(s.list('space:a').find((x) => x.id === m.id)).toMatchObject({ state: 'ready', minutes: 30 });
+  s.remove('space:a', m.id);
+  expect(s.list('space:a')).toHaveLength(1);
+});

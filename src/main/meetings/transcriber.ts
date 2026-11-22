@@ -97,6 +97,8 @@ export function createTranscriber(io: { spawn(): ChildLike; now(): number }) {
         if (line.trim()) onLine(line);
       }
     });
+    // Read and drop its logs (Core ML warnings and the like): an unread pipe would block the helper once full.
+    c.stderr?.on('data', () => undefined);
     c.on('error', () => exited(c));
     c.on('exit', () => exited(c));
     return c;

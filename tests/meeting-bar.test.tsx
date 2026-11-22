@@ -76,3 +76,21 @@ test('the bar sits top-centre over the meeting', () => {
   expect(meetingBarBounds({ x: 0, y: 0, width: 1000, height: 700 })).toEqual({ x: 220, y: 8, width: 560, height: 36 });
   expect(meetingBarBounds({ x: 72, y: 40, width: 400, height: 700 }, 2)).toEqual({ x: 80, y: 48, width: 384, height: 60 });
 });
+
+import { barTarget } from '../src/main/views/meeting-bar-bounds';
+
+test('I1: with a second call asking, the ask bar sits over that call and the live controls stay on the first', () => {
+  const live = { accountId: 'g1', kind: 'meet' as const };
+  const asking = { accountId: 'n1', kind: 'meet' as const, switchTo: true };
+  const visible = (on: string) => (a: string) => a === on;
+  expect(barTarget(live, asking, visible('n1'))).toEqual({ accountId: 'n1', kind: 'meet', mode: 'ask' });
+  expect(barTarget(live, asking, visible('g1'))).toEqual({ accountId: 'g1', kind: 'meet', mode: 'live' });
+  expect(barTarget(live, null, visible('n1'))).toBeNull();
+  expect(barTarget(null, { ...asking, switchTo: false }, visible('n1'))).toEqual({ accountId: 'n1', kind: 'meet', mode: 'ask' });
+});
+
+test('I1: the bar draws what it was placed for', () => {
+  const host = render({ live, asking: { title: 'Other', switchTo: true }, spaceName: 'Acme', localeInstall: null, mode: 'live' });
+  expect(host.textContent).toContain('Transcribing');
+  expect(host.textContent).not.toContain('instead');
+});

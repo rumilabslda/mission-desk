@@ -33,12 +33,12 @@ export function registerIpc(win: BrowserWindow, controller: AppController): void
     e.sender === controller.quickWebContents();
   const QUICK_CHANNELS = new Set<string>([IPC.calendarCalendars, IPC.calendarCreate, IPC.todoAdd]);
 
+  // The transcription bar over a meeting may only read the language and the snapshot, and use its own buttons.
+  const fromMeetingBar = (e: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent): boolean => e.sender === controller.meetingBarWebContents();
   // Read synchronously by the preload of every Mission Desk page, before the page's scripts run.
   ipcMain.on(IPC.getLocale, (e) => {
-    e.returnValue = fromUi(e) || fromPanel(e) || fromQuick(e) ? controller.localeInfo() : null;
+    e.returnValue = fromUi(e) || fromPanel(e) || fromQuick(e) || fromMeetingBar(e) ? controller.localeInfo() : null;
   });
-  // The transcription bar over a meeting may only read the snapshot and use its own buttons.
-  const fromMeetingBar = (e: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent): boolean => e.sender === controller.meetingBarWebContents();
   ipcMain.handle(IPC.getSnapshot, (e) => (fromUi(e) || fromPanel(e) || fromQuick(e) || fromMeetingBar(e) ? controller.snapshot() : null));
   const bar = (channel: string, handler: (...args: unknown[]) => void): void => {
     ipcMain.on(channel, (e, ...args: unknown[]) => {

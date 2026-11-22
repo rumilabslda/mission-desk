@@ -23,6 +23,8 @@ export interface SessionIO {
   mcpConfig(): string;
   /** Built for every start, so "today" is always today. */
   systemPrompt(): string;
+  /** Claude Code keeps no session on disk (one-shot requests). */
+  ephemeral?: boolean;
 }
 
 export interface AssistantSession {
@@ -81,7 +83,7 @@ export function createClaudeCodeSession(io: SessionIO, initial: { model: string;
       emit({ type: 'error', kind: 'not-found', message: t('assistant.error.claudeNotInstalled') });
       return null;
     }
-    const args = buildArgs({ model, effort, mcpConfig: io.mcpConfig(), systemPrompt: io.systemPrompt(), ...(sessionId ? { resume: sessionId } : {}) });
+    const args = buildArgs({ model, effort, mcpConfig: io.mcpConfig(), systemPrompt: io.systemPrompt(), ...(sessionId ? { resume: sessionId } : {}), ...(io.ephemeral ? { ephemeral: true } : {}) });
     const c = io.spawn(cmd, args, { cwd: io.cwd, env: io.env });
     child = c;
     const resumed = sessionId !== null;

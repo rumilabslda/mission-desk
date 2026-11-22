@@ -16,15 +16,17 @@ interface Props {
   asking: { title: string; switchTo: boolean } | null;
   spaceName: string;
   localeInstall: { locale: string; fraction: number } | null;
+  /** What this bar was placed for (main decides: over the asking call, or over the live meeting). */
+  mode?: 'ask' | 'live' | null;
 }
 
 /** The bar over a meeting view: Ask, or the live transcription's state and controls. */
-export function MeetingBarView({ live, asking, spaceName, localeInstall }: Props): React.JSX.Element | null {
+export function MeetingBarView({ live, asking, spaceName, localeInstall, mode }: Props): React.JSX.Element | null {
   const md = window.missiondesk;
   const [copied, setCopied] = useState(false);
   /** The meeting whose notice was copied (the button stands out until then). */
   const [noticed, setNoticed] = useState<string | null>(null);
-  if (asking) {
+  if (asking && mode !== 'live') {
     return (
       <div className="mb-bar">
         <span className="mb-dot ask" aria-hidden />
@@ -104,7 +106,7 @@ export function MeetingBar(): React.JSX.Element | null {
   }, []);
   if (!snap) return null;
   const m = snap.meetings;
-  const scope = m.asking ? m.asking.scope : m.live?.scope;
+  const scope = m.barMode === 'ask' && m.asking ? m.asking.scope : (m.live?.scope ?? m.asking?.scope);
   const spaceName = snap.assistant.scopes.find((s) => s.key === scope)?.name ?? '';
-  return <MeetingBarView live={m.live} asking={m.asking} spaceName={spaceName} localeInstall={m.localeInstall} />;
+  return <MeetingBarView live={m.live} asking={m.asking} spaceName={spaceName} localeInstall={m.localeInstall} mode={m.barMode} />;
 }

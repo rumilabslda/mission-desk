@@ -68,3 +68,20 @@ test('aborting stops and closes the session', async () => {
   expect(s.stopped).toBe(true);
   expect(s.closed).toBe(true);
 });
+
+import { buildArgs } from '../src/main/assistant/claude-code';
+
+test('I4: a one-shot Claude Code run keeps no session on disk', () => {
+  const a = buildArgs({ model: 'sonnet', effort: 'low', mcpConfig: '{"mcpServers":{}}', systemPrompt: 'x', ephemeral: true });
+  expect(a).toContain('--no-session-persistence');
+  expect(buildArgs({ model: 'sonnet', effort: 'low', mcpConfig: '{}', systemPrompt: 'x' })).not.toContain('--no-session-persistence');
+});
+
+test('I4: after a one-shot, the engine’s own record of it is cleaned up', async () => {
+  const s = fakeSession([{ type: 'text', delta: 'ok' }, { type: 'done', isError: false }]);
+  (s as unknown as { sessionId: () => string }).sessionId = () => 'thread-42';
+  const cleaned: (string | null)[] = [];
+  const ask = createOneShot(async () => s as never, (id) => void cleaned.push(id));
+  await ask('x', 'y', new AbortController().signal);
+  expect(cleaned).toEqual(['thread-42']);
+});

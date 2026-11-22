@@ -39,11 +39,22 @@ async function channel(ctx: AudioContext, stream: MediaStream, ch: 'me' | 'call'
   node.connect(mute).connect(ctx.destination);
 }
 
+/** Bumped by every start and stop: a start that's overtaken stops what it opened and gives up. */
+let generation = 0;
+
 async function start(callSourceId: string | null): Promise<void> {
   stop();
-  const ctx = new AudioContext({ sampleRate: RATE });
-  await ctx.audioWorklet.addModule('pcm-worklet.js');
+  const gen = ++generation;
   const streams: MediaStream[] = [];
+  const ctx = new AudioContext({ sampleRate: RATE });
+  const overtaken = (): boolean => {
+    if (gen === generation) return false;
+    for (const st of streams) for (const tr of st.getTracks()) tr.stop();
+    void ctx.close();
+    return true;
+  };
+  await ctx.audioWorklet.addModule('pcm-worklet.js');
+  if (overtaken()) return;
   const state = { me: false, call: false, error: undefined as string | undefined };
   if (callSourceId) {
     try {
@@ -52,6 +63,7 @@ async function start(callSourceId: string | null): Promise<void> {
         video: false,
       });
       streams.push(call);
+      if (overtaken()) return;
       await channel(ctx, call, 'call');
       state.call = true;
     } catch (e) {
@@ -61,16 +73,19 @@ async function start(callSourceId: string | null): Promise<void> {
   try {
     const me = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: false });
     streams.push(me);
+    if (overtaken()) return;
     await channel(ctx, me, 'me');
     state.me = true;
   } catch (e) {
     state.error = `${state.error ? `${state.error}; ` : ''}me: ${(e as Error).message}`;
   }
+  if (overtaken()) return;
   running = { ctx, streams };
   window.missiondesk.captureState(state);
 }
 
 function stop(): void {
+  generation += 1;
   if (!running) return;
   for (const s of running.streams) for (const t of s.getTracks()) t.stop();
   void running.ctx.close();

@@ -146,3 +146,9 @@ test('capabilities and locale installs answer through the helper', async () => {
   await inst;
   expect(progress).toEqual([0.5]);
 });
+
+test('I7: the helper’s stderr is always read, so its logs can never fill the pipe and block it', async () => {
+  const t = make();
+  void t.capabilities();
+  expect(children[0].err.listenerCount('data')).toBeGreaterThan(0);
+});

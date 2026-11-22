@@ -117,3 +117,22 @@ test('a meeting is matched to the calendar event with the same link, around its 
   expect(matchEvent(events, MEET, Date.parse('2026-11-22T12:00:00Z'))).toBeNull();
   expect(matchEvent(events, 'https://meet.google.com/aaa-bbbb-ccc', Date.parse('2026-11-22T10:00:00Z'))).toBeNull();
 });
+
+import { eventsOfScope } from '../src/shared/meeting-detect';
+
+test('I10: a Zoom meeting matches its event’s /j/ link', () => {
+  const ev = { id: 'z', start: '2026-11-22T10:00:00Z', end: '2026-11-22T11:00:00Z', join: { url: 'https://acme.zoom.us/j/81234567890?pwd=abc' } };
+  expect(matchEvent([ev], 'https://app.zoom.us/wc/81234567890/join', Date.parse('2026-11-22T10:05:00Z'))?.id).toBe('z');
+  expect(meetingKey('https://zoom.us/s/81234567890')?.key).toBe('zoom:81234567890');
+});
+
+test('I3: a meeting is only matched against its own space’s calendars', () => {
+  const events = [
+    { id: '1', accountId: 'gA' },
+    { id: '2', accountId: 'gB' },
+    { id: '3', accountId: 'gLoose' },
+  ];
+  const scopeOf = (id: string) => ({ gA: 'space:a', gB: 'space:b', gLoose: 'nospace' })[id] ?? null;
+  expect(eventsOfScope(events, scopeOf, 'space:a').map((e) => e.id)).toEqual(['1']);
+  expect(eventsOfScope(events, scopeOf, 'nospace').map((e) => e.id)).toEqual(['3']);
+});

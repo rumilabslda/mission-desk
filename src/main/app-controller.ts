@@ -11,9 +11,9 @@ import { applyRetention, spacesLeftEmpty } from './meetings/lifecycle';
 import { createModelManager, type Manifest, type ModelId } from './meetings/models';
 import MODEL_MANIFEST from './meetings/model-manifest.json';
 import { createMeetingOverlay } from './views/meeting-overlay';
-import { meetingBarBounds } from './views/meeting-bar-bounds';
+import { barTarget, meetingBarBounds } from './views/meeting-bar-bounds';
 import { composeUrl } from '../shared/compose-url';
-import { matchEvent } from '../shared/meeting-detect';
+import { eventsOfScope, matchEvent } from '../shared/meeting-detect';
 import { PROVIDER_NAME } from '../shared/meetings';
 import { PROBE_RELIABLE } from '../shared/meeting-probes';
 import { cleanName } from '../shared/meeting-speakers';
@@ -628,9 +628,13 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       return a ? scopeOfAccount(a, 'space') : null;
     },
     scopes: meetingScopes,
-    async matchEvent(_accountId, url, at) {
+    async matchEvent(accountId, url, at) {
+      const a = account(accountId);
+      if (!a) return undefined;
+      const scope = scopeOfAccount(a, 'space');
       const data = await calendar.load({ start: new Date(at - 12 * 3_600_000).toISOString(), end: new Date(at + 12 * 3_600_000).toISOString() }, false).catch(() => null);
-      const ev = data ? matchEvent(data.events, url, at) : null;
+      const ownCalendars = data ? eventsOfScope(data.events, (id) => { const x = account(id); return x ? scopeOfAccount(x, 'space') : null; }, scope) : [];
+      const ev = matchEvent(ownCalendars, url, at);
       return ev ? { event: { accountId: ev.accountId, eventId: ev.id, calendarId: ev.calendarId, googleEventId: ev.eventId }, title: ev.title } : undefined;
     },
     titleFor: (provider, accountId) => t('meetings.defaultTitle', { provider: PROVIDER_NAME[provider], account: account(accountId)?.name ?? '' }),
@@ -664,7 +668,9 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     notes: (scope) => memory.list(scope).map((n) => n.text),
     async guests(m) {
       const e = m.event;
-      if (!e?.calendarId || !e.googleEventId || !isGoogleAccount(e.accountId)) return [];
+      const owner = e ? account(e.accountId) : undefined;
+      // Only an event of the meeting's own space (never another client's calendar).
+      if (!e?.calendarId || !e.googleEventId || !owner || owner.service !== 'google' || scopeOfAccount(owner, 'space') !== m.scope) return [];
       const r = await calendarWriter.getEvent(e.accountId, e.calendarId, e.googleEventId).catch(() => null);
       return r?.ok ? r.event.guests : [];
     },
@@ -701,14 +707,22 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     models.status('parakeet'),
   ];
   let modalOpen = false;
+  let prunedFor: string | null = null;
+  let lastBarMode: 'ask' | 'live' | null = null;
   const meetingBar = createMeetingOverlay(win, { uiPreloadPath });
   /** The bar follows the live (or asking) meeting's view: on it while it's on screen, hidden otherwise. */
+  const currentBarTarget = () => barTarget(orchestrator.liveView(), orchestrator.asking(), (accountId, kind) => !!registry.get(accountId, kind)?.getVisible());
   function placeMeetingBar(): void {
     if (!meetingsOn) return;
-    const target = orchestrator.liveView() ?? orchestrator.asking();
+    const target = modalOpen ? null : currentBarTarget();
+    // The bar's content follows where it is (Ask over the asking call, controls over the live one).
+    if ((target?.mode ?? null) !== lastBarMode) {
+      lastBarMode = target?.mode ?? null;
+      pushSoon();
+    }
     const view = target ? registry.get(target.accountId, target.kind) : undefined;
-    if (!target || !view || !view.getVisible() || modalOpen) return meetingBar.place(null);
-    const lines = !orchestrator.asking() && orchestrator.live()?.notice ? 2 : 1;
+    if (!target || !view) return meetingBar.place(null);
+    const lines = target.mode === 'live' && orchestrator.live()?.notice ? 2 : 1;
     meetingBar.place(meetingBarBounds(view.getBounds(), lines));
   }
   /**
@@ -1255,13 +1269,33 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     fs.mkdirSync(cwd, { recursive: true });
     return Promise.resolve(
       createClaudeCodeSession(
-        { spawn: (cmd, args, opts) => spawn(cmd, args, { ...opts, stdio: ['pipe', 'pipe', 'pipe'] }), claudePath: lookUpClaude, env: cleanEnv(process.env), cwd, mcpConfig: () => '{"mcpServers":{}}', systemPrompt: system },
+        { spawn: (cmd, args, opts) => spawn(cmd, args, { ...opts, stdio: ['pipe', 'pipe', 'pipe'] }), claudePath: lookUpClaude, env: cleanEnv(process.env), cwd, mcpConfig: () => '{"mcpServers":{}}', systemPrompt: system, ephemeral: true },
         { model: c.model, effort: c.effort },
       ),
     );
   }
   /** One tool-less request on the scope's assistant; null when the scope's assistant is off. */
-  const askFor = (scope: string): Ask | null => (cfg(scope).engine === 'off' ? null : createOneShot((system) => toollessSession(scope, system)));
+  const askFor = (scope: string): Ask | null =>
+    cfg(scope).engine === 'off' ? null : createOneShot((system) => toollessSession(scope, system), cfg(scope).engine === 'codex' ? deleteCodexRollout : undefined);
+  /** Codex keeps every run in ~/.codex/sessions: a meeting's follow-up mustn't outlive the meeting there. */
+  function deleteCodexRollout(threadId: string | null): void {
+    if (!threadId || !/^[\w-]{8,80}$/.test(threadId)) return;
+    const root = path.join(process.env.CODEX_HOME || path.join(app.getPath('home'), '.codex'), 'sessions');
+    const walk = (dir: string, depth: number): void => {
+      let entries: fs.Dirent[];
+      try {
+        entries = fs.readdirSync(dir, { withFileTypes: true });
+      } catch {
+        return;
+      }
+      for (const e of entries) {
+        const p = path.join(dir, e.name);
+        if (e.isDirectory() && depth < 4) walk(p, depth + 1);
+        else if (e.isFile() && e.name.endsWith('.jsonl') && e.name.includes(threadId)) fs.rmSync(p, { force: true });
+      }
+    };
+    walk(root, 0);
+  }
 
   async function newSession(conv: Conversation): Promise<AssistantSession> {
     const session = await engineSession(conv);
@@ -1429,7 +1463,10 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
 
   const inCall = new Set<string>();
   function inCallChanged(accountId: string, kind: ViewKind, active: boolean): void {
-    if (meetingsOn) detector.callChanged(accountId, kind, active, registry.get(accountId, kind)?.webContents.getURL() ?? '');
+    if (meetingsOn) {
+      orchestrator.callChanged(accountId, kind, active); // hung up: silence during the detector's hold
+      detector.callChanged(accountId, kind, active, registry.get(accountId, kind)?.webContents.getURL() ?? '');
+    }
     if (active) inCall.add(key(accountId, kind));
     else inCall.delete(key(accountId, kind));
     scheduler.setInCall(key(accountId, kind), active);
@@ -1744,6 +1781,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
           const a = q ? account(q.accountId) : undefined;
           return q && a ? { scope: scopeOfAccount(a, 'space'), title: q.title, switchTo: q.switchTo } : null;
         })(),
+        barMode: meetingsOn ? (currentBarTarget()?.mode ?? null) : null,
         localeInstall,
         settings: (({ nospace: _n, ...rest }) => rest)(s.meetings ?? {}),
         spaces: Object.fromEntries([
@@ -1810,7 +1848,11 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     memory.prune((scope) => !scope.startsWith('space:') || spaceIds.has(scope.slice(6)));
     // …and its meetings (asked first, see confirmMeetingsLoss). Never when the settings failed to load:
     // an unreadable accounts.json starts empty, and that must not wipe every space's meetings.
-    if (!store.loadWarning()) meetingStore.pruneScopes((scope) => !scope.startsWith('space:') || spaceIds.has(scope.slice(6)));
+    const spacesKey = [...spaceIds].sort().join(',');
+    if (!store.loadWarning() && spacesKey !== prunedFor) {
+      prunedFor = spacesKey; // only when the set of spaces changed: pruning lists every folder
+      meetingStore.pruneScopes((scope) => !scope.startsWith('space:') || spaceIds.has(scope.slice(6)));
+    }
     skills.prune((scope) => !scope.startsWith('space:') || spaceIds.has(scope.slice(6)));
     const panelId = spacePanel?.spaceId();
     if (panelId && !store.state().spaces?.some((s) => s.id === panelId)) spacePanel?.close(); // the space is gone

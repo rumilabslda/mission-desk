@@ -59,3 +59,13 @@ test('a meeting from another scope is never run', async () => {
   await r.run('space:other', m.id, ['summary']);
   expect(progress).toEqual([]);
 });
+
+test('M3: with the space’s assistant off, a run says so instead of doing nothing', async () => {
+  const store = createMeetingStore(dir);
+  const m = store.create({ scope: 'space:s1', accountId: 'g1', provider: 'meet', url: 'u', title: 'T', startedAt: '2026-11-22T10:00:00.000Z', language: 'pt-PT', engine: 'apple' });
+  const progress: string[] = [];
+  const r = createMeetingRunner({ store, askFor: () => null, notes: () => [], guests: async () => [], myName: () => 'Me', addTodo: () => {}, tagFor: () => undefined, saveActions: () => {}, progress: (_m, s) => progress.push(s), push: () => {} });
+  await r.run('space:s1', m.id, ['summary']);
+  expect(progress).toEqual(['error']);
+  expect(r.state(m.id)).toBe('failed');
+});

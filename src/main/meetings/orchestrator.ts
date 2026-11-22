@@ -30,6 +30,9 @@ interface Live {
   startMs: number;
   paused: boolean;
   pausedAt: number;
+  /** The call itself stopped (hung up, in the 2-minute hold): nothing is transcribed until it's back. */
+  held: boolean;
+  heldAt: number;
   engine: EngineId;
   modelDir: string | null;
   notice?: LiveMeeting['notice'];
@@ -77,6 +80,17 @@ export function createOrchestrator(deps: OrchestratorDeps) {
   let asking: (Detected & { switchTo: boolean; title: string }) | null = null;
   let samples: ProbeSample[] = [];
   let subscribed = false;
+  /**
+   * Starts, answers, ends and stops run one at a time: a meeting that is finishing (its engine still
+   * flushing the last words) is done before the next one begins, so no text can land in the wrong
+   * meeting, or the wrong space.
+   */
+  let queue: Promise<unknown> = Promise.resolve();
+  const serial = <T>(fn: () => Promise<T>): Promise<T> => {
+    const p = queue.then(fn, fn);
+    queue = p.catch(() => undefined);
+    return p;
+  };
 
   const elapsed = (): number => (live ? deps.now() - live.startMs : 0);
 
@@ -85,7 +99,8 @@ export function createOrchestrator(deps: OrchestratorDeps) {
     subscribed = true;
     const tr = deps.transcriber();
     tr.onSegment((ch, s) => {
-      const target = live ? { scope: live.meeting.scope, id: live.meeting.id } : writing;
+      // The meeting still finishing first: its engine's last words come before the next one starts.
+      const target = writing ?? (live ? { scope: live.meeting.scope, id: live.meeting.id } : null);
       if (target) deps.store.append(target.scope, target.id, [assignSpeakers(ch, s, samples)]);
     });
     tr.onGap((g) => {
@@ -95,7 +110,7 @@ export function createOrchestrator(deps: OrchestratorDeps) {
     deps.onCapture(
       (ch, data) => {
         if (!live) return;
-        const silent = live.paused || (ch === 'me' && mutedAt(samples, elapsed()));
+        const silent = live.paused || live.held || (ch === 'me' && mutedAt(samples, elapsed()));
         deps.transcriber().feed(ch, silent ? new Int16Array(data.length) : data);
       },
       (s) => {
@@ -151,7 +166,7 @@ export function createOrchestrator(deps: OrchestratorDeps) {
       ...(matched ? { event: matched.event } : {}),
     });
     samples = [];
-    const l: Live = { meeting, accountId: d.accountId, kind: d.kind, provider: d.provider, key: d.key, startMs: now, paused: false, pausedAt: 0, engine: e.engine, modelDir: e.modelDir };
+    const l: Live = { meeting, accountId: d.accountId, kind: d.kind, provider: d.provider, key: d.key, startMs: now, paused: false, pausedAt: 0, held: false, heldAt: 0, engine: e.engine, modelDir: e.modelDir };
     if (e.fellBack) l.notice = { code: 'fellBack', text: e.fellBack };
     else if (!deps.probeReliable(d.provider)) l.notice = { code: 'probeUnreliable', text: t('meetings.notice.probeUnreliable') };
     live = l;
@@ -165,6 +180,8 @@ export function createOrchestrator(deps: OrchestratorDeps) {
   async function finishLive(): Promise<void> {
     const l = live;
     if (!l) return;
+    const endMs = deps.now(); // when it ended, not when the engine finished
+    if (l.held) deps.store.gap(l.meeting.scope, l.meeting.id, { start: l.heldAt, end: endMs - l.startMs });
     live = null;
     writing = { scope: l.meeting.scope, id: l.meeting.id };
     deps.capture.stop();
@@ -172,7 +189,6 @@ export function createOrchestrator(deps: OrchestratorDeps) {
     deps.push();
     await deps.transcriber().finish();
     writing = null;
-    const endMs = deps.now();
     const m = deps.store.update(l.meeting.scope, l.meeting.id, { endedAt: new Date(endMs).toISOString() });
     if (!m || endMs - l.startMs < MIN_MEETING_MS || m.segments.length === 0) {
       deps.store.remove(l.meeting.scope, l.meeting.id);
@@ -183,43 +199,68 @@ export function createOrchestrator(deps: OrchestratorDeps) {
     deps.ended(m);
   }
 
+  async function startNow(d: Detected): Promise<void> {
+    if (live && live.accountId === d.accountId && live.kind === d.kind && live.key === d.key) return;
+    const scope = deps.scopeOf(d.accountId);
+    if (!scope) return;
+    const mode = deps.settingsFor(scope).mode;
+    if (mode === 'off') return;
+    const title = (await deps.matchEvent(d.accountId, d.url, deps.now()))?.title ?? deps.titleFor(d.provider, d.accountId);
+    if (live) {
+      asking = { ...d, switchTo: true, title };
+      return deps.push();
+    }
+    if (mode === 'ask') {
+      asking = { ...d, switchTo: false, title };
+      return deps.push();
+    }
+    await begin(d);
+  }
+
+  async function endNow(accountId: string, kind: ViewKind, key: string): Promise<void> {
+    if (asking && asking.accountId === accountId && asking.kind === kind && asking.key === key) {
+      asking = null;
+      deps.push();
+    }
+    if (live && live.accountId === accountId && live.kind === kind && live.key === key) await finishLive();
+  }
+
+  async function setLanguageNow(locale: string): Promise<void> {
+    if (!live) return;
+    live.meeting = deps.store.update(live.meeting.scope, live.meeting.id, { language: locale }) ?? live.meeting;
+    live.notice = undefined;
+    await startEngine(live);
+    deps.push();
+  }
+
+  async function answerNow(yes: boolean, never: boolean): Promise<void> {
+    const a = asking;
+    asking = null;
+    if (!a) return deps.push();
+    const scope = deps.scopeOf(a.accountId);
+    if (never && scope) deps.setSpaceMeetings(scope, { ...deps.settingsFor(scope), mode: 'off' });
+    if (!yes) return deps.push();
+    if (a.switchTo) await finishLive();
+    await begin(a);
+  }
+
   return {
     /** The detector saw a meeting start in an account view. */
-    async start(d: Detected): Promise<void> {
-      if (live && live.accountId === d.accountId && live.kind === d.kind && live.key === d.key) return;
-      const scope = deps.scopeOf(d.accountId);
-      if (!scope) return;
-      const mode = deps.settingsFor(scope).mode;
-      if (mode === 'off') return;
-      const title = (await deps.matchEvent(d.accountId, d.url, deps.now()))?.title ?? deps.titleFor(d.provider, d.accountId);
-      if (live) {
-        asking = { ...d, switchTo: true, title };
-        return deps.push();
-      }
-      if (mode === 'ask') {
-        asking = { ...d, switchTo: false, title };
-        return deps.push();
-      }
-      await begin(d);
-    },
+    start: (d: Detected): Promise<void> => serial(() => startNow(d)),
     /** The detector saw a meeting end (after its hold). */
-    async end(accountId: string, kind: ViewKind, key: string): Promise<void> {
-      if (asking && asking.accountId === accountId && asking.kind === kind && asking.key === key) {
-        asking = null;
-        deps.push();
-      }
-      if (live && live.accountId === accountId && live.kind === kind && live.key === key) await finishLive();
-    },
+    end: (accountId: string, kind: ViewKind, key: string): Promise<void> => serial(() => endNow(accountId, kind, key)),
     /** The Ask bar's answer. `never`: this space stops asking (Off). */
-    async answer(yes: boolean, never: boolean): Promise<void> {
-      const a = asking;
-      asking = null;
-      if (!a) return deps.push();
-      const scope = deps.scopeOf(a.accountId);
-      if (never && scope) deps.setSpaceMeetings(scope, { ...deps.settingsFor(scope), mode: 'off' });
-      if (!yes) return deps.push();
-      if (a.switchTo) await finishLive();
-      await begin(a);
+    answer: (yes: boolean, never: boolean): Promise<void> => serial(() => answerNow(yes, never)),
+    /** The meeting view's call stopped or came back (during the detector's hold): silence meanwhile. */
+    callChanged(accountId: string, kind: ViewKind, inCall: boolean): void {
+      if (!live || live.accountId !== accountId || live.kind !== kind || live.held === !inCall) return;
+      if (!inCall) {
+        live.held = true;
+        live.heldAt = elapsed();
+      } else {
+        live.held = false;
+        deps.store.gap(live.meeting.scope, live.meeting.id, { start: live.heldAt, end: elapsed() });
+      }
     },
     pause(): void {
       if (!live || live.paused) return;
@@ -233,14 +274,8 @@ export function createOrchestrator(deps: OrchestratorDeps) {
       live.paused = false;
       deps.push();
     },
-    stop: (): Promise<void> => finishLive(),
-    async setLanguage(locale: string): Promise<void> {
-      if (!live) return;
-      live.meeting = deps.store.update(live.meeting.scope, live.meeting.id, { language: locale }) ?? live.meeting;
-      live.notice = undefined;
-      await startEngine(live);
-      deps.push();
-    },
+    stop: (): Promise<void> => serial(() => finishLive()),
+    setLanguage: (locale: string): Promise<void> => serial(() => setLanguageNow(locale)),
     /** A reading from the meeting page (who's speaking, mute). */
     onProbe(accountId: string, kind: ViewKind, r: ProbeResult): void {
       if (!live || live.accountId !== accountId || live.kind !== kind) return;

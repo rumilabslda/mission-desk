@@ -151,12 +151,23 @@ async function askValid(ask: Ask, system: string, user: string, actions: readonl
   throw new Error(`The assistant's answer wasn't usable: ${problem}`);
 }
 
+/** Recipients only from the meeting's guests: an address spoken in the meeting never gets the draft or the invite. */
+function onlyGuests(r: FollowUpResult, guests: string[]): FollowUpResult {
+  const allowed = new Set(guests.map((g) => g.toLowerCase()));
+  const keep = (list: string[]): string[] => list.filter((x) => allowed.has(x.toLowerCase()));
+  return {
+    ...r,
+    ...(r.email ? { email: { ...r.email, to: keep(r.email.to) } } : {}),
+    ...(r.followUpEvent ? { followUpEvent: { ...r.followUpEvent, guests: keep(r.followUpEvent.guests) } } : {}),
+  };
+}
+
 /** Asks the assistant for the ticked parts; long meetings go part by part, then one combining request. */
 export async function runFollowUp(ask: Ask, m: Meeting, ctx: FollowUpContext, signal: AbortSignal): Promise<FollowUpResult> {
   const parts = chunks(m.segments);
   if (parts.length === 1) {
     const { system, user } = buildPrompt(m, ctx);
-    return askValid(ask, system, user, ctx.actions, signal);
+    return onlyGuests(await askValid(ask, system, user, ctx.actions, signal), ctx.guests);
   }
   const partial: FollowUpResult[] = [];
   const PART_ACTIONS: MeetingAction[] = ['summary', 'myTodos', 'waitingOn'];
@@ -174,5 +185,5 @@ export async function runFollowUp(ask: Ask, m: Meeting, ctx: FollowUpContext, si
     JSON.stringify(partial),
     '```',
   ].join('\n');
-  return askValid(ask, system, user, ctx.actions, signal);
+  return onlyGuests(await askValid(ask, system, user, ctx.actions, signal), ctx.guests);
 }

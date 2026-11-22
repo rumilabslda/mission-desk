@@ -15,6 +15,8 @@ export interface RunOptions {
   systemPrompt: string;
   /** Continue this Claude Code session. */
   resume?: string;
+  /** Keep nothing on disk (a one-shot whose input must not outlive Mission Desk's own copy). */
+  ephemeral?: boolean;
 }
 
 export function buildArgs(o: RunOptions): string[] {
@@ -35,6 +37,7 @@ export function buildArgs(o: RunOptions): string[] {
   ];
   if (o.model !== 'default') args.push('--model', o.model);
   if (o.resume) args.push('--resume', o.resume);
+  if (o.ephemeral) args.push('--no-session-persistence');
   return args;
 }
 
