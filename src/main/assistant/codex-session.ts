@@ -11,7 +11,7 @@ export interface CodexIO {
   env: Record<string, string>;
   cwd: string;
   /** Mission Desk's MCP server for this scope (built for every run: the socket may move). */
-  mcp(): { command: string; args: string[]; env: Record<string, string> };
+  mcp(): { command: string; args: string[]; env: Record<string, string> } | null;
   instructions(): string;
 }
 

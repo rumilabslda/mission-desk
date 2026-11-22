@@ -78,3 +78,9 @@ describe('codex exec --json events', () => {
     expect(parseCodexEvent('not json')).toEqual([]);
   });
 });
+
+test('a request with no tools gives Codex an empty MCP table (no Mission Desk server, none of the user’s)', () => {
+  const a = buildCodexArgs({ cwd: '/u/codex', mcp: null, instructions: 'x', model: 'gpt-5', effort: 'low' }).join(' ');
+  expect(a).toContain('mcp_servers={}');
+  expect(a).not.toContain('missiondesk');
+});

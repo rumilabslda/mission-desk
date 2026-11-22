@@ -4,6 +4,7 @@ import { createMeetingStore } from './meetings/store';
 import { createTranscriber, type Transcriber } from './meetings/transcriber';
 import { createOrchestrator } from './meetings/orchestrator';
 import { createDetector } from './meetings/detector';
+import { type Ask, createOneShot } from './meetings/one-shot';
 import { createMeetingOverlay } from './views/meeting-overlay';
 import { meetingBarBounds } from './views/meeting-bar-bounds';
 import { matchEvent } from '../shared/meeting-detect';
@@ -1102,6 +1103,48 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       { model: c.model, effort: c.effort, ...(conv.sessionId ? { resume: conv.sessionId } : {}) },
     );
   }
+
+  /**
+   * A session with no tools at all, on the scope's own engine and model: for requests whose input is
+   * untrusted text (a meeting's transcript), so nothing in it can make the assistant act.
+   */
+  function toollessSession(scope: string, system: () => string): Promise<AssistantSession> {
+    const c = cfg(scope);
+    if (c.engine === 'codex') {
+      const cwd = path.join(app.getPath('userData'), 'assistant', 'codex-followup');
+      fs.mkdirSync(cwd, { recursive: true });
+      return Promise.resolve(
+        createCodexSession(
+          { spawn: (cmd, args, opts) => spawn(cmd, args, { ...opts, stdio: ['pipe', 'pipe', 'pipe'] }), codexPath: lookUpCodex, env: codexEnv(), cwd, mcp: () => null, instructions: system },
+          { model: c.codexModel, effort: c.effort },
+        ),
+      );
+    }
+    if (c.engine === 'openrouter') {
+      return Promise.resolve(
+        createOpenRouterSession(
+          {
+            fetch: (u, init) => net.fetch(String(u), init),
+            apiKey: async () => secrets.get('openrouter'),
+            tools: async () => ({ defs: [], call: async () => ({ text: 'No tools.', isError: true }) }),
+            systemPrompt: system,
+            history: [],
+          },
+          { model: c.openrouterModel, effort: c.effort },
+        ),
+      );
+    }
+    const cwd = path.join(app.getPath('userData'), 'assistant', 'followup');
+    fs.mkdirSync(cwd, { recursive: true });
+    return Promise.resolve(
+      createClaudeCodeSession(
+        { spawn: (cmd, args, opts) => spawn(cmd, args, { ...opts, stdio: ['pipe', 'pipe', 'pipe'] }), claudePath: lookUpClaude, env: cleanEnv(process.env), cwd, mcpConfig: () => '{"mcpServers":{}}', systemPrompt: system },
+        { model: c.model, effort: c.effort },
+      ),
+    );
+  }
+  /** One tool-less request on the scope's assistant; null when the scope's assistant is off. */
+  const askFor = (scope: string): Ask | null => (cfg(scope).engine === 'off' ? null : createOneShot((system) => toollessSession(scope, system)));
 
   async function newSession(conv: Conversation): Promise<AssistantSession> {
     const session = await engineSession(conv);

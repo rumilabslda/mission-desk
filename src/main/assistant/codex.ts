@@ -14,23 +14,27 @@ const FEATURES_OFF = ['shell_tool', 'unified_exec', 'view_image', 'apps', 'plugi
 
 export function buildCodexArgs(o: {
   cwd: string;
-  mcp: { command: string; args: string[]; env: Record<string, string> };
+  /** Mission Desk's MCP server; null for a request with no tools. */
+  mcp: { command: string; args: string[]; env: Record<string, string> } | null;
   instructions: string;
   model: string;
   effort: AssistantEffort;
   resume?: string;
 }): string[] {
-  const env = `{${Object.entries(o.mcp.env)
-    .map(([k, v]) => `${k}=${toml(v)}`)
-    .join(',')}}`;
-  // The whole MCP table is replaced, so no other server the user configured is there.
-  const server = `{command=${toml(o.mcp.command)},args=[${o.mcp.args.map(toml).join(',')}],env=${env},required=true,default_tools_approval_mode="approve",tool_timeout_sec=600}`;
+  // The whole MCP table is replaced, so no other server the user configured is there (and none at all with no tools).
+  let servers = '{}';
+  if (o.mcp) {
+    const env = `{${Object.entries(o.mcp.env)
+      .map(([k, v]) => `${k}=${toml(v)}`)
+      .join(',')}}`;
+    servers = `{missiondesk={command=${toml(o.mcp.command)},args=[${o.mcp.args.map(toml).join(',')}],env=${env},required=true,default_tools_approval_mode="approve",tool_timeout_sec=600}}`;
+  }
   const config = [
     ...FEATURES_OFF.map((f) => `features.${f}=false`),
     'web_search="disabled"',
     'approval_policy="never"',
     `developer_instructions=${toml(o.instructions)}`,
-    `mcp_servers={missiondesk=${server}}`,
+    `mcp_servers=${servers}`,
     `model_reasoning_effort=${toml(o.effort === 'max' || o.effort === 'xhigh' ? 'high' : o.effort)}`,
   ];
   const model = /^[A-Za-z0-9][\w.:-]{0,59}$/.test(o.model) ? o.model : ''; // never something that reads as a flag
