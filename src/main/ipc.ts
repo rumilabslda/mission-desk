@@ -295,6 +295,8 @@ export function registerIpc(win: BrowserWindow, controller: AppController): void
   on(IPC.modelDownload, (id) => isModel(id) && controller.modelDownload(id));
   on(IPC.modelCancel, (id) => isModel(id) && controller.modelCancel(id));
   on(IPC.modelDelete, (id) => isModel(id) && controller.modelDelete(id));
+  ipcMain.handle(IPC.meetingCapabilities, (e) => (fromUi(e) ? controller.meetingCapabilities() : null));
+  on(IPC.appleLocaleRemove, (l) => isMeetingLocale(l) && controller.appleLocaleRemove(l));
   on(IPC.openMeetings, (scope, id) => {
     const s = isScopeKey(scope) && scope !== 'all' ? scope : undefined;
     const i = isString(id) && /^[\w-]{1,40}$/.test(id) ? id : undefined;

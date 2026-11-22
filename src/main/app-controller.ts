@@ -227,6 +227,8 @@ export interface AppController {
   modelDownload(id: ModelId): void;
   modelCancel(id: ModelId): void;
   modelDelete(id: ModelId): void;
+  meetingCapabilities(): Promise<{ apple: { supported: string[]; installed: string[] } } | null>;
+  appleLocaleRemove(locale: string): void;
   /** The recorder (the hidden capture page and its audio). */
   captureHost(): CaptureHost;
   /** Listens to the recorder's audio frames and state. */
@@ -2752,6 +2754,18 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
         })
         .finally(() => push());
       push();
+    },
+    async meetingCapabilities() {
+      if (!meetingsOn) return null;
+      try {
+        const c = await transcriberNow().capabilities();
+        return { apple: c.apple };
+      } catch {
+        return null;
+      }
+    },
+    appleLocaleRemove(locale) {
+      void transcriberNow().releaseLocale(locale);
     },
     modelCancel(id) {
       models.cancel(id);

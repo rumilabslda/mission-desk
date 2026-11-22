@@ -311,6 +311,11 @@ export interface UiApi {
   modelDownload(id: 'whisper' | 'parakeet'): void;
   modelCancel(id: 'whisper' | 'parakeet'): void;
   modelDelete(id: 'whisper' | 'parakeet'): void;
+  /** Apple's transcription languages (supported, and installed on this Mac). */
+  meetingCapabilities(): Promise<{ apple: { supported: string[]; installed: string[] } } | null>;
+  appleLocaleRemove(locale: string): void;
+  /** The operating system (process.platform). */
+  platform: string;
   /** The meetings page, optionally on one space and one meeting. */
   openMeetings(scope?: string, id?: string): void;
   /** The hidden capture page only: main asks it to record a meeting view (tab audio) and the microphone. */
@@ -471,6 +476,8 @@ export const IPC = {
   modelDownload: 'ui:model-download',
   modelCancel: 'ui:model-cancel',
   modelDelete: 'ui:model-delete',
+  meetingCapabilities: 'ui:meeting-capabilities',
+  appleLocaleRemove: 'ui:apple-locale-remove',
   setMeetingGlobal: 'ui:set-meeting-global',
   getLocale: 'ui:get-locale',
   showDataFolder: 'ui:show-data-folder',

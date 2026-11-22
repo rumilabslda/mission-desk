@@ -1458,3 +1458,15 @@ html.meeting-bar-page #root { height: 100vh; }
 .mt-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 16px; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .mt-row-title { font-weight: 600; flex: none; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mt-row-meta { flex: 1; color: var(--text-muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── Settings → Meetings ─────────────────────────────────────────────────────────────── */
+.mt-space { display: flex; flex-direction: column; gap: 10px; }
+.mt-space-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.mt-modes { display: inline-flex; border-radius: 8px; overflow: hidden; border: 1px solid color-mix(in srgb, var(--text) 15%, transparent); }
+.mt-mode { border: 0; padding: 5px 12px; background: none; color: inherit; font: inherit; cursor: pointer; }
+.mt-mode + .mt-mode { border-left: 1px solid color-mix(in srgb, var(--text) 15%, transparent); }
+.mt-mode.on { background: var(--accent); color: #fff; }
+.mt-inline { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; }
+.mt-engine-head { display: flex; align-items: baseline; gap: 10px; }
+.mt-engine-actions, .mt-engine-langs { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.mt-lang { font-size: 13px; }

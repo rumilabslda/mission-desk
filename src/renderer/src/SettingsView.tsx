@@ -6,10 +6,11 @@ import type { Account, SidebarStyle, Space } from '../../shared/types';
 import { AccountAvatar } from './AccountAvatar';
 import { AssistantSettings, IntegrationsSettings } from './settings/AssistantSettings';
 import { SkillsSettings } from './settings/SkillsSettings';
+import { MeetingsSettings, meetingsAvailable } from './settings/MeetingsSettings';
 import { SERVICE_LABEL } from './service-glyph';
 import { COMPANY, COPYRIGHT, LICENSE_NAME, SITE, WEBSITE } from '../../shared/about';
 
-type Section = 'general' | 'accounts' | 'spaces' | 'calendar' | 'assistant' | 'skills' | 'integrations' | 'data' | 'about';
+type Section = 'general' | 'accounts' | 'spaces' | 'calendar' | 'assistant' | 'skills' | 'meetings' | 'integrations' | 'data' | 'about';
 
 const SECTIONS: { id: Section; label: MessageKey }[] = [
   { id: 'general', label: 'settings.section.general' },
@@ -19,6 +20,7 @@ const SECTIONS: { id: Section; label: MessageKey }[] = [
   { id: 'integrations', label: 'settings.section.integrations' },
   { id: 'assistant', label: 'settings.section.assistant' },
   { id: 'skills', label: 'settings.section.skills' },
+  { id: 'meetings', label: 'meetings.title' },
   { id: 'data', label: 'settings.section.data' },
   { id: 'about', label: 'settings.section.about' },
 ];
@@ -293,7 +295,7 @@ export function SettingsView({ snapshot: snap }: { snapshot: UiSnapshot }): Reac
     <div className="settings">
       <nav className="set-nav">
         <h1>{t('settings.title')}</h1>
-        {SECTIONS.map((s) => (
+        {SECTIONS.filter((s) => s.id !== 'meetings' || meetingsAvailable(window.missiondesk.platform)).map((s) => (
           <button key={s.id} className={section === s.id ? 'on' : ''} onClick={() => setSection(s.id)}>
             {t(s.label)}
           </button>
@@ -389,6 +391,7 @@ export function SettingsView({ snapshot: snap }: { snapshot: UiSnapshot }): Reac
         )}
         {section === 'assistant' && <AssistantSettings snap={snap} />}
         {section === 'skills' && <SkillsSettings snap={snap} />}
+        {section === 'meetings' && <MeetingsSettings snap={snap} />}
         {section === 'integrations' && <IntegrationsSettings />}
         {section === 'data' && (
           <>
