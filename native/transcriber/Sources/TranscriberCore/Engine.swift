@@ -30,7 +30,8 @@ public func engineInfos() -> [EngineInfo] {
   if #available(macOS 26, *) {
     apple = EngineInfo(id: "apple", available: AppleEngine.isAvailable, reason: AppleEngine.isAvailable ? nil : "not available on this Mac")
   }
-  return [apple]
+  // Whisper and Parakeet run on Core ML from macOS 14 (this helper's minimum).
+  return [apple, EngineInfo(id: "whisper", available: true, reason: nil), EngineInfo(id: "parakeet", available: true, reason: nil)]
 }
 
 /// A new engine for `id`, or nil when this helper doesn't have it (or it can't run here).
@@ -39,6 +40,10 @@ public func makeEngine(_ id: String) -> TranscriptionEngine? {
   case "apple":
     if #available(macOS 26, *) { return AppleEngine() }
     return nil
+  case "whisper":
+    return WhisperEngine()
+  case "parakeet":
+    return ParakeetEngine()
   default:
     return nil
   }

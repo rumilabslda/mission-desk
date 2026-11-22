@@ -291,6 +291,10 @@ export function registerIpc(win: BrowserWindow, controller: AppController): void
   on(IPC.meetingCopySummary, (scope, id) => meetingRef(scope, id) && controller.meetingCopySummary(scope, id as string));
   on(IPC.meetingSaveNote, (scope, id, i) => meetingRef(scope, id) && Number.isInteger(i) && (i as number) >= 0 && (i as number) < 10 && controller.meetingSaveNote(scope, id as string, i as number));
   on(IPC.meetingCreateEvent, (scope, id) => meetingRef(scope, id) && controller.meetingCreateEvent(scope, id as string));
+  const isModel = (v: unknown): v is 'whisper' | 'parakeet' => v === 'whisper' || v === 'parakeet';
+  on(IPC.modelDownload, (id) => isModel(id) && controller.modelDownload(id));
+  on(IPC.modelCancel, (id) => isModel(id) && controller.modelCancel(id));
+  on(IPC.modelDelete, (id) => isModel(id) && controller.modelDelete(id));
   on(IPC.openMeetings, (scope, id) => {
     const s = isScopeKey(scope) && scope !== 'all' ? scope : undefined;
     const i = isString(id) && /^[\w-]{1,40}$/.test(id) ? id : undefined;

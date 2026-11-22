@@ -307,6 +307,10 @@ export interface UiApi {
   meetingSaveNote(scope: string, id: string, index: number): void;
   /** Creates the proposed follow-up event (after the usual confirmation). */
   meetingCreateEvent(scope: string, id: string): void;
+  /** Transcription models: download (with progress in the snapshot), cancel, delete (main asks first). */
+  modelDownload(id: 'whisper' | 'parakeet'): void;
+  modelCancel(id: 'whisper' | 'parakeet'): void;
+  modelDelete(id: 'whisper' | 'parakeet'): void;
   /** The meetings page, optionally on one space and one meeting. */
   openMeetings(scope?: string, id?: string): void;
   /** The hidden capture page only: main asks it to record a meeting view (tab audio) and the microphone. */
@@ -464,6 +468,9 @@ export const IPC = {
   meetingSaveNote: 'ui:meeting-save-note',
   meetingCreateEvent: 'ui:meeting-create-event',
   openMeetings: 'ui:open-meetings',
+  modelDownload: 'ui:model-download',
+  modelCancel: 'ui:model-cancel',
+  modelDelete: 'ui:model-delete',
   setMeetingGlobal: 'ui:set-meeting-global',
   getLocale: 'ui:get-locale',
   showDataFolder: 'ui:show-data-folder',

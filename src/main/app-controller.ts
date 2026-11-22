@@ -6,6 +6,8 @@ import { createOrchestrator } from './meetings/orchestrator';
 import { createDetector } from './meetings/detector';
 import { type Ask, createOneShot } from './meetings/one-shot';
 import { createMeetingRunner } from './meetings/run';
+import { createModelManager, type Manifest, type ModelId } from './meetings/models';
+import MODEL_MANIFEST from './meetings/model-manifest.json';
 import { createMeetingOverlay } from './views/meeting-overlay';
 import { meetingBarBounds } from './views/meeting-bar-bounds';
 import { composeUrl } from '../shared/compose-url';
@@ -14,7 +16,7 @@ import { PROVIDER_NAME } from '../shared/meetings';
 import { PROBE_RELIABLE } from '../shared/meeting-probes';
 import { cleanName } from '../shared/meeting-speakers';
 import { createUpdater } from './updates/updater';
-import { DEFAULT_ACTIONS, type Meeting, type MeetingAction, type MeetingEndedInfo, meetingLocale, type MeetingGlobalSettings, type SpaceMeetingSettings, spaceMeetingSettings } from '../shared/meeting';
+import { DEFAULT_ACTIONS, type EngineId, type EngineStatus, type Meeting, type MeetingAction, type MeetingEndedInfo, meetingLocale, type MeetingGlobalSettings, type SpaceMeetingSettings, spaceMeetingSettings } from '../shared/meeting';
 import { type LanguageSetting, type Locale, type MessageKey, resolveLocale, setLocale, t } from '../shared/i18n';
 import { updateMode } from '../shared/updates';
 import { addMessage, closeMessage, type Feed, messageViews, removeMessage, trimToUnread } from '../shared/messages';
@@ -222,6 +224,9 @@ export interface AppController {
   meetingSaveNote(scope: string, id: string, index: number): void;
   meetingCreateEvent(scope: string, id: string): void;
   openMeetings(scope?: string, id?: string): void;
+  modelDownload(id: ModelId): void;
+  modelCancel(id: ModelId): void;
+  modelDelete(id: ModelId): void;
   /** The recorder (the hidden capture page and its audio). */
   captureHost(): CaptureHost;
   /** Listens to the recorder's audio frames and state. */
@@ -598,8 +603,21 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     onCapture: (pcm, state) => controller.onCapture(pcm, state),
     settingsFor: meetingSettingsFor,
     setSpaceMeetings: (scope, s) => store.setSpaceMeetings(scope, s),
-    engineFor: () => ({ engine: 'apple', modelDir: null }),
-    alternateEngine: () => null,
+    engineFor: () => {
+      const chosen = store.state().meetings?.engine ?? 'apple';
+      if (chosen !== 'apple') {
+        const dir = models.installed(chosen);
+        if (dir) return { engine: chosen, modelDir: dir };
+        const reason = t('meetings.engine.missing', { engine: engineName(chosen) });
+        if (appleOk) return { engine: 'apple', modelDir: null, fellBack: t('meetings.notice.fellBack', { reason }) };
+      }
+      if (!appleOk) {
+        const other = installedModel();
+        if (other) return { ...other, fellBack: t('meetings.engine.needsMacos26') };
+      }
+      return { engine: 'apple', modelDir: null };
+    },
+    alternateEngine: () => installedModel(),
     defaultLanguage: () => meetingLocale(localeNow.locale, localeNow.format),
     scopeOf: (accountId) => {
       const a = account(accountId);
@@ -662,6 +680,22 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     push: () => push(),
   });
   let localeInstall: { locale: string; fraction: number } | null = null;
+  const models = createModelManager({ dir: path.join(app.getPath('userData'), 'models'), fetch: ((u: string, init?: RequestInit) => net.fetch(String(u), init)) as typeof fetch, manifest: MODEL_MANIFEST as Manifest });
+  /** Apple's engine needs macOS 26. */
+  const appleOk = meetingsOn && Number(process.getSystemVersion().split('.')[0]) >= 26;
+  const engineName = (id: EngineId): string => t(id === 'apple' ? 'meetings.engine.apple' : id === 'whisper' ? 'meetings.engine.whisper' : 'meetings.engine.parakeet');
+  const installedModel = (): { engine: EngineId; modelDir: string } | null => {
+    for (const id of ['whisper', 'parakeet'] as const) {
+      const dir = models.installed(id);
+      if (dir) return { engine: id, modelDir: dir };
+    }
+    return null;
+  };
+  const engineStatuses = (): EngineStatus[] => [
+    { id: 'apple', state: appleOk ? 'ready' : 'unavailable', bytes: 0, ...(appleOk ? {} : { reason: t('meetings.engine.needsMacos26') }) },
+    models.status('whisper'),
+    models.status('parakeet'),
+  ];
   let modalOpen = false;
   const meetingBar = createMeetingOverlay(win, { uiPreloadPath });
   /** The bar follows the live (or asking) meeting's view: on it while it's on screen, hidden otherwise. */
@@ -1685,7 +1719,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
           ...(s.spaces ?? []).map((sp) => [`space:${sp.id}`, spaceMeetingSettings(sp)] as const),
           ['nospace', spaceMeetingSettings({ meetings: s.meetings?.nospace })] as const,
         ]),
-        engines: [],
+        engines: engineStatuses(),
       },
       spaces: s.spaces ?? [],
       sidebarStyle: sidebarStyleOf(s.sidebarStyle),
@@ -2709,6 +2743,29 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       void host.confirmCreate(confirmSummary(draft, a.name), draft.guests.length > 0).then((r) => {
         if (r.create) void host.createEvent(a.id, draft, r.notify).then(() => push());
       });
+    },
+    modelDownload(id) {
+      void models
+        .download(id, () => pushSoon())
+        .catch((e: Error & { code?: string }) => {
+          if (e.code !== 'cancelled') assistantOverlay?.toast({ state: 'error', title: t('meetings.engine.downloadFailed', { engine: engineName(id), reason: e.message }) });
+        })
+        .finally(() => push());
+      push();
+    },
+    modelCancel(id) {
+      models.cancel(id);
+    },
+    modelDelete(id) {
+      const st = models.status(id);
+      if (st.state === 'downloading') return void models.cancel(id);
+      if (st.state !== 'ready') return;
+      const size = `${(st.bytes / 1e9).toLocaleString(localeNow.format, { maximumFractionDigits: 1 })} GB`;
+      const r = dialog.showMessageBoxSync(win, { type: 'warning', message: t('meetings.engine.deleteTitle', { engine: engineName(id), size }), detail: t('meetings.engine.deleteDetail'), buttons: [t('common.delete'), t('common.cancel')], defaultId: 1, cancelId: 1 });
+      if (r !== 0) return;
+      models.remove(id);
+      if (store.state().meetings?.engine === id) store.setMeetingGlobal({ engine: 'apple' });
+      push();
     },
     openMeetings(scope, id) {
       meetingsOpen = true;

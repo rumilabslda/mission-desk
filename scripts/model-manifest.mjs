@@ -15,7 +15,7 @@ const SOURCES = {
   parakeet: [
     {
       repo: 'FluidInference/parakeet-tdt-0.6b-v3-coreml',
-      files: [/^Preprocessor\.mlmodelc\//, /^Encoder\.mlmodelc\//, /^Decoder\.mlmodelc\//, /^JointDecision\.mlmodelc\//, /^parakeet_vocab\.json$/, /^parakeet_v3_vocab\.json$/],
+      files: [/^Preprocessor\.mlmodelc\//, /^Encoder\.mlmodelc\//, /^Decoder\.mlmodelc\//, /^JointDecisionv3\.mlmodelc\//, /^parakeet_vocab\.json$/],
       to: '',
     },
   ],
