@@ -1,5 +1,6 @@
 import { useModal } from '../modal';
 import { useEffect } from 'react';
+import { t } from '../i18n';
 
 export interface Choice<T> {
   label: string;
@@ -50,7 +51,7 @@ export function ChoiceDialog<T>({
             </button>
           ))}
           <button className="cal-plain" onClick={onCancel}>
-            Cancel
+            {t('common.cancel')}
           </button>
         </div>
       </div>

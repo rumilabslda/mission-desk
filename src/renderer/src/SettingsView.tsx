@@ -1,3 +1,5 @@
+import { isLanguageSetting, LOCALE_NAMES, LOCALES } from '../../shared/i18n/locales';
+import { type MessageKey, rich, t } from './i18n';
 import { useEffect, useState } from 'react';
 import { ACCOUNT_COLORS, type AccountView, type AppInfo, type UiSnapshot } from '../../shared/ipc';
 import type { Account, SidebarStyle, Space } from '../../shared/types';
@@ -5,26 +7,26 @@ import { AccountAvatar } from './AccountAvatar';
 import { AssistantSettings, IntegrationsSettings } from './settings/AssistantSettings';
 import { SkillsSettings } from './settings/SkillsSettings';
 import { SERVICE_LABEL } from './service-glyph';
-import { COMPANY, COPYRIGHT, LICENSE_NAME, LICENSE_SUMMARY, SITE, WEBSITE } from '../../shared/about';
+import { COMPANY, COPYRIGHT, LICENSE_NAME, SITE, WEBSITE } from '../../shared/about';
 
 type Section = 'general' | 'accounts' | 'spaces' | 'calendar' | 'assistant' | 'skills' | 'integrations' | 'data' | 'about';
 
-const SECTIONS: { id: Section; label: string }[] = [
-  { id: 'general', label: 'General' },
-  { id: 'accounts', label: 'Accounts' },
-  { id: 'spaces', label: 'Spaces' },
-  { id: 'calendar', label: 'Calendar' },
-  { id: 'integrations', label: 'Integrations' },
-  { id: 'assistant', label: 'Assistant' },
-  { id: 'skills', label: 'Skills' },
-  { id: 'data', label: 'Data and privacy' },
-  { id: 'about', label: 'About' },
+const SECTIONS: { id: Section; label: MessageKey }[] = [
+  { id: 'general', label: 'settings.section.general' },
+  { id: 'accounts', label: 'settings.section.accounts' },
+  { id: 'spaces', label: 'settings.section.spaces' },
+  { id: 'calendar', label: 'settings.section.calendar' },
+  { id: 'integrations', label: 'settings.section.integrations' },
+  { id: 'assistant', label: 'settings.section.assistant' },
+  { id: 'skills', label: 'settings.section.skills' },
+  { id: 'data', label: 'settings.section.data' },
+  { id: 'about', label: 'settings.section.about' },
 ];
 
-const STYLES: { id: SidebarStyle; label: string; hint: string }[] = [
-  { id: 'sections', label: 'Sections', hint: 'Every space always open, with its name above it.' },
-  { id: 'folders', label: 'Folders', hint: 'Spaces are folders you open in place; open ones are remembered.' },
-  { id: 'panel', label: 'Folders with panel', hint: 'Clicking a space shows its apps in a panel next to the sidebar.' },
+const STYLES: { id: SidebarStyle; label: MessageKey; hint: MessageKey }[] = [
+  { id: 'sections', label: 'settings.style.sections', hint: 'settings.style.sectionsHint' },
+  { id: 'folders', label: 'settings.style.folders', hint: 'settings.style.foldersHint' },
+  { id: 'panel', label: 'settings.style.panel', hint: 'settings.style.panelHint' },
 ];
 
 /** A text field that saves on Enter or when it loses focus. */
@@ -66,6 +68,8 @@ function Toggle({ checked, onChange, label, hint }: { checked: boolean; onChange
   );
 }
 
+const code = (s: string): React.JSX.Element => <code>{s}</code>;
+
 const RELEASES = 'https://github.com/rumilabslda/mission-desk/releases/latest';
 
 /** Where updates stand, and the one action that makes sense now. */
@@ -73,36 +77,36 @@ function UpdateStatus({ update }: { update: UiSnapshot['update'] }): React.JSX.E
   const s = update.state;
   const check = (
     <button className="set-action" disabled={s.kind === 'checking'} onClick={() => window.missiondesk.checkForUpdates()}>
-      Check now
+      {t('settings.update.checkNow')}
     </button>
   );
-  if (update.mode === 'off') return <p className="set-muted">This is a development build; it doesn’t update itself.</p>;
+  if (update.mode === 'off') return <p className="set-muted">{t('settings.update.devBuild')}</p>;
   switch (s.kind) {
     case 'checking':
-      return <p className="set-update">Checking for a new version… {check}</p>;
+      return <p className="set-update">{t('settings.update.checking')} {check}</p>;
     case 'none':
-      return <p className="set-update">Mission Desk is up to date. {check}</p>;
+      return <p className="set-update">{t('settings.update.upToDate')} {check}</p>;
     case 'available':
       return (
         <p className="set-update">
-          Version {s.version} is available.
+          {t('settings.update.available', { version: s.version })}
           <button className="set-action" onClick={() => window.missiondesk.openExternal(RELEASES)}>
-            Download
+            {t('settings.update.download')}
           </button>
         </p>
       );
     case 'downloading':
       return (
         <p className="set-update">
-          Downloading version {s.version}… {s.percent}%
+          {t('settings.update.downloading', { version: s.version, percent: s.percent })}
         </p>
       );
     case 'ready':
       return (
         <p className="set-update">
-          Version {s.version} is ready.
+          {t('settings.update.ready', { version: s.version })}
           <button className="primary" onClick={() => window.missiondesk.installUpdate()}>
-            Restart to update
+            {t('settings.update.restart')}
           </button>
         </p>
       );
@@ -115,7 +119,7 @@ function UpdateStatus({ update }: { update: UiSnapshot['update'] }): React.JSX.E
     default:
       return (
         <p className="set-update">
-          {update.auto ? 'Mission Desk looks for new versions by itself.' : 'Automatic checks are off.'} {check}
+          {update.auto ? t('settings.update.auto') : t('settings.update.autoOff')} {check}
         </p>
       );
   }
@@ -137,11 +141,11 @@ function AccountCard({ a, snap }: { a: AccountView; snap: UiSnapshot }): React.J
         <NameField value={a.name} max={60} onSave={(name) => update({ name })} />
         <span className="set-muted">{SERVICE_LABEL[a.service]}</span>
         <button className="set-danger" onClick={() => window.missiondesk.removeAccount(a.id)}>
-          Remove…
+          {t('settings.account.remove')}
         </button>
       </div>
       <div className="set-grid">
-        <span className="set-label">Colour</span>
+        <span className="set-label">{t('settings.account.colour')}</span>
         <div className="colors set-colors">
           {ACCOUNT_COLORS.map((c) => (
             <button
@@ -154,16 +158,16 @@ function AccountCard({ a, snap }: { a: AccountView; snap: UiSnapshot }): React.J
             />
           ))}
         </div>
-        <span className="set-label">Space</span>
+        <span className="set-label">{t('settings.account.space')}</span>
         <select className="set-select" value={a.spaceId ?? ''} onChange={(e) => window.missiondesk.moveToSpace(a.id, e.target.value || null)}>
-          <option value="">None</option>
+          <option value="">{t('common.none')}</option>
           {snap.spaces.map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}
             </option>
           ))}
         </select>
-        <span className="set-label">Icon</span>
+        <span className="set-label">{t('settings.account.icon')}</span>
         <select
           className="set-select"
           value={iconValue(a)}
@@ -175,34 +179,34 @@ function AccountCard({ a, snap }: { a: AccountView; snap: UiSnapshot }): React.J
             else update({ iconMode: v as Account['iconMode'] });
           }}
         >
-          <option value="auto">Company logo or photo</option>
-          <option value="service">Service logo</option>
-          <option value="letter">Letter</option>
+          <option value="auto">{t('settings.account.iconAuto')}</option>
+          <option value="service">{t('settings.account.iconService')}</option>
+          <option value="letter">{t('settings.account.iconLetter')}</option>
           {others.map((o) => (
             <option key={o.id} value={`account:${o.id}`}>
-              Same as {o.name}
+              {t('settings.account.iconSameAs', { name: o.name })}
             </option>
           ))}
           {a.iconMode === 'account' && !others.some((o) => `account:${o.id}` === iconValue(a)) && (
-            <option value={iconValue(a)}>Same as another account (not available)</option>
+            <option value={iconValue(a)}>{t('settings.account.iconSameAsMissing')}</option>
           )}
-          {a.iconMode === 'custom' && <option value="custom">Custom image</option>}
-          <option value={CHOOSE_IMAGE}>{a.iconMode === 'custom' ? 'Choose another image…' : 'Choose image…'}</option>
+          {a.iconMode === 'custom' && <option value="custom">{t('settings.account.iconCustom')}</option>}
+          <option value={CHOOSE_IMAGE}>{a.iconMode === 'custom' ? t('settings.account.iconChooseAnother') : t('settings.account.iconChoose')}</option>
         </select>
-        <span className="set-label">Claude access</span>
+        <span className="set-label">{t('settings.account.claudeAccess')}</span>
         <select className="set-select" value={a.claudeAccess ?? 'off'} onChange={(e) => update({ claudeAccess: e.target.value as Account['claudeAccess'] })}>
-          <option value="off">Off</option>
-          <option value="read">Read</option>
-          <option value="act">Read and act</option>
+          <option value="off">{t('common.off')}</option>
+          <option value="read">{t('settings.account.accessRead')}</option>
+          <option value="act">{t('settings.account.accessAct')}</option>
         </select>
       </div>
       <div className="set-toggles">
-        <Toggle checked={a.muted} onChange={(muted) => update({ muted })} label="Mute notifications" hint="The badge still counts." />
+        <Toggle checked={a.muted} onChange={(muted) => update({ muted })} label={t('settings.account.mute')} hint={t('settings.account.muteHint')} />
         <Toggle
           checked={a.hibernateWhenIdle}
           onChange={(hibernateWhenIdle) => update({ hibernateWhenIdle })}
-          label="Hibernate when not in use"
-          hint="Frees memory after 10 minutes; reloads when you open it."
+          label={t('settings.account.hibernate')}
+          hint={t('settings.account.hibernateHint')}
         />
       </div>
     </div>
@@ -226,26 +230,26 @@ function SpaceCard({ sp, snap }: { sp: Space; snap: UiSnapshot }): React.JSX.Ele
           ))}
         </span>
         <button className="set-danger" onClick={() => window.missiondesk.ungroupSpace(sp.id)}>
-          Ungroup
+          {t('settings.space.ungroup')}
         </button>
       </div>
       <div className="set-toggles">
         <Toggle
           checked={!!sp.alwaysOpen}
           onChange={(v) => window.missiondesk.setSpaceAlwaysOpen(sp.id, v)}
-          label="Always open"
-          hint="In the Folders style, this space never closes."
+          label={t('settings.space.alwaysOpen')}
+          hint={t('settings.space.alwaysOpenHint')}
         />
         <Toggle
           checked={sharing}
           onChange={(v) => window.missiondesk.setSpaceShareGoogle(sp.id, v)}
-          label="Share Google sign-in"
-          hint="Sign in to Google once; the space's other apps (e.g. Slack) reuse it. WhatsApp is never touched."
+          label={t('settings.space.shareGoogle')}
+          hint={t('settings.space.shareGoogleHint')}
         />
       </div>
       {googles.length > 1 && (
         <div className="set-grid">
-          <span className="set-label">Google sign-in from</span>
+          <span className="set-label">{t('settings.space.googleFrom')}</span>
           <select className="set-select" value={identity} disabled={!sharing} onChange={(e) => window.missiondesk.setSpaceGoogleAccount(sp.id, e.target.value)}>
             {googles.map((g) => (
               <option key={g.id} value={g.id}>
@@ -258,6 +262,9 @@ function SpaceCard({ sp, snap }: { sp: Space; snap: UiSnapshot }): React.JSX.Ele
     </div>
   );
 }
+
+/** The Mac's language, as Mission Desk picks it with Language set to the Mac's. */
+const systemLocale = () => window.missiondesk.locale?.system ?? 'en';
 
 export function SettingsView({ snapshot: snap }: { snapshot: UiSnapshot }): React.JSX.Element {
   const [section, setSection] = useState<Section>(() => (SECTIONS.some((s) => s.id === snap.settingsSection) ? (snap.settingsSection as Section) : 'general'));
@@ -285,64 +292,74 @@ export function SettingsView({ snapshot: snap }: { snapshot: UiSnapshot }): Reac
   return (
     <div className="settings">
       <nav className="set-nav">
-        <h1>Settings</h1>
+        <h1>{t('settings.title')}</h1>
         {SECTIONS.map((s) => (
           <button key={s.id} className={section === s.id ? 'on' : ''} onClick={() => setSection(s.id)}>
-            {s.label}
+            {t(s.label)}
           </button>
         ))}
       </nav>
       <section className="set-body">
         <button className="set-done" onClick={() => window.missiondesk.closeSettings()}>
-          Done
+          {t('common.done')}
         </button>
         {section === 'general' && (
           <>
-            <h2>General</h2>
+            <h2>{t('settings.section.general')}</h2>
             <div className="set-toggles">
               <Toggle
                 checked={snap.openOnToday}
                 onChange={(v) => window.missiondesk.setOpenOnToday(v)}
-                label="Open on Home"
-                hint="Show your meetings, to-dos and unread messages when Mission Desk starts."
+                label={t('settings.general.openOnHome')}
+                hint={t('settings.general.openOnHomeHint')}
               />
               <Toggle
                 checked={snap.messagePreviews}
                 onChange={(v) => window.missiondesk.setMessagePreviews(v)}
-                label="Show message previews on Home"
-                hint="Home lists new chats and emails. Turn this off to hide the text: only the sender or conversation shows. Nothing is saved; the list clears when Mission Desk quits."
+                label={t('settings.general.previews')}
+                hint={t('settings.general.previewsHint')}
               />
             </div>
-            <h3>Sidebar style</h3>
+            <h3>{t('settings.language.title')}</h3>
+            <select className="set-select" value={snap.language} onChange={(e) => isLanguageSetting(e.target.value) && window.missiondesk.setLanguage(e.target.value)}>
+              <option value="system">{t('settings.language.system', { name: LOCALE_NAMES[systemLocale()] })}</option>
+              {LOCALES.map((l) => (
+                <option key={l} value={l}>
+                  {LOCALE_NAMES[l]}
+                </option>
+              ))}
+            </select>
+            <p className="set-muted">{t('settings.language.hint')}</p>
+            <h3>{t('settings.general.sidebarStyle')}</h3>
             <div className="set-styles">
               {STYLES.map((s) => (
                 <button key={s.id} className={`set-style${snap.sidebarStyle === s.id ? ' on' : ''}`} onClick={() => window.missiondesk.setSidebarStyle(s.id)}>
-                  <strong>{s.label}</strong>
-                  <span>{s.hint}</span>
+                  <strong>{t(s.label)}</strong>
+                  <span>{t(s.hint)}</span>
                 </button>
               ))}
             </div>
-            <h3>Week starts on</h3>
+            <h3>{t('settings.general.weekStart')}</h3>
             <select
               className="set-select"
               value={String(snap.weekStartSetting)}
               onChange={(e) => window.missiondesk.setWeekStart(e.target.value === 'auto' ? 'auto' : (Number(e.target.value) as 0 | 1))}
             >
-              <option value="auto">Same as the Mac</option>
-              <option value="1">Monday</option>
-              <option value="0">Sunday</option>
+              <option value="auto">{t('settings.general.weekStartAuto')}</option>
+              <option value="1">{t('settings.general.monday')}</option>
+              <option value="0">{t('settings.general.sunday')}</option>
             </select>
-            <h3>Setup</h3>
-            <p className="set-muted">Walk through the assistant, spaces and apps again. It only adds; what you have stays as it is.</p>
+            <h3>{t('settings.general.setup')}</h3>
+            <p className="set-muted">{t('settings.general.setupHint')}</p>
             <button className="set-action" onClick={() => window.missiondesk.openSetup()}>
-              Run the setup again
+              {t('settings.general.runSetup')}
             </button>
           </>
         )}
         {section === 'accounts' && (
           <>
-            <h2>Accounts</h2>
-            {snap.accounts.length === 0 && <p className="set-muted">No accounts yet. Add one with the + button.</p>}
+            <h2>{t('settings.section.accounts')}</h2>
+            {snap.accounts.length === 0 && <p className="set-muted">{t('settings.accounts.empty')}</p>}
             {snap.accounts.map((a) => (
               <AccountCard key={a.id} a={a} snap={snap} />
             ))}
@@ -350,9 +367,9 @@ export function SettingsView({ snapshot: snap }: { snapshot: UiSnapshot }): Reac
         )}
         {section === 'spaces' && (
           <>
-            <h2>Spaces</h2>
-            <p className="set-muted">Group related apps together in a space. Create a space with the + button, or drag one app onto another.</p>
-            {snap.spaces.length === 0 && <p className="set-muted">No spaces yet.</p>}
+            <h2>{t('settings.section.spaces')}</h2>
+            <p className="set-muted">{t('settings.spaces.intro')}</p>
+            {snap.spaces.length === 0 && <p className="set-muted">{t('settings.spaces.empty')}</p>}
             {snap.spaces.map((sp) => (
               <SpaceCard key={sp.id} sp={sp} snap={snap} />
             ))}
@@ -360,9 +377,9 @@ export function SettingsView({ snapshot: snap }: { snapshot: UiSnapshot }): Reac
         )}
         {section === 'calendar' && (
           <>
-            <h2>Calendar</h2>
-            <p className="set-muted">Accounts shown in All calendars (⌘0). It shows the calendars you have ticked in each account's Google Calendar.</p>
-            {google.length === 0 && <p className="set-muted">Add a Google account to see its calendar.</p>}
+            <h2>{t('settings.section.calendar')}</h2>
+            <p className="set-muted">{t('settings.calendar.intro')}</p>
+            {google.length === 0 && <p className="set-muted">{t('settings.calendar.empty')}</p>}
             <div className="set-card">
               {google.map((a) => (
                 <Toggle key={a.id} checked={!hidden.has(a.id)} onChange={(v) => window.missiondesk.setCalendarHidden(a.id, !v)} label={a.name} />
@@ -375,38 +392,30 @@ export function SettingsView({ snapshot: snap }: { snapshot: UiSnapshot }): Reac
         {section === 'integrations' && <IntegrationsSettings />}
         {section === 'data' && (
           <>
-            <h2>Data and privacy</h2>
-            <p>Mission Desk has no server and no tracking. It talks only to the services you add (and to Claude, if you connect it).</p>
-            <h3>Where your data is</h3>
+            <h2>{t('settings.section.data')}</h2>
+            <p>{t('settings.data.intro')}</p>
+            <h3>{t('settings.data.where')}</h3>
             <div className="set-card">
               <p className="set-path">{info?.dataFolder ?? '…'}</p>
               <ul className="set-list">
-                <li>
-                  <code>accounts.json</code>: your accounts, spaces and these settings
-                </li>
-                <li>
-                  <code>avatars.json</code>: account icons
-                </li>
-                <li>
-                  <code>Partitions/</code>: each account's own sign-in and data
-                </li>
-                <li>
-                  <code>claude-activity.log</code>: what Claude did (never page text)
-                </li>
+                <li>{rich('settings.data.accountsFile', { code })}</li>
+                <li>{rich('settings.data.avatarsFile', { code })}</li>
+                <li>{rich('settings.data.partitions', { code })}</li>
+                <li>{rich('settings.data.activityLog', { code })}</li>
               </ul>
               <button className="set-link" onClick={() => window.missiondesk.showDataFolder()}>
-                Show in Finder
+                {t('settings.data.showInFinder')}
               </button>
             </div>
-            <p className="set-muted">Calendar events are only kept in memory.</p>
+            <p className="set-muted">{t('settings.data.calendarMemory')}</p>
           </>
         )}
         {section === 'about' && (
           <>
-            <h2>About</h2>
+            <h2>{t('settings.section.about')}</h2>
             <div className="set-card">
               <p>
-                <strong>Mission Desk</strong> {info?.version ? `version ${info.version}` : ''} ·{' '}
+                <strong>Mission Desk</strong> {info?.version ? t('settings.about.version', { version: info.version }) : ''} ·{' '}
                 <a
                   href={SITE}
                   onClick={(e) => {
@@ -418,7 +427,7 @@ export function SettingsView({ snapshot: snap }: { snapshot: UiSnapshot }): Reac
                 </a>
               </p>
               <p>
-                Made by {COMPANY} ·{' '}
+                {t('settings.about.madeBy', { company: COMPANY })} ·{' '}
                 <a
                   href={WEBSITE}
                   onClick={(e) => {
@@ -431,7 +440,7 @@ export function SettingsView({ snapshot: snap }: { snapshot: UiSnapshot }): Reac
               </p>
               <p className="set-muted">{COPYRIGHT}</p>
             </div>
-            <h3>Updates</h3>
+            <h3>{t('settings.about.updates')}</h3>
             <div className="set-card" role="status" aria-live="polite">
               <UpdateStatus update={snap.update} />
             </div>
@@ -440,19 +449,17 @@ export function SettingsView({ snapshot: snap }: { snapshot: UiSnapshot }): Reac
                 <Toggle
                   checked={snap.update.auto}
                   onChange={(v) => window.missiondesk.setAutoUpdate(v)}
-                  label="Check for updates automatically"
-                  hint="Mission Desk asks GitHub, where its releases are, whether there’s a new version. GitHub only sees that a copy of Mission Desk is asking; nothing about you or your accounts is sent."
+                  label={t('settings.about.autoUpdate')}
+                  hint={t('settings.about.autoUpdateHint')}
                 />
               </div>
             )}
-            <h3>License</h3>
+            <h3>{t('settings.about.license')}</h3>
             <div className="set-card">
               <p>{LICENSE_NAME}</p>
-              <p className="set-muted">{LICENSE_SUMMARY}</p>
+              <p className="set-muted">{t('settings.about.licenseSummary')}</p>
             </div>
-            <p className="set-muted">
-              Mission Desk is independent and not affiliated with Google, Microsoft, Slack, WhatsApp, Telegram, LinkedIn, Discord, Zoom, Notion, Proton, Apple, Fastmail, Anthropic, OpenAI or OpenRouter.
-            </p>
+            <p className="set-muted">{t('settings.about.independent')}</p>
           </>
         )}
       </section>

@@ -1,9 +1,10 @@
 import { type JoinLink, type MeetingProvider, PROVIDER_NAME } from '../../../shared/meetings';
 import type { TimelineView } from '../../../shared/today';
 import type { CalEvent } from '../../../shared/types';
+import { intlLocale, t } from '../i18n';
 import { LOGOS } from '../logos';
 
-const timeFmt = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
+const timeFmt = new Intl.DateTimeFormat(intlLocale(), { hour: '2-digit', minute: '2-digit' });
 const PROVIDER_LOGO: Partial<Record<MeetingProvider, string>> = { meet: LOGOS.meet, teams: LOGOS.teams, zoom: LOGOS.zoom, chime: LOGOS.chime };
 const logoOf = (j: JoinLink): string => PROVIDER_LOGO[j.provider] ?? LOGOS.video;
 
@@ -15,8 +16,8 @@ const MIN_HEIGHT = 20;
 /** "45 min", "1 h", "1 h 15". */
 function free(mins: number): string {
   const m = Math.round(mins);
-  if (m < 60) return `${m} min`;
-  return m % 60 ? `${Math.floor(m / 60)} h ${m % 60}` : `${m / 60} h`;
+  if (m < 60) return t('home.duration.minutes', { count: m });
+  return m % 60 ? t('home.duration.hoursMinutesShort', { hours: Math.floor(m / 60), minutes: m % 60 }) : t('home.duration.hours', { count: m / 60 });
 }
 
 /** Today's meetings on a time scale around now, so the gaps between them show. */
@@ -44,7 +45,7 @@ export function Timeline({ view, now, color }: { view: TimelineView; now: Date; 
 
       {view.gaps.map((g) => (
         <div key={g.top} className="tl-gap" style={{ top: y(g.top), height: y(g.bottom - g.top) }}>
-          <span>{g.open ? 'Free' : `${free(g.bottom - g.top)} free`}</span>
+          <span>{g.open ? t('home.timeline.free') : t('home.timeline.freeFor', { duration: free(g.bottom - g.top) })}</span>
         </div>
       ))}
 
@@ -72,8 +73,8 @@ export function Timeline({ view, now, color }: { view: TimelineView; now: Date; 
               <button
                 className="tl-join"
                 onClick={() => window.missiondesk.joinMeeting(e.accountId, e.join!.url)}
-                title={`Join ${PROVIDER_NAME[e.join.provider]}`}
-                aria-label={`Join ${PROVIDER_NAME[e.join.provider]}`}
+                title={t('home.agenda.join', { provider: PROVIDER_NAME[e.join.provider] })}
+                aria-label={t('home.agenda.join', { provider: PROVIDER_NAME[e.join.provider] })}
               >
                 <img src={logoOf(e.join)} alt="" draggable={false} />
               </button>

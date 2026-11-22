@@ -1,21 +1,22 @@
 import { useState } from 'react';
 import type { UiSnapshot } from '../../../shared/ipc';
 import { MAX_DESCRIPTION, MAX_INSTRUCTIONS, MAX_NAME, SKILL_CATALOG, type Skill, type SkillDraft, type SkillMode } from '../../../shared/skills';
+import { intlLocale, type MessageKey, rich, t } from '../i18n';
 
 type Panel = { kind: 'none' } | { kind: 'catalog' } | { kind: 'import' } | { kind: 'new' } | { kind: 'edit'; id: string };
 
-const MODE_LABEL: Record<SkillMode, string> = { always: 'Always on', auto: 'When it fits' };
+const MODE_LABEL: Record<SkillMode, MessageKey> = { always: 'settings.skills.modeAlways', auto: 'settings.skills.modeAuto' };
 
 function sourceLabel(s: Skill): string {
-  if (s.source.kind === 'catalog') return 'Catalogue';
-  if (s.source.kind === 'import') return 'Imported';
-  return 'Yours';
+  if (s.source.kind === 'catalog') return t('settings.skills.sourceCatalog');
+  if (s.source.kind === 'import') return t('settings.skills.sourceImport');
+  return t('settings.skills.sourceCustom');
 }
 
 /** Which spaces a skill is on in: one chip per space. */
 function ScopeChips({ scopes, on, onToggle }: { scopes: { key: string; name: string }[]; on: (key: string) => boolean; onToggle(key: string): void }): React.JSX.Element {
   return (
-    <div className="sk-scopes" role="group" aria-label="On in">
+    <div className="sk-scopes" role="group" aria-label={t('settings.skills.onIn')}>
       {scopes.map((s) => (
         <button key={s.key} type="button" className={`sk-scope${on(s.key) ? ' on' : ''}`} aria-pressed={on(s.key)} onClick={() => onToggle(s.key)}>
           {on(s.key) ? '✓ ' : ''}
@@ -52,51 +53,51 @@ function SkillEditor({
     <div className="set-card sk-editor">
       {note}
       <label>
-        Name
-        <input className="set-input" maxLength={MAX_NAME} value={d.name} placeholder="e.g. Acme proposal" onChange={(e) => setD({ ...d, name: e.target.value })} />
+        {t('settings.skills.name')}
+        <input className="set-input" maxLength={MAX_NAME} value={d.name} placeholder={t('settings.skills.namePlaceholder')} onChange={(e) => setD({ ...d, name: e.target.value })} />
       </label>
       <label>
-        When to use it
+        {t('settings.skills.whenToUse')}
         <input
           className="set-input"
           maxLength={MAX_DESCRIPTION}
           value={d.description}
-          placeholder="e.g. Use when I ask for a proposal or quote for Acme"
+          placeholder={t('settings.skills.whenToUsePlaceholder')}
           onChange={(e) => setD({ ...d, description: e.target.value })}
         />
       </label>
-      <div className="sk-modes" role="radiogroup" aria-label="When it applies">
+      <div className="sk-modes" role="radiogroup" aria-label={t('settings.skills.whenItApplies')}>
         {(['auto', 'always'] as const).map((m) => (
           <button key={m} type="button" role="radio" aria-checked={d.mode === m} className={`sk-mode${d.mode === m ? ' on' : ''}`} onClick={() => setD({ ...d, mode: m })}>
-            <strong>{MODE_LABEL[m]}</strong>
-            <span>{m === 'auto' ? 'The assistant loads it when a request fits what it’s for.' : 'In every chat: for style and tone, like Humanizer.'}</span>
+            <strong>{t(MODE_LABEL[m])}</strong>
+            <span>{m === 'auto' ? t('settings.skills.modeAutoHint') : t('settings.skills.modeAlwaysHint')}</span>
           </button>
         ))}
       </div>
       <label>
-        Instructions
+        {t('settings.skills.instructions')}
         <textarea
           className="set-input sk-instructions"
           rows={10}
           maxLength={MAX_INSTRUCTIONS}
           value={d.instructions}
-          placeholder="How the assistant should do it: steps, format, tone, what to avoid."
+          placeholder={t('settings.skills.instructionsPlaceholder')}
           onChange={(e) => setD({ ...d, instructions: e.target.value })}
         />
         <span className="set-muted sk-count">
-          {d.instructions.length.toLocaleString()} / {MAX_INSTRUCTIONS.toLocaleString()}
+          {d.instructions.length.toLocaleString(intlLocale())} / {MAX_INSTRUCTIONS.toLocaleString(intlLocale())}
         </span>
       </label>
       {pickScopes && (
         <div>
-          <span className="sk-label">On in</span>
+          <span className="sk-label">{t('settings.skills.onIn')}</span>
           <ScopeChips scopes={scopes} on={(k) => where.includes(k)} onToggle={(k) => setWhere(where.includes(k) ? where.filter((x) => x !== k) : [...where, k])} />
-          {where.length === 0 && <p className="set-muted">Off everywhere for now: it stays in the library until you turn it on in a space.</p>}
+          {where.length === 0 && <p className="set-muted">{t('settings.skills.offEverywhere')}</p>}
         </div>
       )}
       <div className="sk-actions">
         <button type="button" className="set-action" onClick={onCancel}>
-          Cancel
+          {t('common.cancel')}
         </button>
         <button type="button" className="primary" disabled={!ok} onClick={() => onSave({ ...d, name: d.name.trim(), description: d.description.trim(), instructions: d.instructions.trim() }, where)}>
           {saveLabel}
@@ -127,11 +128,10 @@ function ImportPanel({ scopes, onDone }: { scopes: { key: string; name: string }
         initial={fetched.draft}
         scopes={scopes}
         pickScopes
-        saveLabel="Save skill"
+        saveLabel={t('settings.skills.save')}
         note={
           <p className="sk-warning">
-            <strong>Read it before saving.</strong> The assistant will follow these instructions in the spaces you turn it on. Skills are text only: nothing in them runs, and they can’t change
-            what the assistant is allowed to do. From {new URL(fetched.url).hostname}.
+            {rich('settings.skills.importWarning', { b: (s) => <strong>{s}</strong> }, { host: new URL(fetched.url).hostname })}
           </p>
         }
         onSave={(draft, where) => {
@@ -144,7 +144,7 @@ function ImportPanel({ scopes, onDone }: { scopes: { key: string; name: string }
 
   return (
     <div className="set-card sk-import">
-      <p className="set-muted">A link to a SKILL.md file, the format of Claude’s skills. A GitHub link to the file or to its folder works too.</p>
+      <p className="set-muted">{t('settings.skills.importHint')}</p>
       <div className="asg-key">
         <input
           className="set-input"
@@ -155,13 +155,13 @@ function ImportPanel({ scopes, onDone }: { scopes: { key: string; name: string }
           onKeyDown={(e) => e.key === 'Enter' && url.trim() && !busy && void fetchIt()}
         />
         <button type="button" className="set-action" disabled={!url.trim() || busy} onClick={() => void fetchIt()}>
-          {busy ? 'Fetching…' : 'Fetch'}
+          {busy ? t('settings.skills.fetching') : t('settings.skills.fetch')}
         </button>
       </div>
       {error && <p className="asg-error">{error}</p>}
       <div className="sk-actions">
         <button type="button" className="set-action" onClick={onDone}>
-          Cancel
+          {t('common.cancel')}
         </button>
       </div>
     </div>
@@ -179,20 +179,17 @@ export function SkillsSettings({ snap }: { snap: UiSnapshot }): React.JSX.Elemen
 
   return (
     <>
-      <h2>Skills</h2>
-      <p className="set-muted">
-        Instructions the assistant follows, always (style, tone) or when a request fits. Each skill is on only in the spaces you choose: a space’s assistant never sees another space’s skills.
-        Type <code>/</code> in the chat to use one on purpose.
-      </p>
+      <h2>{t('settings.section.skills')}</h2>
+      <p className="set-muted">{rich('settings.skills.intro', { code: (s) => <code>{s}</code> })}</p>
       <div className="sk-toolbar">
         <button type="button" className={panel.kind === 'catalog' ? 'primary' : 'set-action'} onClick={() => setPanel(panel.kind === 'catalog' ? { kind: 'none' } : { kind: 'catalog' })}>
-          Catalogue
+          {t('settings.skills.catalog')}
         </button>
         <button type="button" className={panel.kind === 'import' ? 'primary' : 'set-action'} onClick={() => setPanel({ kind: 'import' })}>
-          Import from a link
+          {t('settings.skills.import')}
         </button>
         <button type="button" className={panel.kind === 'new' ? 'primary' : 'set-action'} onClick={() => setPanel({ kind: 'new' })}>
-          New skill
+          {t('settings.skills.new')}
         </button>
       </div>
 
@@ -202,7 +199,7 @@ export function SkillsSettings({ snap }: { snap: UiSnapshot }): React.JSX.Elemen
             <div key={c.id} className="set-card sk-card">
               <div className="sk-head">
                 <strong>{c.name}</strong>
-                <span className="sk-badge">{MODE_LABEL[c.mode]}</span>
+                <span className="sk-badge">{t(MODE_LABEL[c.mode])}</span>
               </div>
               <p className="set-muted">{c.description}</p>
               <button
@@ -217,7 +214,7 @@ export function SkillsSettings({ snap }: { snap: UiSnapshot }): React.JSX.Elemen
                   )
                 }
               >
-                {inLibrary(c.id) ? 'Added' : 'Add, on in every space'}
+                {inLibrary(c.id) ? t('settings.skills.added') : t('settings.skills.addEverywhere')}
               </button>
             </div>
           ))}
@@ -229,7 +226,7 @@ export function SkillsSettings({ snap }: { snap: UiSnapshot }): React.JSX.Elemen
           initial={{ name: '', description: '', instructions: '', mode: 'auto' }}
           scopes={scopes}
           pickScopes
-          saveLabel="Save skill"
+          saveLabel={t('settings.skills.save')}
           onSave={(draft, where) => {
             window.missiondesk.skillAdd(draft, { kind: 'custom' }, where);
             close();
@@ -243,7 +240,7 @@ export function SkillsSettings({ snap }: { snap: UiSnapshot }): React.JSX.Elemen
           initial={{ name: editing.name, description: editing.description, instructions: editing.instructions, mode: editing.mode }}
           scopes={scopes}
           pickScopes={false}
-          saveLabel="Save changes"
+          saveLabel={t('common.saveChanges')}
           onSave={(draft) => {
             window.missiondesk.skillUpdate(editing.id, draft);
             close();
@@ -252,16 +249,16 @@ export function SkillsSettings({ snap }: { snap: UiSnapshot }): React.JSX.Elemen
         />
       )}
 
-      <h3>Your skills</h3>
+      <h3>{t('settings.skills.yours')}</h3>
       {skills.length === 0 ? (
-        <p className="set-muted">None yet. Start with Humanizer from the catalogue, so everything the assistant writes sounds like you.</p>
+        <p className="set-muted">{t('settings.skills.empty')}</p>
       ) : (
         skills.map((s) => (
           <div key={s.id} className="set-card sk-card">
             <div className="sk-head">
               <strong>{s.name}</strong>
               <code>/{s.command}</code>
-              <span className="sk-badge">{MODE_LABEL[s.mode]}</span>
+              <span className="sk-badge">{t(MODE_LABEL[s.mode])}</span>
               <span className="sk-badge sk-source" title={s.source.kind === 'import' ? s.source.url : undefined}>
                 {sourceLabel(s)}
               </span>
@@ -270,20 +267,20 @@ export function SkillsSettings({ snap }: { snap: UiSnapshot }): React.JSX.Elemen
             <ScopeChips scopes={scopes} on={(k) => isOn(s.id, k)} onToggle={(k) => window.missiondesk.skillSetActive(s.id, k, !isOn(s.id, k))} />
             <div className="sk-actions left">
               <button type="button" className="set-link" onClick={() => setPanel({ kind: 'edit', id: s.id })}>
-                Edit
+                {t('common.edit')}
               </button>
               {confirmRemove === s.id ? (
                 <>
                   <button type="button" className="set-link danger" onClick={() => (window.missiondesk.skillRemove(s.id), setConfirmRemove(null))}>
-                    Remove it from every space
+                    {t('settings.skills.removeEverywhere')}
                   </button>
                   <button type="button" className="set-link" onClick={() => setConfirmRemove(null)}>
-                    Keep
+                    {t('common.keep')}
                   </button>
                 </>
               ) : (
                 <button type="button" className="set-link" onClick={() => setConfirmRemove(s.id)}>
-                  Remove
+                  {t('common.remove')}
                 </button>
               )}
             </div>

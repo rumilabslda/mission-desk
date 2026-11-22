@@ -1,5 +1,6 @@
 import type { AssistantEffort, AssistantEvent } from '../../shared/assistant';
 import type { ChatMessage } from '../../shared/assistant-history';
+import { t } from '../../shared/i18n';
 import type { AssistantSession } from './engine';
 import { createChatStream, type ToolCall } from './openrouter-stream';
 
@@ -70,7 +71,7 @@ export function createOpenRouterSession(io: OpenRouterIO, initial: { model: stri
     });
     if (!res.ok || !res.body) {
       const detail = await res.text().catch(() => '');
-      let message = `OpenRouter answered ${res.status}.`;
+      let message = t('assistant.error.openRouterStatus', { status: String(res.status) });
       try {
         message = (JSON.parse(detail) as { error?: { message?: string } }).error?.message ?? message;
       } catch {
@@ -118,7 +119,7 @@ export function createOpenRouterSession(io: OpenRouterIO, initial: { model: stri
     if (!key) {
       controller = null;
       working = false;
-      emit({ type: 'error', kind: 'signed-out', message: 'Connect OpenRouter in Settings → Integrations.' });
+      emit({ type: 'error', kind: 'signed-out', message: t('assistant.error.openRouterConnect') });
       return;
     }
     try {
@@ -147,7 +148,7 @@ export function createOpenRouterSession(io: OpenRouterIO, initial: { model: stri
           emit({ type: 'toolDone', id: c.id, isError: out.isError });
           messages.push({ role: 'tool', tool_call_id: c.id, content: out.text.slice(0, MAX_TOOL_RESULT) });
         }
-        if (i === MAX_STEPS - 1) emit({ type: 'text', delta: '\n\n(Stopped: too many steps for one answer.)' });
+        if (i === MAX_STEPS - 1) emit({ type: 'text', delta: `\n\n${t('assistant.error.tooManySteps')}` });
       }
       emit({ type: 'done', isError: false });
     } catch (e) {

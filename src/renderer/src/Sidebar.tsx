@@ -6,6 +6,7 @@ import { AccountAvatar, Badge } from './AccountAvatar';
 import { LOGOS } from './logos';
 import { SERVICE_LABEL, ServiceLogo } from './service-glyph';
 import { SpaceTile } from './SpaceTile';
+import { t } from './i18n';
 
 interface Over {
   key: string;
@@ -116,7 +117,7 @@ export function Sidebar({ snapshot, onAdd, onCreateSpace }: Props): React.JSX.El
               <ServiceLogo service={a.service} />
             </span>
           )}
-          {a.muted && <span className="muted" aria-label="Muted">🔕</span>}
+          {a.muted && <span className="muted" aria-label={t('app.sidebar.muted')}>🔕</span>}
           <Badge unread={a.unread} />
         </button>
       </li>
@@ -159,7 +160,7 @@ export function Sidebar({ snapshot, onAdd, onCreateSpace }: Props): React.JSX.El
         <div className={`space-box${dropClass(k)}`}>
           <button
             className={`space-caption${canClose ? ' can-close' : ''}`}
-            title={canClose ? `${sp.name} — click to close` : sp.name}
+            title={canClose ? t('app.sidebar.spaceClickToClose', { name: sp.name }) : sp.name}
             {...dnd(ref)}
             onClick={() =>
               canClose && window.missiondesk.setSpaceOpen(sp.id, false)
@@ -178,8 +179,8 @@ export function Sidebar({ snapshot, onAdd, onCreateSpace }: Props): React.JSX.El
     <nav className="sidebar">
       <button
         className={`today-btn${snapshot.todayOpen ? ' active' : ''}`}
-        title="Home  (⌘T)"
-        aria-label="Home"
+        title={`${t('app.sidebar.home')}  (⌘T)`}
+        aria-label={t('app.sidebar.home')}
         onClick={() => window.missiondesk.openToday()}
       >
         <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -190,8 +191,8 @@ export function Sidebar({ snapshot, onAdd, onCreateSpace }: Props): React.JSX.El
       {hasGoogle && (
         <button
           className={`all-calendars${snapshot.calendarOpen ? ' active' : ''}`}
-          title="All calendars  (⌘0)"
-          aria-label="All calendars"
+          title={`${t('app.sidebar.allCalendars')}  (⌘0)`}
+          aria-label={t('app.sidebar.allCalendars')}
           onClick={() => window.missiondesk.openCalendar()}
         >
           <img src={LOGOS.calendar} alt="" draggable={false} />
@@ -202,8 +203,8 @@ export function Sidebar({ snapshot, onAdd, onCreateSpace }: Props): React.JSX.El
       {snapshot.accounts.length > 0 && !snapshot.assistant.button && (
         <button
           className={`actions-btn${done ? ' copied' : ''}`}
-          title={done ?? 'Quick actions: Meet link, event, to-do, assistant'}
-          aria-label={done ?? 'Quick actions'}
+          title={done ?? t('app.sidebar.quickActionsTitle')}
+          aria-label={done ?? t('app.sidebar.quickActions')}
           onClick={() => window.missiondesk.showActionsMenu()}
         >
           {done ? (
@@ -219,8 +220,8 @@ export function Sidebar({ snapshot, onAdd, onCreateSpace }: Props): React.JSX.El
       )}
       <button
         className={`settings-btn${snapshot.settingsOpen ? ' active' : ''}${updateReady ? ' has-update' : ''}`}
-        title={updateReady ? `Mission Desk ${updateReady} is ready: restart to update` : 'Settings  (⌘,)'}
-        aria-label={updateReady ? `Settings. Mission Desk ${updateReady} is ready to install` : 'Settings'}
+        title={updateReady ? t('app.sidebar.updateReadyTitle', { version: updateReady }) : `${t('app.sidebar.settings')}  (⌘,)`}
+        aria-label={updateReady ? t('app.sidebar.updateReadyLabel', { version: updateReady }) : t('app.sidebar.settings')}
         onClick={() =>
           snapshot.settingsOpen ? window.missiondesk.closeSettings() : window.missiondesk.openSettings(updateReady ? 'about' : undefined)
         }
@@ -230,7 +231,7 @@ export function Sidebar({ snapshot, onAdd, onCreateSpace }: Props): React.JSX.El
           <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
         </svg>
       </button>
-      <button className="add" title="Add an app or a space" onClick={() => (snapshot.accounts.length ? window.missiondesk.showAddMenu() : onAdd())}>
+      <button className="add" title={t('app.sidebar.add')} onClick={() => (snapshot.accounts.length ? window.missiondesk.showAddMenu() : onAdd())}>
         +
       </button>
     </nav>

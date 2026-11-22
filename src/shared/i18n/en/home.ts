@@ -1,0 +1,135 @@
+import type { Msg } from '../types';
+
+/** Home (the day page: greeting, agenda, timeline, messages, to-dos) and the ⚡ quick actions. */
+export const home = {
+  // Greeting by time of day (src/shared/today.ts).
+  'home.greeting.morning': 'Good morning',
+  'home.greeting.afternoon': 'Good afternoon',
+  'home.greeting.evening': 'Good evening',
+
+  // How long ago a message came, on its line (src/shared/messages.ts).
+  'home.ago.now': 'now',
+  'home.ago.minutes': { one: '{count} min', other: '{count} min' },
+  'home.ago.hours': { one: '{count} h', other: '{count} h' },
+
+  // Lengths of time: "12 min", "2 h", "1 h 5 min"; on the timeline "1 h 15".
+  'home.duration.minutes': { one: '{count} min', other: '{count} min' },
+  'home.duration.hours': { one: '{count} h', other: '{count} h' },
+  'home.duration.hoursMinutes': '{hours} h {minutes} min',
+  'home.duration.hoursMinutesShort': '{hours} h {minutes}',
+
+  // The page's head.
+  'home.today.meetingsLeft': { one: '{count} meeting left', other: '{count} meetings left' },
+  'home.today.todos': { one: '{count} to-do', other: '{count} to-dos' },
+  'home.today.unread': { one: '{count} unread', other: '{count} unread' },
+  'home.today.briefMe': 'Brief me',
+  'home.today.briefMeTitle': "A summary of your day across your apps: what's urgent and who is waiting on you",
+
+  // To-dos.
+  'home.todo.title': 'To-do',
+  'home.todo.addPlaceholder': 'Add a to-do and press Enter',
+  'home.todo.space': 'Space',
+  'home.todo.carriedFrom': 'from {day}',
+  'home.todo.empty': 'Nothing yet. What has to happen today?',
+  'home.todo.clearDone': 'Clear done',
+
+  // Agenda.
+  'home.agenda.title': 'Agenda',
+  'home.agenda.openCalendar': 'Open calendar',
+  'home.agenda.noGoogle': 'Add a Google account to see your meetings here.',
+  'home.agenda.openInCalendars': 'Open in All calendars',
+  'home.agenda.join': 'Join {provider}',
+  'home.agenda.endsIn': 'Ends in {duration}',
+  'home.agenda.startingNow': 'Starting now',
+  'home.agenda.startsIn': 'In {duration}',
+  'home.agenda.endsInSub': 'ends in {duration}',
+  'home.agenda.startingNowSub': 'starting now',
+  'home.agenda.startsInSub': 'in {duration}',
+  'home.agenda.notAnswered': 'not answered',
+  'home.agenda.anotherAccount': 'another account',
+  'home.agenda.clashWith': 'Clash with {names}',
+  'home.agenda.problemSignedOut': "{name}'s calendar: signed out. Some meetings may be missing.",
+  'home.agenda.problemOffline': "{name}'s calendar: offline. Some meetings may be missing.",
+  'home.agenda.problemError': "{name}'s calendar: couldn't load. Some meetings may be missing.",
+  'home.agenda.now': 'Now',
+  'home.agenda.upNext': 'Up next',
+  'home.agenda.rowNow': 'now',
+  'home.agenda.nextHours': 'Next hours',
+  'home.agenda.hideEarlier': 'Hide earlier',
+  'home.agenda.earlierToday': 'Earlier today ({count})',
+  'home.agenda.showLess': 'Show less',
+  'home.agenda.laterToday': { one: '{count} more later today', other: '{count} more later today' },
+  'home.agenda.noMore': 'No more meetings today.',
+
+  // Timeline.
+  'home.timeline.free': 'Free',
+  'home.timeline.freeFor': '{duration} free',
+
+  // Messages.
+  'home.messages.title': 'Messages',
+  'home.messages.clearAll': 'Clear all',
+  'home.messages.empty': 'No new messages. Chats and emails show up here as they arrive.',
+  'home.messages.showFewer': 'Show fewer',
+  'home.messages.showAll': { one: 'Show all {count}', other: 'Show all {count}' },
+  'home.messages.alsoUnread': 'Also unread',
+  'home.messages.unread': 'Unread',
+  'home.messages.unreadCount': { one: '{name}: {count} unread', other: '{name}: {count} unread' },
+  'home.messages.unreadCountIn': { one: '{name}, {where}: {count} unread', other: '{name}, {where}: {count} unread' },
+  'home.messages.unreadDot': '{name}: unread',
+  'home.messages.unreadDotIn': '{name}, {where}: unread',
+  'home.messages.nameIn': '{name}, {where}',
+  'home.messages.mailHint': 'To see each email here, turn on desktop notifications in Gmail or Outlook settings.',
+  'home.messages.openIn': 'Open in {name}',
+  'home.messages.dismiss': 'Dismiss',
+  'home.messages.dismissNamed': 'Dismiss {name}',
+
+  // The ⚡ quick actions' menu.
+  'home.dial.label': 'Quick actions',
+  'home.dial.for': 'For {label}',
+  'home.dial.meet': 'New meeting link',
+  'home.dial.event': 'New event',
+  'home.dial.todo': 'New to-do',
+  'home.dial.assistant': 'Ask the assistant',
+
+  // The quick pop-ups: a new to-do.
+  'home.quick.newTodo': 'New to-do',
+  'home.quick.todoPlaceholder': 'What needs doing?',
+  'home.quick.space': 'Space',
+  'home.quick.todoHint': '<kbd>↵</kbd> to add · <kbd>esc</kbd> to close',
+  'home.quick.addTodo': 'Add to-do',
+  'home.quick.todoAdded': 'To-do added',
+
+  // The quick pop-ups: a new event.
+  'home.quick.newEvent': 'New event',
+  'home.quick.account': 'Account',
+  'home.quick.titlePlaceholder': 'Add a title',
+  'home.quick.titleLabel': 'Title',
+  'home.quick.day': 'Day',
+  'home.quick.starts': 'Starts',
+  'home.quick.ends': 'Ends',
+  'home.quick.allDay': 'All day',
+  'home.quick.removeGuest': 'Remove {email}',
+  'home.quick.addAnother': 'Add another',
+  'home.quick.addGuests': 'Add guests by email',
+  'home.quick.guests': 'Guests',
+  'home.quick.badEmail': "That isn't an email address.",
+  'home.quick.calendar': 'Calendar',
+  'home.quick.location': 'Location',
+  'home.quick.locationPlaceholder': 'Add a place',
+  'home.quick.notes': 'Notes',
+  'home.quick.notesPlaceholder': 'Add a description',
+  'home.quick.moreOptions': 'More options: calendar, place, notes',
+  'home.quick.eventHint': '<kbd>{keys}</kbd> to save · <kbd>esc</kbd> to close',
+  'home.quick.saving': 'Saving…',
+  'home.quick.saveEvent': 'Save event',
+  'home.quick.eventSaved': 'Event saved',
+  'home.quick.sendTitle': 'Send invitation emails to guests?',
+  'home.quick.sendMessage': 'Guests get an email from Google.',
+  'home.quick.send': 'Send',
+  'home.quick.dontSend': "Don't send",
+  'home.quick.errorSignedOut': 'Signed out of that Google account. Sign in again, then retry.',
+  'home.quick.errorForbidden': "You can't add events to that calendar.",
+  'home.quick.errorOffline': "Couldn't reach Google. Check your connection and try again.",
+  'home.quick.errorUnsupported': 'This event has to be made in Google Calendar.',
+  'home.quick.errorGeneric': "Couldn't save the event. Try again.",
+} satisfies Record<string, Msg>;

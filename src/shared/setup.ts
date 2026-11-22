@@ -1,6 +1,7 @@
 import type { AssistantEngine } from './assistant-engines';
 import type { ServiceId } from './types';
 import { ACCOUNT_COLORS } from './ipc';
+import { t } from './i18n';
 
 /** What the first-run setup asks Mission Desk to create. */
 export interface SetupApp {
@@ -20,7 +21,8 @@ export interface SetupPlan {
   apps: SetupApp[];
 }
 
-export const SERVICE_NAMES: Record<ServiceId, string> = {
+/** Brand names (a website is named after its address, see siteName). */
+export const SERVICE_NAMES: Record<Exclude<ServiceId, 'custom'>, string> = {
   google: 'Google',
   microsoft: 'Microsoft 365',
   slack: 'Slack',
@@ -33,7 +35,6 @@ export const SERVICE_NAMES: Record<ServiceId, string> = {
   icloud: 'iCloud Mail',
   fastmail: 'Fastmail',
   notion: 'Notion',
-  custom: 'Website',
 };
 
 /** The first-run setup shows once, on a Mission Desk with nothing in it yet. */
@@ -46,9 +47,9 @@ export function siteName(url: string | undefined): string {
   try {
     const labels = new URL(url ?? '').hostname.split('.').filter((l) => !['www', 'app', 'web', 'my'].includes(l));
     const first = labels[0] ?? '';
-    return first ? first.charAt(0).toUpperCase() + first.slice(1) : 'Website';
+    return first ? first.charAt(0).toUpperCase() + first.slice(1) : t('setup.app.website');
   } catch {
-    return 'Website';
+    return t('setup.app.website');
   }
 }
 
@@ -107,9 +108,9 @@ export function planOf(d: SetupDraft): SetupPlan {
 export function spaceNameProblem(name: string, existing: string[]): string | null {
   const n = name.trim();
   if (!n) return 'empty';
-  if (n.length > 40) return 'Keep it under 40 characters.';
+  if (n.length > 40) return t('setup.spaces.tooLong', { max: 40 });
   const same = existing.find((e) => e.trim().toLowerCase() === n.toLowerCase());
-  return same ? `${same} is already there.` : null;
+  return same ? t('setup.spaces.taken', { name: same }) : null;
 }
 
 /** The id of the space already called `name` (any case), so a second run adds to it. */

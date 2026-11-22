@@ -1,8 +1,9 @@
 import type { AccountView } from '../../shared/ipc';
+import { t } from './i18n';
 import { LOGOS } from './logos';
 
 export function Badge({ unread }: { unread: AccountView['unread'] }): React.JSX.Element | null {
-  if (unread === 'dot') return <span className="badge dot" aria-label="Unread messages" />;
+  if (unread === 'dot') return <span className="badge dot" aria-label={t('app.sidebar.unread')} />;
   if (unread <= 0) return null;
   return <span className="badge">{unread > 99 ? '99+' : unread}</span>;
 }

@@ -1,3 +1,4 @@
+import { intlLocale, t } from './i18n';
 import type { ViewKind } from './types';
 
 /**
@@ -106,14 +107,12 @@ export function messageViews(feed: Feed, previews: boolean): MessageView[] {
   return feed.map((m) => ({ key: m.key, accountId: m.accountId, title: m.title, body: previews ? m.body : '', at: m.at, count: m.count }));
 }
 
-const weekday = new Intl.DateTimeFormat(undefined, { weekday: 'short' });
-const date = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' });
-
 /** How long ago, on a line: "now", "5 min", "2 h", the weekday, then the date. */
 export function ago(at: number, now: number): string {
   const min = Math.floor((now - at) / 60_000);
-  if (min < 1) return 'now';
-  if (min < 60) return `${min} min`;
-  if (min < 24 * 60) return `${Math.floor(min / 60)} h`;
-  return min < 6 * 24 * 60 ? weekday.format(at) : date.format(at);
+  if (min < 1) return t('home.ago.now');
+  if (min < 60) return t('home.ago.minutes', { count: min });
+  if (min < 24 * 60) return t('home.ago.hours', { count: Math.floor(min / 60) });
+  const fmt = min < 6 * 24 * 60 ? { weekday: 'short' as const } : { day: 'numeric' as const, month: 'short' as const };
+  return new Intl.DateTimeFormat(intlLocale(), fmt).format(at);
 }

@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { AssistantEvent } from '../../shared/assistant';
 import { applyEvent, type ChatMessage, type ConversationMeta } from '../../shared/assistant-history';
+import { t } from '../../shared/i18n';
 
 export interface Conversation {
   id: string;
@@ -116,7 +117,7 @@ export function createConversationStore(dir: string, now: () => number = Date.no
   return {
     create(scope: string): Conversation {
       const at = stamp();
-      const c: Conversation = { id: randomUUID(), scope, title: 'New chat', createdAt: at, updatedAt: at, messages: [] };
+      const c: Conversation = { id: randomUUID(), scope, title: t('assistant.conversation.newTitle'), createdAt: at, updatedAt: at, messages: [] };
       all.set(c.id, c);
       return c;
     },
@@ -132,7 +133,7 @@ export function createConversationStore(dir: string, now: () => number = Date.no
       update(
         id,
         (c) => {
-          if (c.messages.length === 0) c.title = text.replace(/\s+/g, ' ').trim().slice(0, TITLE) || 'New chat';
+          if (c.messages.length === 0) c.title = text.replace(/\s+/g, ' ').trim().slice(0, TITLE) || t('assistant.conversation.newTitle');
           c.messages = [...c.messages, { role: 'user', text, tools: [] }];
         },
         true,

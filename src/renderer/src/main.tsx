@@ -1,3 +1,4 @@
+import './i18n-init';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { AssistantFab, AssistantWindow } from './assistant/AssistantWindow';

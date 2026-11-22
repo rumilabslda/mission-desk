@@ -9,6 +9,9 @@ import { aboutPanelOptions } from './about-panel';
 import { setElectronUserAgent } from './views/session';
 import { chromeUserAgent } from './views/user-agent';
 import { APP_ID, APP_NAME } from '../shared/about';
+import { loadCatalogs } from '../shared/i18n/catalogs';
+
+loadCatalogs();
 
 // Electron names the data folder and the keychain entry that encrypts cookies ("Mission Desk Safe Storage")
 // after app.name. Changing the name later would sign everyone out of every app. Never change it.
@@ -16,7 +19,6 @@ app.setName(APP_NAME);
 app.setPath('userData', path.join(app.getPath('appData'), APP_NAME));
 // Windows shows notifications only for an app with an id (the same as the installer's).
 if (process.platform === 'win32') app.setAppUserModelId(APP_ID);
-app.setAboutPanelOptions(aboutPanelOptions(app.getVersion()));
 setElectronUserAgent(app.userAgentFallback);
 app.userAgentFallback = chromeUserAgent(app.userAgentFallback);
 
@@ -58,7 +60,13 @@ function createWindow(): void {
   });
   registerIpc(win, controller);
   controllerRef = controller;
-  Menu.setApplicationMenu(buildAppMenu(controller, win));
+  // The menus and the About panel are written in the interface language (set by the controller), again on a change.
+  const applyLanguage = (): void => {
+    app.setAboutPanelOptions(aboutPanelOptions(app.getVersion()));
+    Menu.setApplicationMenu(buildAppMenu(controller, win));
+  };
+  controller.setMenuBuilder(applyLanguage);
+  applyLanguage();
   if (!app.isPackaged) (globalThis as Record<string, unknown>).__missiondeskDev = { controller }; // dev-only inspection
 
   let saveTimer: ReturnType<typeof setTimeout> | undefined;

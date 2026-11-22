@@ -11,6 +11,7 @@ import { EventCard } from './EventCard';
 import { MiniMonth } from './MiniMonth';
 import { MonthGrid } from './MonthGrid';
 import { TimeGrid } from './TimeGrid';
+import { intlLocale, type MessageKey, t } from '../i18n';
 
 const REFRESH_MS = 5 * 60_000;
 const STALE_MS = 60_000;
@@ -25,11 +26,13 @@ export interface Owner {
   color: string;
 }
 
-const STATUS_TEXT: Record<Exclude<AccountCalendarStatus['state'], 'ok'>, string> = {
-  'signed-out': 'Signed out — open',
-  error: 'Couldn’t load this calendar',
-  offline: 'Offline — showing the last update',
+const STATUS_TEXT: Record<Exclude<AccountCalendarStatus['state'], 'ok'>, MessageKey> = {
+  'signed-out': 'calendar.accounts.signedOut',
+  error: 'calendar.accounts.error',
+  offline: 'calendar.accounts.offline',
 };
+
+const VIEW_LABEL: Record<CalView, MessageKey> = { day: 'calendar.view.day', week: 'calendar.view.week', month: 'calendar.view.month' };
 
 function AccountList({
   accounts,
@@ -44,20 +47,20 @@ function AccountList({
 }): React.JSX.Element {
   return (
     <div className="cal-accounts">
-      <div className="cal-side-title">Accounts</div>
+      <div className="cal-side-title">{t('calendar.accounts.title')}</div>
       {accounts.map((a) => {
         const state = status.get(a.id);
         const on = !hidden.has(a.id);
         return (
           <div key={a.id} className="cal-account">
-            <label title={on ? `Hide ${a.name}` : `Show ${a.name}`}>
+            <label title={on ? t('calendar.accounts.hide', { name: a.name }) : t('calendar.accounts.show', { name: a.name })}>
               <input type="checkbox" checked={on} onChange={(e) => window.missiondesk.setCalendarHidden(a.id, !e.target.checked)} />
               <span className="cal-check" style={{ ['--c' as string]: owners.get(a.id)?.color ?? a.color }} aria-hidden="true" />
               <span className="cal-account-name">{a.name}</span>
             </label>
             {on && state && state !== 'ok' && (
               <button className={`cal-account-status ${state}`} onClick={() => window.missiondesk.selectAccount(a.id)}>
-                {STATUS_TEXT[state]}
+                {t(STATUS_TEXT[state])}
               </button>
             )}
           </div>
@@ -148,8 +151,8 @@ export function CalendarView({ snapshot }: { snapshot: UiSnapshot }): React.JSX.
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
-      const t = e.target as HTMLElement | null;
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      const el = e.target as HTMLElement | null;
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return;
       if (document.querySelector('.overlay') || quick) return; // a dialog or the quick card is open
       if (card) {
         if (e.key === 'Escape') setCard(null);
@@ -192,11 +195,11 @@ export function CalendarView({ snapshot }: { snapshot: UiSnapshot }): React.JSX.
   };
 
   const ERROR_TEXT: Record<string, string> = {
-    'signed-out': 'Signed out of that Google account. Sign in again, then retry.',
-    forbidden: "You can't change this event.",
-    offline: "Couldn't reach Google. Check the event before trying again.",
-    unsupported: 'This change has to be made in Google Calendar.',
-    error: "Couldn't save the change.",
+    'signed-out': t('calendar.error.signedOut'),
+    forbidden: t('calendar.error.forbidden'),
+    offline: t('calendar.error.offline'),
+    unsupported: t('calendar.error.unsupported'),
+    error: t('calendar.error.generic'),
   };
 
   /** A write that can't throw: a rejected call counts as a plain error. */
@@ -210,19 +213,19 @@ export function CalendarView({ snapshot }: { snapshot: UiSnapshot }): React.JSX.
       return true;
     }
     const actions: ToastState['actions'] = [];
-    if (retry && r.error !== 'unsupported' && r.error !== 'forbidden') actions.push({ label: 'Try again', run: retry });
-    if (ev?.openUrl) actions.push({ label: 'Open in Google Calendar', run: () => openInGoogle(ev) });
+    if (retry && r.error !== 'unsupported' && r.error !== 'forbidden') actions.push({ label: t('calendar.toast.tryAgain'), run: retry });
+    if (ev?.openUrl) actions.push({ label: t('calendar.toast.openInGoogle'), run: () => openInGoogle(ev) });
     setToast({ message: ERROR_TEXT[r.error] ?? ERROR_TEXT.error, actions, error: true });
     return false;
   }
 
   /** Repeating events: this one, all, or "this and following" (done in Google Calendar). */
-  async function scopeFor(ev: CalEvent, verb: string): Promise<WriteScope | null> {
+  async function scopeFor(ev: CalEvent, question: MessageKey): Promise<WriteScope | null> {
     if (!ev.recurring) return 'this';
-    const s = await ask<WriteScope | 'following'>(`${verb} recurring event`, undefined, [
-      { label: 'This event', value: 'this', primary: true },
-      { label: 'All events', value: 'all' },
-      { label: 'This and following events…', value: 'following' },
+    const s = await ask<WriteScope | 'following'>(t(question), undefined, [
+      { label: t('calendar.scope.this'), value: 'this', primary: true },
+      { label: t('calendar.scope.all'), value: 'all' },
+      { label: t('calendar.scope.following'), value: 'following' },
     ]);
     if (s === 'following') {
       openInGoogle(ev);
@@ -232,48 +235,48 @@ export function CalendarView({ snapshot }: { snapshot: UiSnapshot }): React.JSX.
   }
 
   const askSend = (title: string): Promise<SendUpdates | null> =>
-    ask<SendUpdates>(title, 'Guests get an email from Google.', [
-      { label: 'Send', value: 'all', primary: true },
-      { label: "Don't send", value: 'none' },
+    ask<SendUpdates>(title, t('calendar.send.message'), [
+      { label: t('calendar.send.send'), value: 'all', primary: true },
+      { label: t('calendar.send.dontSend'), value: 'none' },
     ]);
 
   async function commitCreate(accountId: string, draft: EventDraft, send: SendUpdates): Promise<void> {
     const r = await call(window.missiondesk.calendarCreate(accountId, draft, send));
-    settle(r, { message: 'Event created' }, () => void commitCreate(accountId, draft, send));
+    settle(r, { message: t('calendar.toast.created') }, () => void commitCreate(accountId, draft, send));
   }
 
   /** Quick card Save (the editor asks its own questions before closing). */
   async function create(accountId: string, draft: EventDraft): Promise<void> {
-    const send = draft.guests.length ? await askSend('Send invitation emails to guests?') : 'none';
+    const send = draft.guests.length ? await askSend(t('calendar.send.inviteTitle')) : 'none';
     if (send) await commitCreate(accountId, draft, send);
   }
 
   async function commitEdit(res: EditorResult, current: { event: CalEvent; full: EditableEvent }, scope: WriteScope, send: SendUpdates): Promise<void> {
     const r = await call(window.missiondesk.calendarUpdate(res.accountId, res.eventId!, res.draft, scope, send));
-    if (!settle(r, { message: 'Event saved' }, () => void commitEdit(res, current, scope, send), current.event)) return;
+    if (!settle(r, { message: t('calendar.toast.saved') }, () => void commitEdit(res, current, scope, send), current.event)) return;
     if (!res.toCalendarId) return;
     if (current.event.recurring && scope === 'this') {
-      setToast({ message: 'Saved. A single occurrence can’t move to another calendar; choose All events for that.' });
+      setToast({ message: t('calendar.toast.occurrenceCantMove') });
       return;
     }
     const id = scope === 'all' && current.full.seriesId ? current.full.seriesId : res.eventId!;
     const m = await call(window.missiondesk.calendarChangeCalendar(res.accountId, res.draft.calendarId, id, res.toCalendarId));
-    settle(m, { message: 'Event saved and moved' }, undefined, current.event);
+    settle(m, { message: t('calendar.toast.savedMoved') }, undefined, current.event);
   }
 
   /** Editor Save: questions first (the editor stays open if one is cancelled), then the write. */
   async function saveEditor(res: EditorResult): Promise<void> {
     if (!res.eventId) {
-      const send = res.draft.guests.length ? await askSend('Send invitation emails to guests?') : 'none';
+      const send = res.draft.guests.length ? await askSend(t('calendar.send.inviteTitle')) : 'none';
       if (!send) return;
       setEditor(null);
       return commitCreate(res.accountId, res.draft, send);
     }
     const current = editing.current;
     if (!current) return;
-    const scope = await scopeFor(current.event, 'Edit');
+    const scope = await scopeFor(current.event, 'calendar.scope.editTitle');
     if (!scope) return;
-    const send = res.draft.guests.length || current.full.guests.length ? await askSend('Send update emails to guests?') : 'none';
+    const send = res.draft.guests.length || current.full.guests.length ? await askSend(t('calendar.send.updateTitle')) : 'none';
     if (!send) return;
     editing.current = null;
     setEditor(null);
@@ -290,7 +293,7 @@ export function CalendarView({ snapshot }: { snapshot: UiSnapshot }): React.JSX.
   }
 
   async function moveEvent(ev: CalEvent, start: Date, end: Date): Promise<void> {
-    const scope = await scopeFor(ev, 'Move');
+    const scope = await scopeFor(ev, 'calendar.scope.moveTitle');
     if (!scope) return;
     const before = { start: ev.start, end: ev.end };
     const after = { start: start.toISOString(), end: end.toISOString() };
@@ -303,34 +306,34 @@ export function CalendarView({ snapshot }: { snapshot: UiSnapshot }): React.JSX.
       settle(u, null, undefined, ev);
     };
     // A whole series' occurrences get new ids once it moves, so only single moves can be undone here.
-    const done: ToastState = scope === 'all' ? { message: 'Series moved' } : { message: 'Event moved', actions: [{ label: 'Undo', run: () => void undo() }] };
+    const done: ToastState = scope === 'all' ? { message: t('calendar.toast.seriesMoved') } : { message: t('calendar.toast.moved'), actions: [{ label: t('calendar.toast.undo'), run: () => void undo() }] };
     settle(r, done, () => void moveEvent(ev, start, end), ev);
   }
 
   async function deleteEvent(ev: CalEvent): Promise<void> {
     setCard(null);
-    const scope = await scopeFor(ev, 'Delete');
+    const scope = await scopeFor(ev, 'calendar.scope.deleteTitle');
     if (!scope) return;
     const full = await call(window.missiondesk.calendarGetEvent(ev.accountId, ev.calendarId, ev.eventId));
     const hasGuests = full.ok && full.event.guests.length > 0;
     let send: SendUpdates | null = 'none';
     if (hasGuests) {
-      send = await ask<SendUpdates>('Delete event?', 'Let the guests know it was cancelled?', [
-        { label: 'Delete and notify guests', value: 'all', primary: true },
-        { label: "Delete, don't notify", value: 'none', danger: true },
+      send = await ask<SendUpdates>(t('calendar.delete.guestsTitle'), t('calendar.delete.guestsMessage'), [
+        { label: t('calendar.delete.notify'), value: 'all', primary: true },
+        { label: t('calendar.delete.dontNotify'), value: 'none', danger: true },
       ]);
     } else if (!ev.recurring) {
-      send = await ask<SendUpdates>('Delete this event?', ev.title, [{ label: 'Delete', value: 'none', danger: true }]);
+      send = await ask<SendUpdates>(t('calendar.delete.title'), ev.title, [{ label: t('common.delete'), value: 'none', danger: true }]);
     }
     if (!send) return;
     const r = await call(window.missiondesk.calendarDelete(ev.accountId, ev.calendarId, ev.eventId, scope, send));
-    settle(r, { message: 'Event deleted' }, () => void deleteEvent(ev), ev);
+    settle(r, { message: t('calendar.toast.deleted') }, () => void deleteEvent(ev), ev);
   }
 
   async function respond(ev: CalEvent, reply: Reply): Promise<void> {
     setCard(null);
     const r = await call(window.missiondesk.calendarRespond(ev.accountId, ev.calendarId, ev.eventId, reply));
-    settle(r, { message: reply === 'accepted' ? 'Going' : reply === 'declined' ? 'Not going' : 'Maybe' }, () => void respond(ev, reply), ev);
+    settle(r, { message: t(reply === 'accepted' ? 'calendar.toast.going' : reply === 'declined' ? 'calendar.toast.notGoing' : 'calendar.toast.maybe') }, () => void respond(ev, reply), ev);
   }
 
   function newEventNow(): void {
@@ -347,7 +350,7 @@ export function CalendarView({ snapshot }: { snapshot: UiSnapshot }): React.JSX.
   if (google.length === 0) {
     return (
       <div className="cal cal-empty">
-        <p>Add a Google account to see its calendar here.</p>
+        <p>{t('calendar.empty')}</p>
       </div>
     );
   }
@@ -355,26 +358,26 @@ export function CalendarView({ snapshot }: { snapshot: UiSnapshot }): React.JSX.
   return (
     <div className="cal">
       <header className="cal-toolbar">
-        <button className="cal-btn" onClick={today} title="Today (T)">
-          Today
+        <button className="cal-btn" onClick={today} title={t('calendar.toolbar.todayTip')}>
+          {t('common.today')}
         </button>
         <div className="cal-nav">
-          <button className="cal-icon-btn" onClick={() => go(-1)} title="Previous (K)" aria-label="Previous">
+          <button className="cal-icon-btn" onClick={() => go(-1)} title={t('calendar.toolbar.previousTip')} aria-label={t('calendar.toolbar.previous')}>
             ‹
           </button>
-          <button className="cal-icon-btn" onClick={() => go(1)} title="Next (J)" aria-label="Next">
+          <button className="cal-icon-btn" onClick={() => go(1)} title={t('calendar.toolbar.nextTip')} aria-label={t('common.next')}>
             ›
           </button>
         </div>
-        <h1 className="cal-title">{title(view, anchor, weekStart)}</h1>
-        <button className="cal-btn cal-create" onClick={newEventNow} title="Create an event">
-          + Create
+        <h1 className="cal-title">{title(view, anchor, weekStart, intlLocale())}</h1>
+        <button className="cal-btn cal-create" onClick={newEventNow} title={t('calendar.toolbar.createTip')}>
+          {t('calendar.toolbar.create')}
         </button>
-        {loading && <span className="cal-spinner" aria-label="Loading" />}
+        {loading && <span className="cal-spinner" aria-label={t('calendar.toolbar.loading')} />}
         <div className="cal-views" role="tablist">
           {(['day', 'week', 'month'] as const).map((v) => (
             <button key={v} role="tab" aria-selected={view === v} className={view === v ? 'on' : ''} onClick={() => setView(v)} title={`${v[0].toUpperCase()}`}>
-              {v[0].toUpperCase() + v.slice(1)}
+              {t(VIEW_LABEL[v])}
             </button>
           ))}
         </div>
@@ -386,7 +389,7 @@ export function CalendarView({ snapshot }: { snapshot: UiSnapshot }): React.JSX.
         </aside>
         <section className="cal-main">
           {!data && loading ? (
-            <div className="cal-loading">Loading calendars…</div>
+            <div className="cal-loading">{t('calendar.loadingCalendars')}</div>
           ) : view === 'month' ? (
             <MonthGrid
               days={days}

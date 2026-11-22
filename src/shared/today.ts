@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import type { CalEvent, Todo } from './types';
 
 export const localDay = (d: Date): string =>
@@ -76,7 +77,7 @@ export function agendaView(events: CalEvent[], now: Date): AgendaView {
 
 export function greeting(now: Date): string {
   const h = now.getHours();
-  return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+  return t(h < 12 ? 'home.greeting.morning' : h < 18 ? 'home.greeting.afternoon' : 'home.greeting.evening');
 }
 
 /** Open on Today at launch: on by default, never on first run (the welcome screen shows instead). */

@@ -4,6 +4,7 @@ import type { EventDraft, WritableCalendar } from '../../shared/types';
 import type { Owner } from './calendar/CalendarView';
 import { draftTimes } from './calendar/drag';
 import type { EditorResult } from './calendar/EventEditor';
+import { rich, t } from './i18n';
 
 // The quick actions' pop-ups (#quick page): a new to-do and a new event, made for a few seconds'
 // typing. The calendar keeps its full editor; the rarely used fields here sit under "More options".
@@ -13,8 +14,8 @@ const isMac = navigator.platform.toLowerCase().includes('mac');
 const pad = (n: number): string => String(n).padStart(2, '0');
 const dateField = (d: Date): string => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const timeField = (d: Date): string => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-const minutesOf = (t: string): number | null => {
-  const m = /^(\d{2}):(\d{2})$/.exec(t);
+const minutesOf = (hhmm: string): number | null => {
+  const m = /^(\d{2}):(\d{2})$/.exec(hhmm);
   return m ? Number(m[1]) * 60 + Number(m[2]) : null;
 };
 
@@ -98,11 +99,11 @@ export function QuickTodoCard({
       }}
       onKeyDown={(e) => e.key === 'Escape' && onClose()}
     >
-      <Head icon={TODO_ICON} tone="todo" title="New to-do" />
-      <input ref={input} className="qk-title" value={text} maxLength={500} placeholder="What needs doing?" aria-label="New to-do" onChange={(e) => setText(e.target.value)} />
+      <Head icon={TODO_ICON} tone="todo" title={t('home.quick.newTodo')} />
+      <input ref={input} className="qk-title" value={text} maxLength={500} placeholder={t('home.quick.todoPlaceholder')} aria-label={t('home.quick.newTodo')} onChange={(e) => setText(e.target.value)} />
       {options.length > 0 && (
-        <div className="qk-chips" role="radiogroup" aria-label="Space">
-          {[{ value: '', label: 'No space' }, ...options].map((o) => (
+        <div className="qk-chips" role="radiogroup" aria-label={t('home.quick.space')}>
+          {[{ value: '', label: t('common.noSpace') }, ...options].map((o) => (
             <button
               key={o.value}
               type="button"
@@ -122,13 +123,13 @@ export function QuickTodoCard({
       )}
       <div className="qk-foot">
         <span className="qk-hint">
-          <Keys k="↵" /> to add · <Keys k="esc" /> to close
+          {rich('home.quick.todoHint', { kbd: (k) => <Keys k={k} /> })}
         </span>
         <button type="button" className="qk-ghost" onClick={onClose}>
-          Cancel
+          {t('common.cancel')}
         </button>
         <button type="submit" className="qk-primary" disabled={!ready}>
-          Add to-do
+          {t('home.quick.addTodo')}
         </button>
       </div>
     </form>
@@ -136,7 +137,7 @@ export function QuickTodoCard({
 }
 
 const DURATIONS = [15, 30, 60, 120];
-const durationLabel = (m: number): string => (m < 60 ? `${m} min` : `${m / 60} h`);
+const durationLabel = (m: number): string => (m < 60 ? t('home.duration.minutes', { count: m }) : t('home.duration.hours', { count: m / 60 }));
 
 /** A new event: title, day and time (with quick lengths), Meet, guests; the rest under "More options". */
 export function QuickEventCard({
@@ -192,9 +193,9 @@ export function QuickEventCard({
   const endTime = startMin === null ? '' : `${pad(Math.floor(((startMin + minutes) % 1440) / 60))}:${pad((startMin + minutes) % 60)}`;
   const times = useMemo(() => {
     if (allDay) return draftTimes(true, { startDate: date, startTime: '09:00', endDate: date, endTime: '10:00' });
-    const t = draftTimes(false, { startDate: date, startTime: time, endDate: date, endTime: '23:59' });
-    if (!t) return null;
-    return { start: t.start, end: new Date(Date.parse(t.start) + minutes * 60_000).toISOString() };
+    const r = draftTimes(false, { startDate: date, startTime: time, endDate: date, endTime: '23:59' });
+    if (!r) return null;
+    return { start: r.start, end: new Date(Date.parse(r.start) + minutes * 60_000).toISOString() };
   }, [allDay, date, time, minutes]);
 
   const pending = guestText.trim().toLowerCase();
@@ -220,7 +221,7 @@ export function QuickEventCard({
 
   const today = dateField(new Date());
   const tomorrow = dateField(new Date(Date.now() + 86_400_000));
-  const dayWord = date === today ? 'Today' : date === tomorrow ? 'Tomorrow' : null;
+  const dayWord = date === today ? t('common.today') : date === tomorrow ? t('common.tomorrow') : null;
 
   return (
     <form
@@ -234,8 +235,8 @@ export function QuickEventCard({
         if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) save();
       }}
     >
-      <Head icon={EVENT_ICON} tone="event" title="New event">
-        <label className="qk-account" title="Account">
+      <Head icon={EVENT_ICON} tone="event" title={t('home.quick.newEvent')}>
+        <label className="qk-account" title={t('home.quick.account')}>
           <span className="qk-dot" style={{ background: owners.get(accountId)?.color ?? '#888' }} />
           <select
             value={accountId}
@@ -253,23 +254,23 @@ export function QuickEventCard({
         </label>
       </Head>
 
-      <input ref={titleRef} className="qk-title" placeholder="Add a title" value={title} maxLength={1024} aria-label="Title" onChange={(e) => setTitle(e.target.value)} />
+      <input ref={titleRef} className="qk-title" placeholder={t('home.quick.titlePlaceholder')} value={title} maxLength={1024} aria-label={t('home.quick.titleLabel')} onChange={(e) => setTitle(e.target.value)} />
 
       <div className="qk-when">
         <label className="qk-field qk-date">
           {dayWord && <span className="qk-dayword">{dayWord}</span>}
-          <input type="date" value={date} aria-label="Day" onChange={(e) => setDate(e.target.value)} />
+          <input type="date" value={date} aria-label={t('home.quick.day')} onChange={(e) => setDate(e.target.value)} />
         </label>
         {!allDay && (
           <>
-            <input className="qk-field" type="time" step={300} value={time} aria-label="Starts" onChange={(e) => setTime(e.target.value)} />
+            <input className="qk-field" type="time" step={300} value={time} aria-label={t('home.quick.starts')} onChange={(e) => setTime(e.target.value)} />
             <span className="qk-to">–</span>
             <input
               className="qk-field"
               type="time"
               step={300}
               value={endTime}
-              aria-label="Ends"
+              aria-label={t('home.quick.ends')}
               onChange={(e) => {
                 const end = minutesOf(e.target.value);
                 if (end === null || startMin === null) return;
@@ -287,7 +288,7 @@ export function QuickEventCard({
             </button>
           ))}
         <button type="button" className={`qk-chip${allDay ? ' on' : ''}`} aria-pressed={allDay} onClick={() => setAllDay(!allDay)}>
-          All day
+          {t('home.quick.allDay')}
         </button>
         <span className="qk-sep" />
         <button type="button" className={`qk-chip qk-toggle${meet ? ' on' : ''}`} aria-pressed={meet} onClick={() => setMeet(!meet)}>
@@ -301,15 +302,15 @@ export function QuickEventCard({
         {guests.map((g) => (
           <span key={g} className="qk-guest">
             {g}
-            <button type="button" aria-label={`Remove ${g}`} onClick={() => setGuests(guests.filter((x) => x !== g))}>
+            <button type="button" aria-label={t('home.quick.removeGuest', { email: g })} onClick={() => setGuests(guests.filter((x) => x !== g))}>
               ×
             </button>
           </span>
         ))}
         <input
-          placeholder={guests.length ? 'Add another' : 'Add guests by email'}
+          placeholder={guests.length ? t('home.quick.addAnother') : t('home.quick.addGuests')}
           value={guestText}
-          aria-label="Guests"
+          aria-label={t('home.quick.guests')}
           onChange={(e) => setGuestText(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ',') {
@@ -322,14 +323,14 @@ export function QuickEventCard({
           onBlur={addGuest}
         />
       </div>
-      {!pendingOk && <span className="qk-error">That isn't an email address.</span>}
+      {!pendingOk && <span className="qk-error">{t('home.quick.badEmail')}</span>}
 
       {more ? (
         <div className="qk-more">
           <label>
-            <span>Calendar</span>
+            <span>{t('home.quick.calendar')}</span>
             <select value={calendarId} disabled={!calendars || calendars.length === 0} onChange={(e) => setCalendarId(e.target.value)}>
-              {!calendars && <option value={calendarId}>Loading…</option>}
+              {!calendars && <option value={calendarId}>{t('common.loading')}</option>}
               {calendars?.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -338,29 +339,29 @@ export function QuickEventCard({
             </select>
           </label>
           <label>
-            <span>Location</span>
-            <input value={location} maxLength={1024} placeholder="Add a place" onChange={(e) => setLocation(e.target.value)} />
+            <span>{t('home.quick.location')}</span>
+            <input value={location} maxLength={1024} placeholder={t('home.quick.locationPlaceholder')} onChange={(e) => setLocation(e.target.value)} />
           </label>
           <label>
-            <span>Notes</span>
-            <textarea value={description} maxLength={8192} rows={3} placeholder="Add a description" onChange={(e) => setDescription(e.target.value)} />
+            <span>{t('home.quick.notes')}</span>
+            <textarea value={description} maxLength={8192} rows={3} placeholder={t('home.quick.notesPlaceholder')} onChange={(e) => setDescription(e.target.value)} />
           </label>
         </div>
       ) : (
         <button type="button" className="qk-more-link" onClick={() => setMore(true)}>
-          More options: calendar, place, notes
+          {t('home.quick.moreOptions')}
         </button>
       )}
 
       <div className="qk-foot">
         <span className="qk-hint">
-          <Keys k={isMac ? '⌘↵' : 'Ctrl+↵'} /> to save · <Keys k="esc" /> to close
+          {rich('home.quick.eventHint', { kbd: (k) => <Keys k={k} /> }, { keys: isMac ? '⌘↵' : 'Ctrl+↵' })}
         </span>
         <button type="button" className="qk-ghost" onClick={onClose}>
-          Cancel
+          {t('common.cancel')}
         </button>
         <button type="submit" className="qk-primary" disabled={!valid || saving}>
-          {saving ? 'Saving…' : 'Save event'}
+          {saving ? t('home.quick.saving') : t('home.quick.saveEvent')}
         </button>
       </div>
     </form>

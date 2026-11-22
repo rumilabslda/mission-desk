@@ -1,4 +1,5 @@
 import type { AssistantEffort, AssistantEvent } from '../../shared/assistant';
+import { t } from '../../shared/i18n';
 
 /**
  * The user's own Claude Code, run headless. Mission Desk never touches its
@@ -109,7 +110,7 @@ export function parseEvent(line: string): AssistantEvent[] {
 export function explainModelError(message: string, model: string): string {
   if (model !== 'default') return message;
   if (!/(selected model|model).{0,80}(not exist|not found|doesn't exist|does not exist|invalid|not available|access)/i.test(message)) return message;
-  return `Claude Code's own default model can't be used here (it said: "${message.trim()}"). Choose a model for this space, such as Sonnet or Opus, in the menu under the chat or in Settings → Assistant. Or fix the "model" in your Claude Code settings (~/.claude/settings.json).`;
+  return t('assistant.error.defaultModel', { message: message.trim() });
 }
 
 /** Errors that mean "sign in to Claude Code again". */

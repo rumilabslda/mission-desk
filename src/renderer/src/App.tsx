@@ -12,8 +12,9 @@ import { GoogleTabStrip } from './GoogleTabStrip';
 import { Sidebar } from './Sidebar';
 import { SpaceNameDialog } from './SpaceNameDialog';
 import { SetupView } from './setup/SetupView';
+import { t } from './i18n';
 
-const EMPTY: UiSnapshot = { accounts: [], activeAccountId: null, googleTabs: {}, claude: { enabled: false, acting: [] }, calendarOpen: false, settingsOpen: false, todayOpen: false, openOnToday: true, messages: [], messagePreviews: true, messageSources: [], update: { mode: 'off', auto: true, state: { kind: 'idle' } }, todos: [], weekStartSetting: 'auto', calendarHidden: [], weekStart: 1, spaces: [], sidebarStyle: 'sections', assistant: { open: false, width: 380, model: 'default', effort: 'medium', button: true, mode: 'space', scope: 'all', scopes: [], conversationId: null, conversations: [], working: false, engine: 'claude', configs: {}, memory: {}, skills: [], skillsActive: {} }, settingsSection: null, setupOpen: false };
+const EMPTY: UiSnapshot = { accounts: [], activeAccountId: null, googleTabs: {}, claude: { enabled: false, acting: [] }, calendarOpen: false, settingsOpen: false, todayOpen: false, openOnToday: true, messages: [], messagePreviews: true, messageSources: [], update: { mode: 'off', auto: true, state: { kind: 'idle' } }, todos: [], weekStartSetting: 'auto', language: 'system', calendarHidden: [], weekStart: 1, spaces: [], sidebarStyle: 'sections', assistant: { open: false, width: 380, model: 'default', effort: 'medium', button: true, mode: 'space', scope: 'all', scopes: [], conversationId: null, conversations: [], working: false, engine: 'claude', configs: {}, memory: {}, skills: [], skillsActive: {} }, settingsSection: null, setupOpen: false };
 
 export function App(): React.JSX.Element {
   const [snap, setSnap] = useState<UiSnapshot>(EMPTY);
@@ -61,13 +62,13 @@ export function App(): React.JSX.Element {
           {snap.settingsOpen ? <SettingsView snapshot={snap} /> : snap.todayOpen && snap.accounts.length > 0 ? <TodayView snapshot={snap} /> : snap.calendarOpen && <CalendarView snapshot={snap} />}
           {loaded && snap.accounts.length === 0 && !snap.settingsOpen && !snap.setupOpen && (
             <div className="empty">
-              <h1>Welcome to Mission Desk</h1>
-              <p>Add the apps you use, like Google, Slack or WhatsApp. Each one stays signed in on its own.</p>
+              <h1>{t('app.welcome.title')}</h1>
+              <p>{t('app.welcome.body')}</p>
               <button className="primary" onClick={() => setDialog({ mode: 'add' })}>
-                Add your first account
+                {t('app.welcome.addFirst')}
               </button>
               <button className="empty-link" onClick={() => window.missiondesk.openSetup()}>
-                Or set up spaces and apps step by step
+                {t('app.welcome.setup')}
               </button>
             </div>
           )}

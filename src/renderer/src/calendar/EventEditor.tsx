@@ -4,6 +4,7 @@ import type { AccountView } from '../../../shared/ipc';
 import type { EventDraft, WritableCalendar } from '../../../shared/types';
 import type { Owner } from './CalendarView';
 import { draftTimes, editorFields, type EditorFields } from './drag';
+import { t } from '../i18n';
 
 const EMAIL = /^[^\s@<>(),;:]+@[^\s@<>(),;:]+\.[^\s@<>(),;:]+$/;
 
@@ -117,10 +118,10 @@ export function EventEditor({
           }
         }}
       >
-        <input className="cal-editor-title" autoFocus placeholder="Add title" value={title} maxLength={1024} onChange={(e) => setTitle(e.target.value)} />
+        <input className="cal-editor-title" autoFocus placeholder={t('calendar.editor.addTitle')} value={title} maxLength={1024} onChange={(e) => setTitle(e.target.value)} />
 
         <div className="cal-editor-grid">
-          <span>Account</span>
+          <span>{t('calendar.editor.account')}</span>
           <div className="cal-field-row">
             <span className="dot" style={{ background: owners.get(accountId)?.color ?? '#888' }} />
             <select
@@ -139,9 +140,9 @@ export function EventEditor({
             </select>
           </div>
 
-          <span>Calendar</span>
+          <span>{t('calendar.editor.calendar')}</span>
           <select value={calendarId} disabled={!calendars || calendars.length === 0} onChange={(e) => setCalendarId(e.target.value)}>
-            {!calendars && <option value={calendarId}>Loading…</option>}
+            {!calendars && <option value={calendarId}>{t('common.loading')}</option>}
             {calendars?.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -149,33 +150,33 @@ export function EventEditor({
             ))}
           </select>
 
-          <span>When</span>
+          <span>{t('calendar.editor.when')}</span>
           <div className="cal-when">
             <input type="date" value={fields.startDate} onChange={set('startDate')} />
             {!allDay && <input type="time" step={900} value={fields.startTime} onChange={set('startTime')} />}
-            <span>to</span>
+            <span>{t('calendar.editor.to')}</span>
             {!allDay && <input type="time" step={900} value={fields.endTime} onChange={set('endTime')} />}
             <input type="date" value={fields.endDate} onChange={set('endDate')} />
             <label className="cal-check-row">
-              <input type="checkbox" checked={allDay} onChange={(e) => setAllDay(e.target.checked)} /> All day
+              <input type="checkbox" checked={allDay} onChange={(e) => setAllDay(e.target.checked)} /> {t('calendar.editor.allDay')}
             </label>
           </div>
           {!times && <span />}
-          {!times && <span className="cal-error">The end must be after the start.</span>}
+          {!times && <span className="cal-error">{t('calendar.editor.endBeforeStart')}</span>}
 
-          <span>Guests</span>
+          <span>{t('calendar.editor.guests')}</span>
           <div>
             <div className="cal-guests">
               {guests.map((g) => (
                 <span key={g} className="cal-guest">
                   {g}
-                  <button type="button" aria-label={`Remove ${g}`} onClick={() => setGuests(guests.filter((x) => x !== g))}>
+                  <button type="button" aria-label={t('calendar.editor.removeGuest', { email: g })} onClick={() => setGuests(guests.filter((x) => x !== g))}>
                     ×
                   </button>
                 </span>
               ))}
               <input
-                placeholder="Add guests by email"
+                placeholder={t('calendar.editor.addGuests')}
                 value={guestText}
                 onChange={(e) => setGuestText(e.target.value)}
                 onKeyDown={(e) => {
@@ -187,27 +188,27 @@ export function EventEditor({
                 onBlur={addGuest}
               />
             </div>
-            {!pendingOk && <span className="cal-error">That isn't an email address.</span>}
+            {!pendingOk && <span className="cal-error">{t('calendar.editor.notEmail')}</span>}
           </div>
 
-          <span>Video</span>
+          <span>{t('calendar.editor.video')}</span>
           <label className="cal-check-row">
-            <input type="checkbox" checked={meet} onChange={(e) => setMeet(e.target.checked)} /> Google Meet video conferencing
+            <input type="checkbox" checked={meet} onChange={(e) => setMeet(e.target.checked)} /> {t('calendar.editor.meet')}
           </label>
 
-          <span>Location</span>
-          <input value={location} maxLength={1024} placeholder="Add location" onChange={(e) => setLocation(e.target.value)} />
+          <span>{t('calendar.editor.location')}</span>
+          <input value={location} maxLength={1024} placeholder={t('calendar.editor.addLocation')} onChange={(e) => setLocation(e.target.value)} />
 
-          <span>Description</span>
-          <textarea value={description} maxLength={8192} rows={4} placeholder="Add description" onChange={(e) => setDescription(e.target.value)} />
+          <span>{t('calendar.editor.description')}</span>
+          <textarea value={description} maxLength={8192} rows={4} placeholder={t('calendar.editor.addDescription')} onChange={(e) => setDescription(e.target.value)} />
         </div>
 
         <div className="actions">
           <button type="button" onClick={onClose}>
-            Cancel
+            {t('common.cancel')}
           </button>
           <button type="submit" className="primary" disabled={!valid}>
-            Save
+            {t('common.save')}
           </button>
         </div>
       </form>

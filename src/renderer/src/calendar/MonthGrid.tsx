@@ -4,10 +4,11 @@ import type { Owner } from './CalendarView';
 import { sameDay } from './dates';
 import { eventTimes, isAllDayLike, monthCell } from './layout';
 import { eventClass } from './TimeGrid';
+import { intlLocale, t } from '../i18n';
 
 const ROW_PX = 22;
-const timeFmt = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
-const weekdayFmt = new Intl.DateTimeFormat(undefined, { weekday: 'short' });
+const timeFmt = new Intl.DateTimeFormat(intlLocale(), { hour: '2-digit', minute: '2-digit' });
+const weekdayFmt = new Intl.DateTimeFormat(intlLocale(), { weekday: 'short' });
 
 interface Props {
   days: Date[];
@@ -71,7 +72,7 @@ export function MonthGrid({ days, month, events, owners, onEvent, onDay, onCreat
               })}
               {more > 0 && (
                 <button className="cal-more" onClick={() => onDay(d)}>
-                  +{more} more
+                  {t('calendar.month.more', { count: more })}
                 </button>
               )}
             </div>

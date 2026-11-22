@@ -5,9 +5,10 @@ import type { CalendarData, Todo } from '../../shared/types';
 import { Agenda } from './home/Agenda';
 import { Messages } from './home/Messages';
 import { distinctColors } from './calendar/colors';
+import { intlLocale, t } from './i18n';
 
-const dateFmt = new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
-const dayShort = new Intl.DateTimeFormat(undefined, { weekday: 'short' });
+const dateFmt = new Intl.DateTimeFormat(intlLocale(), { weekday: 'long', day: 'numeric', month: 'long' });
+const dayShort = new Intl.DateTimeFormat(intlLocale(), { weekday: 'short' });
 
 /** Asks the assistant panel to run a request (it shows the message and opens itself). */
 export const askAssistant = (text: string): void => window.missiondesk.assistantAsk(text);
@@ -15,8 +16,8 @@ export const askAssistant = (text: string): void => window.missiondesk.assistant
 function useNow(): Date {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 30_000);
-    return () => clearInterval(t);
+    const timer = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(timer);
   }, []);
   return now;
 }
@@ -54,8 +55,8 @@ export function TodayView({ snapshot }: { snapshot: UiSnapshot }): React.JSX.Ele
   );
   useEffect(() => {
     if (google.length) load(false);
-    const t = setInterval(() => google.length && load(true), 5 * 60_000);
-    return () => clearInterval(t);
+    const timer = setInterval(() => google.length && load(true), 5 * 60_000);
+    return () => clearInterval(timer);
   }, [load, google.length]);
 
   const events = useMemo(
@@ -66,14 +67,14 @@ export function TodayView({ snapshot }: { snapshot: UiSnapshot }): React.JSX.Ele
   const meetingsLeft = agenda.current.length + (agenda.next ? 1 : 0) + agenda.upcoming.filter((e) => !e.free).length;
 
   const view = todayView(snapshot.todos, today);
-  const tagLabel = (t?: Todo['tag']): string | null => {
-    if (!t) return null;
-    return t.kind === 'space' ? (spaces.get(t.id)?.name ?? null) : (byId.get(t.id)?.name ?? null);
+  const tagLabel = (tag?: Todo['tag']): string | null => {
+    if (!tag) return null;
+    return tag.kind === 'space' ? (spaces.get(tag.id)?.name ?? null) : (byId.get(tag.id)?.name ?? null);
   };
-  const tagColor = (t?: Todo['tag']): string | undefined => {
-    if (!t) return undefined;
-    if (t.kind === 'account') return byId.get(t.id)?.color;
-    return snapshot.accounts.find((a) => a.spaceId === t.id)?.color;
+  const tagColor = (tag?: Todo['tag']): string | undefined => {
+    if (!tag) return undefined;
+    if (tag.kind === 'account') return byId.get(tag.id)?.color;
+    return snapshot.accounts.find((a) => a.spaceId === tag.id)?.color;
   };
   const tagOptions = [
     ...snapshot.spaces.map((s) => ({ value: `space:${s.id}`, label: s.name })),
@@ -113,12 +114,13 @@ export function TodayView({ snapshot }: { snapshot: UiSnapshot }): React.JSX.Ele
         </div>
         <div className="td-head-side">
           <p className="td-summary">
-            {meetingsLeft} meeting{meetingsLeft === 1 ? '' : 's'} left · {view.open.length} to-do{view.open.length === 1 ? '' : 's'} · {totalUnread} unread
+            {t('home.today.meetingsLeft', { count: meetingsLeft })} · {t('home.today.todos', { count: view.open.length })} ·{' '}
+            {t('home.today.unread', { count: totalUnread })}
           </p>
           {/* The one assistant shortcut worth a place here; the floating button does the rest. */}
           {briefing && (
-            <button className="td-brief" onClick={() => askAssistant('/brief')} title="A summary of your day across your apps: what's urgent and who is waiting on you">
-              ✦ Brief me
+            <button className="td-brief" onClick={() => askAssistant('/brief')} title={t('home.today.briefMeTitle')}>
+              ✦ {t('home.today.briefMe')}
             </button>
           )}
         </div>
@@ -139,18 +141,18 @@ export function TodayView({ snapshot }: { snapshot: UiSnapshot }): React.JSX.Ele
           <Messages snapshot={snapshot} now={now} />
 
           <section className="td-card">
-            <h2>To-do</h2>
+            <h2>{t('home.todo.title')}</h2>
             <div className="td-add">
               <input
                 ref={inputRef}
                 value={text}
                 maxLength={500}
-                placeholder="Add a to-do and press Enter"
+                placeholder={t('home.todo.addPlaceholder')}
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && !e.nativeEvent.isComposing && add()}
               />
-              <select value={tag} onChange={(e) => setTag(e.target.value)} title="Space">
-                <option value="">No space</option>
+              <select value={tag} onChange={(e) => setTag(e.target.value)} title={t('home.todo.space')}>
+                <option value="">{t('common.noSpace')}</option>
                 {tagOptions.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
@@ -159,18 +161,18 @@ export function TodayView({ snapshot }: { snapshot: UiSnapshot }): React.JSX.Ele
               </select>
             </div>
             <ul className="td-todos">
-              {view.open.map((t) => (
-                <li key={t.id} className="td-todo">
-                  <input type="checkbox" checked={false} onChange={() => window.missiondesk.todoUpdate(t.id, { done: true })} />
-                  {editing === t.id ? (
+              {view.open.map((todo) => (
+                <li key={todo.id} className="td-todo">
+                  <input type="checkbox" checked={false} onChange={() => window.missiondesk.todoUpdate(todo.id, { done: true })} />
+                  {editing === todo.id ? (
                     <input
                       className="td-edit"
                       autoFocus
-                      defaultValue={t.text}
+                      defaultValue={todo.text}
                       maxLength={500}
                       onBlur={(e) => {
                         const v = e.target.value.trim();
-                        if (!cancelEdit.current && v && v !== t.text) window.missiondesk.todoUpdate(t.id, { text: v });
+                        if (!cancelEdit.current && v && v !== todo.text) window.missiondesk.todoUpdate(todo.id, { text: v });
                         cancelEdit.current = false;
                         setEditing(null);
                       }}
@@ -180,40 +182,40 @@ export function TodayView({ snapshot }: { snapshot: UiSnapshot }): React.JSX.Ele
                       }}
                     />
                   ) : (
-                    <span className="td-text" onDoubleClick={() => setEditing(t.id)}>
-                      {t.text}
+                    <span className="td-text" onDoubleClick={() => setEditing(todo.id)}>
+                      {todo.text}
                     </span>
                   )}
-                  {tagLabel(t.tag) && (
-                    <span className="td-tag" style={{ ['--c' as string]: tagColor(t.tag) ?? '#888' }}>
-                      {tagLabel(t.tag)}
+                  {tagLabel(todo.tag) && (
+                    <span className="td-tag" style={{ ['--c' as string]: tagColor(todo.tag) ?? '#888' }}>
+                      {tagLabel(todo.tag)}
                     </span>
                   )}
-                  {t.carried && <span className="td-carried">from {dayShort.format(new Date(`${t.day}T12:00:00`))}</span>}
-                  <button className="td-del" aria-label="Delete" onClick={() => window.missiondesk.todoRemove(t.id)}>
+                  {todo.carried && <span className="td-carried">{t('home.todo.carriedFrom', { day: dayShort.format(new Date(`${todo.day}T12:00:00`)) })}</span>}
+                  <button className="td-del" aria-label={t('common.delete')} onClick={() => window.missiondesk.todoRemove(todo.id)}>
                     ×
                   </button>
                 </li>
               ))}
-              {view.done.map((t) => (
-                <li key={t.id} className="td-todo done">
-                  <input type="checkbox" checked onChange={() => window.missiondesk.todoUpdate(t.id, { done: false })} />
-                  <span className="td-text">{t.text}</span>
-                  {tagLabel(t.tag) && (
-                    <span className="td-tag" style={{ ['--c' as string]: tagColor(t.tag) ?? '#888' }}>
-                      {tagLabel(t.tag)}
+              {view.done.map((todo) => (
+                <li key={todo.id} className="td-todo done">
+                  <input type="checkbox" checked onChange={() => window.missiondesk.todoUpdate(todo.id, { done: false })} />
+                  <span className="td-text">{todo.text}</span>
+                  {tagLabel(todo.tag) && (
+                    <span className="td-tag" style={{ ['--c' as string]: tagColor(todo.tag) ?? '#888' }}>
+                      {tagLabel(todo.tag)}
                     </span>
                   )}
-                  <button className="td-del" aria-label="Delete" onClick={() => window.missiondesk.todoRemove(t.id)}>
+                  <button className="td-del" aria-label={t('common.delete')} onClick={() => window.missiondesk.todoRemove(todo.id)}>
                     ×
                   </button>
                 </li>
               ))}
             </ul>
-            {view.open.length === 0 && view.done.length === 0 && <p className="td-muted">Nothing yet. What has to happen today?</p>}
+            {view.open.length === 0 && view.done.length === 0 && <p className="td-muted">{t('home.todo.empty')}</p>}
             {view.done.length > 0 && (
               <button className="td-link" onClick={() => window.missiondesk.todosClearDone()}>
-                Clear done
+                {t('home.todo.clearDone')}
               </button>
             )}
           </section>

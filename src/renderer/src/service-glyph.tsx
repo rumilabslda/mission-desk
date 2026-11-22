@@ -1,4 +1,5 @@
 import type { ServiceId } from '../../shared/types';
+import { t } from './i18n';
 import { LOGOS } from './logos';
 
 export const SERVICE_LABEL: Record<ServiceId, string> = {
@@ -14,7 +15,7 @@ export const SERVICE_LABEL: Record<ServiceId, string> = {
   icloud: 'iCloud Mail',
   fastmail: 'Fastmail',
   notion: 'Notion',
-  custom: 'Any website',
+  custom: t('app.service.custom'),
 };
 
 export function ServiceLogo({ service, className }: { service: ServiceId; className?: string }): React.JSX.Element {

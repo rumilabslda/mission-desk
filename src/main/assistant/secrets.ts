@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { t } from '../../shared/i18n';
 
 /** Electron's safeStorage (on macOS, encrypted with a key kept in the Keychain). */
 export interface SecretCrypto {
@@ -20,7 +21,7 @@ export function createSecrets(dir: string, crypto: SecretCrypto) {
       }
     },
     set(name: string, value: string): void {
-      if (!crypto.isEncryptionAvailable()) throw new Error('The macOS Keychain is not available, so the key was not saved.');
+      if (!crypto.isEncryptionAvailable()) throw new Error(t('assistant.keychainUnavailable'));
       fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
       const tmp = `${fileOf(name)}.tmp`;
       fs.writeFileSync(tmp, crypto.encryptString(value), { mode: 0o600 });

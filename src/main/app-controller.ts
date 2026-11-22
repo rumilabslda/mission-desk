@@ -1,5 +1,6 @@
 import { app, type BrowserWindow, clipboard, dialog, ipcMain, Menu, net, Notification, safeStorage, shell, systemPreferences, type WebContents, webContents, type WebContentsView } from 'electron';
 import { createUpdater } from './updates/updater';
+import { type LanguageSetting, type Locale, type MessageKey, resolveLocale, setLocale, t } from '../shared/i18n';
 import { updateMode } from '../shared/updates';
 import { addMessage, closeMessage, type Feed, messageViews, removeMessage, trimToUnread } from '../shared/messages';
 import { createOpenRouterSession } from './assistant/openrouter-session';
@@ -187,6 +188,12 @@ export interface AppController {
   setSpaceGoogleAccount(id: string, accountId: string): void;
   ungroupSpace(id: string): void;
   setWeekStart(v: 0 | 1 | 'auto'): void;
+  /** Changes the interface language: the menus are rebuilt and every Mission Desk page reloads in it. */
+  setLanguage(v: LanguageSetting): void;
+  /** The interface language and the locale for dates (each page reads it when it loads). */
+  localeInfo(): { locale: Locale; format: string; system: Locale };
+  /** How to rebuild the app menu (set once by index.ts). */
+  setMenuBuilder(build: () => void): void;
   showDataFolder(): void;
   showClaudeLog(): void;
   loadCalendar(range: CalendarRange, force: boolean): Promise<CalendarData>;
@@ -229,6 +236,10 @@ export interface ControllerDeps {
 }
 
 export function createAppController({ win, store, preloadPath, uiPreloadPath }: ControllerDeps): AppController {
+  // The interface language: Settings' choice, else the Mac's first language Mission Desk has.
+  let localeNow = resolveLocale(store.state().language, app.getPreferredSystemLanguages());
+  setLocale(localeNow.locale, localeNow.format);
+  let rebuildMenu = (): void => {};
   const registry = createViewRegistry<WebContentsView>();
   /** Pages Claude asked to load: a redirect off the service is cancelled, never opened in the browser (it could carry data out). */
   const assistantLoads = new WeakMap<WebContents, string>();
@@ -278,14 +289,14 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
 
   async function chooseCustomImage(a: Account): Promise<void> {
     const { canceled, filePaths } = await dialog.showOpenDialog(win, {
-      title: `Choose an image for ${a.name}`,
+      title: t('main.icon.chooseTitle', { name: a.name }),
       properties: ['openFile'],
-      filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'heic', 'bmp', 'tiff'] }],
+      filters: [{ name: t('main.icon.imagesFilter'), extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'heic', 'bmp', 'tiff'] }],
     });
     if (canceled || !filePaths[0] || !account(a.id)) return;
     const dataUrl = loadCustomImage(filePaths[0]);
     if (!dataUrl) {
-      void dialog.showMessageBox(win, { type: 'warning', message: "That image couldn't be opened.", detail: 'Try a PNG or JPEG file.' });
+      void dialog.showMessageBox(win, { type: 'warning', message: t('main.icon.openFailed'), detail: t('main.icon.openFailedDetail') });
       return;
     }
     avatars.set(`custom:${a.id}`, { dataUrl, sourceUrl: 'custom', fetchedAt: Date.now(), version: AVATAR_VERSION });
@@ -334,7 +345,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       try {
         socketServer = await startSocketServer(socketPath(), () => claude.session().call);
       } catch (e) {
-        socketError = `Could not open the connection: ${(e as Error).message}`;
+        socketError = t('main.claude.socketError', { error: (e as Error).message });
         store.setClaudeEnabled(false);
       }
     }
@@ -454,7 +465,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       // Once, when it's ready: the page views cover the window, so a native notification says so.
       if (st.kind === 'ready' && Notification.isSupported()) {
         // Kept, so its click still works later (a collected notification loses its handler).
-        updateNotice = new Notification({ title: `Mission Desk ${st.version} is ready`, body: 'Restart Mission Desk to finish, or it installs the next time you quit.' });
+        updateNotice = new Notification({ title: t('main.updates.readyTitle', { version: st.version }), body: t('main.updates.readyBody') });
         updateNotice.on('click', () => controller.showUpdates());
         updateNotice.show();
       }
@@ -517,12 +528,12 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
   const isGoogleAccount = (id: string): boolean => account(id)?.service === 'google';
   const tabbed = (id: string): boolean => { const a = account(id); return !!a && hasTabs(a.service); };
   const NOT_ALLOWED = { ok: false, error: 'error' } as const;
-  const MEET_ERRORS: Record<WriteError, string> = {
-    'signed-out': 'Sign in to Google in this space, then try again.',
-    offline: 'Mission Desk is offline. Check your connection and try again.',
-    forbidden: 'Google refused to create a meeting for this account.',
-    unsupported: 'Google could not create a meeting for this account.',
-    error: 'Google could not create a meeting. Try again in a moment.',
+  const MEET_ERRORS: Record<WriteError, MessageKey> = {
+    'signed-out': 'main.meet.errorSignedOut',
+    offline: 'main.meet.errorOffline',
+    forbidden: 'main.meet.errorForbidden',
+    unsupported: 'main.meet.errorUnsupported',
+    error: 'main.meet.errorGeneric',
   };
   /**
    * A quick action finished: a tick on the ⚡ button, and a toast beside the floating button.
@@ -545,11 +556,11 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       if (Notification.isSupported()) new Notification({ title, body, silent: true }).show();
     };
     const fail = (body: string): void => {
-      if (!assistantOverlay?.toast({ state: 'error', title: 'No meeting link', detail: body })) tell('No meeting link', body);
+      if (!assistantOverlay?.toast({ state: 'error', title: t('main.meet.noLink'), detail: body })) tell(t('main.meet.noLink'), body);
     };
-    if (!id) return fail('This space has no Google account. Add one to make Meet links.');
+    if (!id) return fail(t('main.meet.noGoogle'));
     meetBusy = true;
-    assistantOverlay?.toast({ state: 'busy', title: 'Creating a meeting link…' });
+    assistantOverlay?.toast({ state: 'busy', title: t('main.meet.creating') });
     try {
       let url = '';
       const r = await calendarWrite(id, async () => {
@@ -561,10 +572,11 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       if (r.ok) {
         clipboard.writeText(url);
         const paste = process.platform === 'darwin' ? '⌘V' : 'Ctrl+V';
-        if (!actionDone('Meeting link copied', `${url.replace(/^https:\/\//, '')} · ${paste} to paste`)) tell('Meeting link copied', `${url} — paste it with ${paste}.`);
-      } else fail(MEET_ERRORS[r.error]);
+        const copied = t('main.meet.copied');
+        if (!actionDone(copied, t('main.meet.copiedDetail', { link: url.replace(/^https:\/\//, ''), keys: paste }))) tell(copied, t('main.meet.copiedBody', { url, keys: paste }));
+      } else fail(t(MEET_ERRORS[r.error]));
     } catch {
-      fail(MEET_ERRORS.error);
+      fail(t(MEET_ERRORS.error));
     } finally {
       meetBusy = false;
     }
@@ -807,14 +819,14 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       },
       memory: () => memory.list(scope),
       async confirmMemory(action: 'remember' | 'forget', note: string) {
-        const where = scopes().find((x) => x.key === scope)?.name ?? 'this space';
+        const where = scopes().find((x) => x.key === scope)?.name ?? t('main.assistant.thisSpace');
         if (win.isMinimized()) win.restore();
         win.show();
         const r = await dialog.showMessageBox(win, {
           type: 'question',
-          message: action === 'remember' ? `Remember this for ${where}?` : `Forget this note in ${where}?`,
-          detail: `${note}\n\nRequested by the assistant. ${action === 'remember' ? `Only the assistant of ${where} will see it. ` : ''}You can see and change every note in Settings → Assistant.`,
-          buttons: [action === 'remember' ? 'Remember' : 'Forget', 'Cancel'],
+          message: action === 'remember' ? t('main.assistant.rememberTitle', { where }) : t('main.assistant.forgetTitle', { where }),
+          detail: action === 'remember' ? t('main.assistant.rememberDetail', { note, where }) : t('main.assistant.forgetDetail', { note }),
+          buttons: [action === 'remember' ? t('main.assistant.remember') : t('main.assistant.forget'), t('common.cancel')],
           defaultId: 1, // Enter cancels: saving needs a deliberate click
           cancelId: 1,
         });
@@ -832,15 +844,15 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       },
       skills: () => skills.activeFor(scope),
       async confirmSkill(draft: SkillDraft) {
-        const where = scopes().find((x) => x.key === scope)?.name ?? 'this space';
+        const where = scopes().find((x) => x.key === scope)?.name ?? t('main.assistant.thisSpace');
         if (win.isMinimized()) win.restore();
         win.show();
         const body = draft.instructions.length > 1200 ? `${draft.instructions.slice(0, 1200)}…` : draft.instructions;
         const r = await dialog.showMessageBox(win, {
           type: 'question',
-          message: `Save the skill "${draft.name}" for ${where}?`,
-          detail: `${draft.mode === 'always' ? 'Always on' : 'Used when it fits'}: ${draft.description}\n\n${body}\n\nWritten by the assistant. It will be on only in ${where}; you can change or remove it in Settings → Skills.`,
-          buttons: ['Save', 'Cancel'],
+          message: t('main.assistant.saveSkillTitle', { name: draft.name, where }),
+          detail: t(draft.mode === 'always' ? 'main.assistant.saveSkillDetailAlways' : 'main.assistant.saveSkillDetailFits', { description: draft.description, instructions: body, where }),
+          buttons: [t('common.save'), t('common.cancel')],
           defaultId: 1,
           cancelId: 1,
         });
@@ -878,12 +890,12 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       win.show();
       const r = await dialog.showMessageBox(win, {
         type: 'question',
-        message: 'Create this event?',
-        detail: `${text}\n\nRequested by the assistant. Check the guests and description before creating.`,
-        buttons: ['Create', 'Cancel'],
+        message: t('main.assistant.createEventTitle'),
+        detail: t('main.assistant.createEventDetail', { event: text }),
+        buttons: [t('common.create'), t('common.cancel')],
         defaultId: 1, // Enter cancels: creating needs a deliberate click
         cancelId: 1,
-        ...(hasGuests ? { checkboxLabel: 'Email invitations to the guests', checkboxChecked: false } : {}),
+        ...(hasGuests ? { checkboxLabel: t('main.assistant.emailGuests'), checkboxChecked: false } : {}),
       });
       return { create: r.response === 0, notify: hasGuests && r.checkboxChecked };
     },
@@ -1186,7 +1198,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     const open = extras.get(a.id) ?? [];
     if (open.length >= MAX_EXTRA_TABS) controller.closeGoogleTab(a.id, open[0].kind); // a page can't open tabs without end
     const kind = `extra:${nextExtra++}` as const;
-    extras.set(a.id, [...(extras.get(a.id) ?? []), { kind, title: 'Loading…' }]);
+    extras.set(a.id, [...(extras.get(a.id) ?? []), { kind, title: t('common.loading') }]);
     viewManager.ensure(a, kind, url);
     if (select) controller.selectGoogleTab(a.id, kind);
     else push();
@@ -1247,9 +1259,9 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       const showHost = (): void => {
         try {
           const host = new URL(cwc.getURL()).host;
-          child.setTitle(host || openerHost || 'Sign in');
+          child.setTitle(host || openerHost || t('main.popup.signIn'));
         } catch {
-          child.setTitle(openerHost || 'Sign in');
+          child.setTitle(openerHost || t('main.popup.signIn'));
         }
       };
       showHost();
@@ -1441,6 +1453,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       update: { mode: updateMode(process.platform, process.env, app.isPackaged), auto: s.autoUpdate !== false, state: updates.state() },
       todos: todos.list(),
       weekStartSetting: s.weekStart ?? 'auto',
+      language: s.language ?? 'system',
       spaces: s.spaces ?? [],
       sidebarStyle: sidebarStyleOf(s.sidebarStyle),
       panelSpaceId: spacePanel?.spaceId() ?? null,
@@ -1536,27 +1549,27 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       .state()
       .accounts.filter((o) => o.id !== a.id && o.iconMode !== 'account' && resolveIcon(o, iconContext).kind === 'image')
       .map<Electron.MenuItemConstructorOptions>((o) => ({
-        label: `Same as ${o.name}`,
+        label: t('main.icon.sameAs', { name: o.name }),
         type: 'radio',
         checked: mode === 'account' && a.iconSourceAccountId === o.id,
         click: set('account', o.id),
       }));
     return [
-      { label: 'Company logo or photo', type: 'radio', checked: mode === 'auto', click: set('auto') },
-      { label: 'Service logo', type: 'radio', checked: mode === 'service', click: set('service') },
-      { label: 'Letter', type: 'radio', checked: mode === 'letter', click: set('letter') },
+      { label: t('main.icon.auto'), type: 'radio', checked: mode === 'auto', click: set('auto') },
+      { label: t('main.icon.service'), type: 'radio', checked: mode === 'service', click: set('service') },
+      { label: t('main.icon.letter'), type: 'radio', checked: mode === 'letter', click: set('letter') },
       ...(others.length ? [{ type: 'separator' } as const, ...others] : []),
       { type: 'separator' },
-      { label: 'Choose Image…', type: 'radio', checked: mode === 'custom', click: () => void chooseCustomImage(a) },
+      { label: t('main.icon.chooseImage'), type: 'radio', checked: mode === 'custom', click: () => void chooseCustomImage(a) },
     ];
   }
 
   async function removeAccount(a: Account): Promise<void> {
     const { response } = await dialog.showMessageBox(win, {
       type: 'warning',
-      message: `Remove ${a.name}?`,
-      detail: 'This signs you out and deletes its data on this Mac.',
-      buttons: ['Remove', 'Cancel'],
+      message: t('main.account.removeTitle', { name: a.name }),
+      detail: t('main.account.removeDetail'),
+      buttons: [t('common.remove'), t('common.cancel')],
       defaultId: 1,
       cancelId: 1,
     });
@@ -1728,29 +1741,29 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
         registry.get(id, kind)?.webContents.reload();
       };
       Menu.buildFromTemplate([
-        { label: 'Edit…', click: () => win.webContents.send(IPC.editRequest, id) },
-        { label: 'Reload', click: reload },
+        { label: t('main.account.edit'), click: () => win.webContents.send(IPC.editRequest, id) },
+        { label: t('main.menu.reload'), click: reload },
         { type: 'separator' },
         {
-          label: 'Mute notifications',
+          label: t('main.account.muteNotifications'),
           type: 'checkbox',
           checked: a.muted,
           click: (item) => controller.updateAccount(id, { muted: item.checked }),
         },
         {
-          label: 'Hibernate when not in use',
+          label: t('main.account.hibernate'),
           type: 'checkbox',
           checked: a.hibernateWhenIdle,
           click: (item) => controller.updateAccount(id, { hibernateWhenIdle: item.checked }),
         },
-        { label: 'Icon', submenu: iconMenu(a) },
+        { label: t('main.account.icon'), submenu: iconMenu(a) },
         {
-          label: 'Claude access',
+          label: t('main.account.claudeAccess'),
           submenu: (
             [
-              ['off', 'Off'],
-              ['read', 'Read'],
-              ['act', 'Read & act'],
+              ['off', t('common.off')],
+              ['read', t('main.account.accessRead')],
+              ['act', t('main.account.accessAct')],
             ] as const
           ).map(([value, label]) => ({
             label,
@@ -1761,7 +1774,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
         },
         { type: 'separator' },
         {
-          label: 'Move to space',
+          label: t('main.account.moveToSpace'),
           submenu: [
             ...spaces.map((sp) => ({
               label: sp.name,
@@ -1774,7 +1787,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
             })),
             ...(spaces.length ? [{ type: 'separator' as const }] : []),
             {
-              label: 'None',
+              label: t('common.none'),
               type: 'radio' as const,
               checked: !a.spaceId,
               click: () => {
@@ -1783,13 +1796,13 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
               },
             },
             { type: 'separator' as const },
-            { label: 'New space…', click: () => win.webContents.send(IPC.spaceNameRequest, { mode: 'create', accountIds: [id] }) },
+            { label: t('main.account.newSpace'), click: () => win.webContents.send(IPC.spaceNameRequest, { mode: 'create', accountIds: [id] }) },
           ],
         },
-        { label: 'Move Up', enabled: canMove(-1), click: () => controller.move(id, -1) },
-        { label: 'Move Down', enabled: canMove(1), click: () => controller.move(id, 1) },
+        { label: t('main.account.moveUp'), enabled: canMove(-1), click: () => controller.move(id, -1) },
+        { label: t('main.account.moveDown'), enabled: canMove(1), click: () => controller.move(id, 1) },
         { type: 'separator' },
-        { label: 'Remove…', click: () => void removeAccount(a) },
+        { label: t('main.account.remove'), click: () => void removeAccount(a) },
       ]).popup({ window: win });
     },
 
@@ -2068,23 +2081,23 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     // and saves it themself. Nothing in a skill ever runs; it is text for the assistant.
     async skillFetch(raw) {
       const url = skillFetchUrl(raw);
-      if (!url) return { ok: false, error: 'Use an https link to a SKILL.md file (a GitHub link to the file or its folder works too).' };
+      if (!url) return { ok: false, error: t('main.skills.fetchBadLink') };
       try {
         const res = await net.fetch(url, { headers: { Accept: 'text/markdown, text/plain;q=0.9, */*;q=0.1' }, signal: AbortSignal.timeout(10_000) });
-        if (!res.ok) return { ok: false, error: res.status === 404 ? 'No SKILL.md at that link.' : `The link answered ${res.status}.` };
-        if (res.url && !res.url.startsWith('https://')) return { ok: false, error: 'The link moved to an address that isn’t https.' };
-        if (/text\/html/i.test(res.headers.get('content-type') ?? '')) return { ok: false, error: 'That’s a web page, not a SKILL.md file. Link to the file itself.' };
-        if (Number(res.headers.get('content-length') ?? 0) > 64_000) return { ok: false, error: 'That file is too big for a skill.' };
+        if (!res.ok) return { ok: false, error: res.status === 404 ? t('main.skills.fetchNotFound') : t('main.skills.fetchStatus', { status: String(res.status) }) };
+        if (res.url && !res.url.startsWith('https://')) return { ok: false, error: t('main.skills.fetchNotHttps') };
+        if (/text\/html/i.test(res.headers.get('content-type') ?? '')) return { ok: false, error: t('main.skills.fetchWebPage') };
+        if (Number(res.headers.get('content-length') ?? 0) > 64_000) return { ok: false, error: t('main.skills.fetchTooBig') };
         const buf = await res.arrayBuffer();
-        if (buf.byteLength > 64_000) return { ok: false, error: 'That file is too big for a skill.' };
+        if (buf.byteLength > 64_000) return { ok: false, error: t('main.skills.fetchTooBig') };
         const text = new TextDecoder('utf-8').decode(buf);
-        if (text.includes(String.fromCharCode(0))) return { ok: false, error: 'That isn’t a text file.' };
+        if (text.includes(String.fromCharCode(0))) return { ok: false, error: t('main.skills.fetchNotText') };
         const draft = parseSkillMd(text);
-        if (!draft.instructions) return { ok: false, error: 'That file is empty.' };
-        if (draft.instructions.length > MAX_INSTRUCTIONS) return { ok: false, error: 'That skill is longer than Mission Desk allows (20,000 characters).' };
+        if (!draft.instructions) return { ok: false, error: t('main.skills.fetchEmpty') };
+        if (draft.instructions.length > MAX_INSTRUCTIONS) return { ok: false, error: t('main.skills.fetchTooLong', { max: MAX_INSTRUCTIONS }) };
         return { ok: true, url, draft };
       } catch {
-        return { ok: false, error: 'Couldn’t fetch that link. Check the address and your connection.' };
+        return { ok: false, error: t('main.skills.fetchFailed') };
       }
     },
     skillAdd(draft, source, scopeList) {
@@ -2366,6 +2379,22 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       push();
     },
 
+    setLanguage(v) {
+      store.setLanguage(v);
+      localeNow = resolveLocale(store.state().language, app.getPreferredSystemLanguages());
+      setLocale(localeNow.locale, localeNow.format);
+      rebuildMenu();
+      const pages = [win.webContents, ...controller.assistantWebContents(), controller.spacePanelWebContents(), controller.quickWebContents()];
+      for (const wc of pages) if (wc && !wc.isDestroyed()) wc.reload();
+      push();
+    },
+
+    localeInfo: () => ({ ...localeNow, system: resolveLocale('system', app.getPreferredSystemLanguages()).locale }),
+
+    setMenuBuilder(build) {
+      rebuildMenu = build;
+    },
+
     showDataFolder() {
       void shell.openPath(app.getPath('userData'));
     },
@@ -2433,8 +2462,8 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     showAddMenu() {
       const open = (kind: 'app' | 'space') => () => win.webContents.send(IPC.openAddDialog, kind);
       Menu.buildFromTemplate([
-        { label: 'Add App…', click: open('app') },
-        { label: 'Add Space…', enabled: store.state().accounts.length > 0, click: open('space') },
+        { label: t('main.add.app'), click: open('app') },
+        { label: t('main.add.space'), enabled: store.state().accounts.length > 0, click: open('space') },
       ]).popup({ window: win });
     },
 
@@ -2479,25 +2508,25 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       // The shortcuts are the app menu's; shown here so people learn them.
       const shortcut = (accelerator: string) => ({ accelerator, registerAccelerator: false });
       Menu.buildFromTemplate([
-        { label: ctx.label ? `Quick actions · ${ctx.label}` : 'Quick actions', enabled: false },
+        { label: ctx.label ? t('main.quick.titleFor', { name: ctx.label }) : t('main.quick.title'), enabled: false },
         { type: 'separator' },
         {
-          label: 'Copy Meet Link',
+          label: t('main.menu.copyMeetLink'),
           ...shortcut(mac ? 'Ctrl+Cmd+M' : 'Ctrl+Alt+M'),
           enabled: !!ctx.googleId,
-          ...(ctx.googleId ? {} : { sublabel: 'Add a Google account to this space' }),
+          ...(ctx.googleId ? {} : { sublabel: t('main.quick.noGoogleInSpace') }),
           click: () => void controller.copyMeetingLink(),
         },
         {
-          label: 'New Event',
+          label: t('main.menu.newEvent'),
           ...shortcut(mac ? 'Ctrl+Cmd+E' : 'Ctrl+Alt+E'),
           enabled: hasGoogle,
-          ...(hasGoogle ? {} : { sublabel: 'Add a Google account first' }),
+          ...(hasGoogle ? {} : { sublabel: t('main.quick.needGoogle') }),
           click: () => controller.newEvent(),
         },
-        { label: 'New To-do', ...shortcut(mac ? 'Ctrl+Cmd+T' : 'Ctrl+Alt+D'), click: () => controller.newTodo() },
+        { label: t('main.menu.newTodo'), ...shortcut(mac ? 'Ctrl+Cmd+T' : 'Ctrl+Alt+D'), click: () => controller.newTodo() },
         { type: 'separator' },
-        { label: 'Ask the Assistant', ...shortcut('CmdOrCtrl+J'), click: () => controller.toggleAssistant(true) },
+        { label: t('main.quick.askAssistant'), ...shortcut('CmdOrCtrl+J'), click: () => controller.toggleAssistant(true) },
       ]).popup({ window: win });
     },
 
@@ -2515,11 +2544,11 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       const googleMembers = store.state().accounts.filter((a) => a.spaceId === id && a.service === 'google');
       const identityId = (googleMembers.find((g) => g.id === sp.googleAccountId) ?? googleMembers[0])?.id;
       Menu.buildFromTemplate([
-        { label: 'Copy Meet Link', enabled: googleMembers.length > 0, click: () => void controller.copyMeetingLink({ spaceId: id }) },
+        { label: t('main.menu.copyMeetLink'), enabled: googleMembers.length > 0, click: () => void controller.copyMeetingLink({ spaceId: id }) },
         { type: 'separator' },
-        { label: 'Rename…', click: () => win.webContents.send(IPC.spaceNameRequest, { mode: 'rename', spaceId: id, name: sp.name }) },
+        { label: t('main.space.rename'), click: () => win.webContents.send(IPC.spaceNameRequest, { mode: 'rename', spaceId: id, name: sp.name }) },
         {
-          label: 'Always open',
+          label: t('main.space.alwaysOpen'),
           type: 'checkbox',
           checked: !!sp.alwaysOpen,
           click: (item) => {
@@ -2529,7 +2558,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
         },
         { type: 'separator' },
         {
-          label: 'Share Google sign-in',
+          label: t('main.space.shareGoogle'),
           type: 'checkbox',
           checked: sp.shareGoogle !== false,
           click: (item) => {
@@ -2540,7 +2569,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
         ...(googleMembers.length > 1
           ? [
               {
-                label: 'Google sign-in from',
+                label: t('main.space.googleFrom'),
                 enabled: sp.shareGoogle !== false,
                 submenu: googleMembers.map((g) => ({
                   label: g.name,
@@ -2556,7 +2585,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
           : []),
         { type: 'separator' },
         {
-          label: 'Ungroup',
+          label: t('main.space.ungroup'),
           click: () => {
             store.ungroup(id);
             push();

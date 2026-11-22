@@ -1,12 +1,13 @@
 import { useEffect, useRef } from 'react';
 import type { DialAction, DialRequest } from '../../shared/quick';
 import { PlusIcon } from './assistant/AssistantWindow';
+import { t } from './i18n';
 
 const isMac = navigator.platform.toLowerCase().includes('mac');
 
 const ITEMS: Record<DialAction, { label: string; shortcut: string; icon: React.JSX.Element }> = {
   meet: {
-    label: 'New meeting link',
+    label: t('home.dial.meet'),
     shortcut: isMac ? '⌃⌘M' : 'Ctrl+Alt+M',
     icon: (
       <>
@@ -16,7 +17,7 @@ const ITEMS: Record<DialAction, { label: string; shortcut: string; icon: React.J
     ),
   },
   event: {
-    label: 'New event',
+    label: t('home.dial.event'),
     shortcut: isMac ? '⌃⌘E' : 'Ctrl+Alt+E',
     icon: (
       <>
@@ -26,7 +27,7 @@ const ITEMS: Record<DialAction, { label: string; shortcut: string; icon: React.J
     ),
   },
   todo: {
-    label: 'New to-do',
+    label: t('home.dial.todo'),
     shortcut: isMac ? '⌃⌘T' : 'Ctrl+Alt+D',
     icon: (
       <>
@@ -36,7 +37,7 @@ const ITEMS: Record<DialAction, { label: string; shortcut: string; icon: React.J
     ),
   },
   assistant: {
-    label: 'Ask the assistant',
+    label: t('home.dial.assistant'),
     shortcut: isMac ? '⌘J' : 'Ctrl+J',
     icon: <path d="M12 3.5 13.9 9a2 2 0 0 0 1.2 1.2l5.4 1.8-5.4 1.8a2 2 0 0 0-1.2 1.2L12 20.5 10.1 15a2 2 0 0 0-1.2-1.2L3.5 12l5.4-1.8A2 2 0 0 0 10.1 9z" />,
   },
@@ -92,8 +93,8 @@ export function QuickDial({ request }: { request: DialRequest }): React.JSX.Elem
 
   return (
     <div className="qd" onMouseDown={(e) => e.target === e.currentTarget && close()} onKeyDown={onKey}>
-      <div className={`qd-list ${up ? 'up' : 'down'}`} style={listStyle} role="menu" aria-label="Quick actions">
-        {request.label && <div className={`qd-for${side === 'left' ? ' left' : ''}`}>For {request.label}</div>}
+      <div className={`qd-list ${up ? 'up' : 'down'}`} style={listStyle} role="menu" aria-label={t('home.dial.label')}>
+        {request.label && <div className={`qd-for${side === 'left' ? ' left' : ''}`}>{t('home.dial.for', { label: request.label })}</div>}
         {order.map((a, i) => {
           const it = ITEMS[a];
           // The animation starts from the button outwards.
@@ -121,7 +122,7 @@ export function QuickDial({ request }: { request: DialRequest }): React.JSX.Elem
         })}
       </div>
       {/* Drawn over the floating button: its + turns into ×. */}
-      <button className="qd-close" style={{ left: btn.x, top: btn.y }} aria-label="Close" onClick={close}>
+      <button className="qd-close" style={{ left: btn.x, top: btn.y }} aria-label={t('common.close')} onClick={close}>
         <PlusIcon />
       </button>
     </div>

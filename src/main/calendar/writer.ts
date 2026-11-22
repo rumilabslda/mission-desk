@@ -3,6 +3,7 @@ import type { EditableEvent, EventDraft, Reply, SendUpdates, WritableCalendar, W
 import { draftToBody, shiftSeries, toEditable, wallDelta, writableCalendars } from './editable';
 import type { ApiMethod, ApiResult } from './fetcher';
 import { meetUrlOf } from './normalize';
+import { t } from '../../shared/i18n';
 
 type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -169,7 +170,7 @@ export function createCalendarWriter(
     async quickMeet(accountId: string): Promise<{ ok: true; url: string } | { ok: false; error: WriteError }> {
       const start = now();
       const body = {
-        summary: 'Quick call',
+        summary: t('main.meet.quickCallTitle'),
         start: { dateTime: start.toISOString() },
         end: { dateTime: new Date(start.getTime() + QUICK_CALL_MS).toISOString() },
         conferenceData: { createRequest: { requestId: requestId(), conferenceSolutionKey: { type: 'hangoutsMeet' } } },

@@ -3,10 +3,11 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import type { AccountView } from '../../../shared/ipc';
 import type { EventDraft } from '../../../shared/types';
 import type { Owner } from './CalendarView';
+import { intlLocale, t } from '../i18n';
 
 const W = 340;
-const dayFmt = new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
-const timeFmt = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
+const dayFmt = new Intl.DateTimeFormat(intlLocale(), { weekday: 'long', day: 'numeric', month: 'long' });
+const timeFmt = new Intl.DateTimeFormat(intlLocale(), { hour: '2-digit', minute: '2-digit' });
 
 export interface QuickSeed {
   x: number;
@@ -18,7 +19,7 @@ export interface QuickSeed {
 }
 
 function whenText(seed: QuickSeed): string {
-  if (seed.allDay) return `${dayFmt.format(new Date(`${seed.start}T00:00:00`))} · All day`;
+  if (seed.allDay) return t('calendar.quick.allDayWhen', { day: dayFmt.format(new Date(`${seed.start}T00:00:00`)) });
   const s = new Date(seed.start);
   return `${dayFmt.format(s)} · ${timeFmt.format(s)} – ${timeFmt.format(new Date(seed.end))}`;
 }
@@ -86,7 +87,7 @@ export function QuickCreate({
           }
         }}
       >
-        <input className="cal-quick-title" autoFocus placeholder="Add title" value={title} maxLength={1024} onChange={(e) => setTitle(e.target.value)} />
+        <input className="cal-quick-title" autoFocus placeholder={t('calendar.editor.addTitle')} value={title} maxLength={1024} onChange={(e) => setTitle(e.target.value)} />
         <div className="cal-card-when">{whenText(seed)}</div>
         <label className="cal-field-row">
           <span className="dot" style={{ background: owners.get(accountId)?.color ?? '#888' }} />
@@ -99,14 +100,14 @@ export function QuickCreate({
           </select>
         </label>
         <label className="cal-field-row cal-check-row">
-          <input type="checkbox" checked={meet} onChange={(e) => setMeet(e.target.checked)} /> Add Google Meet video conferencing
+          <input type="checkbox" checked={meet} onChange={(e) => setMeet(e.target.checked)} /> {t('calendar.quick.addMeet')}
         </label>
         <div className="cal-card-actions">
           <button type="button" className="cal-btn" onClick={() => accountId && onMore(accountId, draft())}>
-            More options
+            {t('calendar.quick.moreOptions')}
           </button>
           <button type="submit" className="primary" disabled={!accountId}>
-            Save
+            {t('common.save')}
           </button>
         </div>
       </form>

@@ -74,6 +74,8 @@ export interface AppState {
   claudeEnabled?: boolean;
   /** First day of the week chosen in Settings (unset: from the Mac). */
   weekStart?: 0 | 1;
+  /** The interface language chosen in Settings (unset: the Mac's). */
+  language?: import('./i18n/locales').Locale;
   /** The first-run setup was finished or skipped. */
   onboarded?: boolean;
   /** Open Mission Desk on the Home page (the Today page in code; default on; false = off). */

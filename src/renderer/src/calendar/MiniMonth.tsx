@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { dayKey, sameDay, visibleDays } from './dates';
+import { intlLocale, t } from '../i18n';
 
-const monthFmt = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' });
-const initialFmt = new Intl.DateTimeFormat(undefined, { weekday: 'narrow' });
+const monthFmt = new Intl.DateTimeFormat(intlLocale(), { month: 'long', year: 'numeric' });
+const initialFmt = new Intl.DateTimeFormat(intlLocale(), { weekday: 'narrow' });
 
 interface Props {
   anchor: Date;
@@ -23,10 +24,10 @@ export function MiniMonth({ anchor, weekStart, selected, onPick }: Props): React
     <div className="mini-month">
       <div className="mini-head">
         <span>{monthFmt.format(month)}</span>
-        <button className="cal-icon-btn small" aria-label="Previous month" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}>
+        <button className="cal-icon-btn small" aria-label={t('calendar.mini.previousMonth')} onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}>
           ‹
         </button>
-        <button className="cal-icon-btn small" aria-label="Next month" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}>
+        <button className="cal-icon-btn small" aria-label={t('calendar.mini.nextMonth')} onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}>
           ›
         </button>
       </div>

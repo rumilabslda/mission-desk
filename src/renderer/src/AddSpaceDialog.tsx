@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { UiSnapshot } from '../../shared/ipc';
 import { AccountAvatar } from './AccountAvatar';
+import { t } from './i18n';
 import { SERVICE_LABEL } from './service-glyph';
 
 /** The + menu's "Add space…": a name and the accounts to put in it (at least one). */
@@ -30,12 +31,12 @@ export function AddSpaceDialog({ snapshot, onClose }: { snapshot: UiSnapshot; on
   return (
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <form className="dialog" onSubmit={submit} onKeyDown={(e) => e.key === 'Escape' && onClose()}>
-        <h2>Add space</h2>
+        <h2>{t('app.space.addTitle')}</h2>
         <label>
-          Name
-          <input autoFocus value={name} maxLength={40} placeholder="e.g. Acme, Personal" onChange={(e) => setName(e.target.value)} />
+          {t('app.space.name')}
+          <input autoFocus value={name} maxLength={40} placeholder={t('app.space.namePlaceholder')} onChange={(e) => setName(e.target.value)} />
         </label>
-        <div className="space-pick-title">Apps in this space</div>
+        <div className="space-pick-title">{t('app.space.appsInSpace')}</div>
         <ul className="space-pick">
           {snapshot.accounts.map((a) => {
             const current = a.spaceId ? spaceName.get(a.spaceId) : undefined;
@@ -45,7 +46,7 @@ export function AddSpaceDialog({ snapshot, onClose }: { snapshot: UiSnapshot; on
                   <input type="checkbox" checked={picked.has(a.id)} onChange={() => toggle(a.id)} />
                   <AccountAvatar a={a} small />
                   <span className="space-pick-name">{a.name}</span>
-                  <span className="space-pick-meta">{current ? `${SERVICE_LABEL[a.service]} · in ${current}` : SERVICE_LABEL[a.service]}</span>
+                  <span className="space-pick-meta">{current ? t('app.space.serviceInSpace', { service: SERVICE_LABEL[a.service], space: current }) : SERVICE_LABEL[a.service]}</span>
                 </label>
               </li>
             );
@@ -53,10 +54,10 @@ export function AddSpaceDialog({ snapshot, onClose }: { snapshot: UiSnapshot; on
         </ul>
         <div className="actions" style={{ marginTop: 16 }}>
           <button type="button" onClick={onClose}>
-            Cancel
+            {t('common.cancel')}
           </button>
           <button type="submit" className="primary" disabled={!valid}>
-            Create
+            {t('common.create')}
           </button>
         </div>
       </form>

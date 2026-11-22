@@ -1,0 +1,135 @@
+import type { Translation } from '../types';
+import type { home as en } from '../en/home';
+
+export const home: Translation<typeof en> = {
+  // Greeting by time of day (src/shared/today.ts).
+  'home.greeting.morning': 'Buongiorno',
+  'home.greeting.afternoon': 'Buon pomeriggio',
+  'home.greeting.evening': 'Buonasera',
+
+  // How long ago a message came, on its line (src/shared/messages.ts).
+  'home.ago.now': 'ora',
+  'home.ago.minutes': { one: '{count} min', other: '{count} min' },
+  'home.ago.hours': { one: '{count} h', other: '{count} h' },
+
+  // Lengths of time: "12 min", "2 h", "1 h 5 min"; on the timeline "1 h 15".
+  'home.duration.minutes': { one: '{count} min', other: '{count} min' },
+  'home.duration.hours': { one: '{count} h', other: '{count} h' },
+  'home.duration.hoursMinutes': '{hours} h {minutes} min',
+  'home.duration.hoursMinutesShort': '{hours} h {minutes}',
+
+  // The page's head.
+  'home.today.meetingsLeft': { one: 'Ancora {count} riunione', other: 'Ancora {count} riunioni' },
+  'home.today.todos': { one: '{count} attività', other: '{count} attività' },
+  'home.today.unread': { one: '{count} non letto', other: '{count} non letti' },
+  'home.today.briefMe': 'Fammi il punto',
+  'home.today.briefMeTitle': 'Un riepilogo della tua giornata in tutte le app: cosa è urgente e chi aspetta una tua risposta',
+
+  // To-dos.
+  'home.todo.title': 'Attività',
+  'home.todo.addPlaceholder': 'Aggiungi un’attività e premi Invio',
+  'home.todo.space': 'Spazio',
+  'home.todo.carriedFrom': 'da {day}',
+  'home.todo.empty': 'Ancora niente. Cosa deve succedere oggi?',
+  'home.todo.clearDone': 'Togli completate',
+
+  // Agenda.
+  'home.agenda.title': 'Agenda',
+  'home.agenda.openCalendar': 'Apri calendario',
+  'home.agenda.noGoogle': 'Aggiungi un account Google per vedere qui le tue riunioni.',
+  'home.agenda.openInCalendars': 'Apri in Tutti i calendari',
+  'home.agenda.join': 'Partecipa su {provider}',
+  'home.agenda.endsIn': 'Finisce tra {duration}',
+  'home.agenda.startingNow': 'Inizia ora',
+  'home.agenda.startsIn': 'Tra {duration}',
+  'home.agenda.endsInSub': 'finisce tra {duration}',
+  'home.agenda.startingNowSub': 'inizia ora',
+  'home.agenda.startsInSub': 'tra {duration}',
+  'home.agenda.notAnswered': 'senza risposta',
+  'home.agenda.anotherAccount': 'un altro account',
+  'home.agenda.clashWith': 'Si sovrappone a {names}',
+  'home.agenda.problemSignedOut': 'Calendario di {name}: accesso scaduto. Alcune riunioni potrebbero mancare.',
+  'home.agenda.problemOffline': 'Calendario di {name}: offline. Alcune riunioni potrebbero mancare.',
+  'home.agenda.problemError': 'Calendario di {name}: impossibile caricarlo. Alcune riunioni potrebbero mancare.',
+  'home.agenda.now': 'Ora',
+  'home.agenda.upNext': 'A seguire',
+  'home.agenda.rowNow': 'ora',
+  'home.agenda.nextHours': 'Prossime ore',
+  'home.agenda.hideEarlier': 'Nascondi precedenti',
+  'home.agenda.earlierToday': 'Prima, oggi ({count})',
+  'home.agenda.showLess': 'Mostra meno',
+  'home.agenda.laterToday': { one: 'Ancora {count} più tardi oggi', other: 'Ancora {count} più tardi oggi' },
+  'home.agenda.noMore': 'Nessun’altra riunione oggi.',
+
+  // Timeline.
+  'home.timeline.free': 'Libero',
+  'home.timeline.freeFor': '{duration} libero',
+
+  // Messages.
+  'home.messages.title': 'Messaggi',
+  'home.messages.clearAll': 'Togli tutti',
+  'home.messages.empty': 'Nessun nuovo messaggio. Chat ed email compaiono qui appena arrivano.',
+  'home.messages.showFewer': 'Mostra meno',
+  'home.messages.showAll': { one: 'Mostra {count}', other: 'Mostra tutti e {count}' },
+  'home.messages.alsoUnread': 'Altri non letti',
+  'home.messages.unread': 'Non letti',
+  'home.messages.unreadCount': { one: '{name}: {count} non letto', other: '{name}: {count} non letti' },
+  'home.messages.unreadCountIn': { one: '{name}, {where}: {count} non letto', other: '{name}, {where}: {count} non letti' },
+  'home.messages.unreadDot': '{name}: non letti',
+  'home.messages.unreadDotIn': '{name}, {where}: non letti',
+  'home.messages.nameIn': '{name}, {where}',
+  'home.messages.mailHint': 'Per vedere qui ogni email, attiva le notifiche desktop nelle impostazioni di Gmail o Outlook.',
+  'home.messages.openIn': 'Apri in {name}',
+  'home.messages.dismiss': 'Ignora',
+  'home.messages.dismissNamed': 'Ignora {name}',
+
+  // The ⚡ quick actions' menu.
+  'home.dial.label': 'Azioni rapide',
+  'home.dial.for': 'Per {label}',
+  'home.dial.meet': 'Nuovo link riunione',
+  'home.dial.event': 'Nuovo evento',
+  'home.dial.todo': 'Nuova attività',
+  'home.dial.assistant': 'Chiedi all’assistente',
+
+  // The quick pop-ups: a new to-do.
+  'home.quick.newTodo': 'Nuova attività',
+  'home.quick.todoPlaceholder': 'Cosa c’è da fare?',
+  'home.quick.space': 'Spazio',
+  'home.quick.todoHint': '<kbd>↵</kbd> per aggiungere · <kbd>esc</kbd> per chiudere',
+  'home.quick.addTodo': 'Aggiungi attività',
+  'home.quick.todoAdded': 'Attività aggiunta',
+
+  // The quick pop-ups: a new event.
+  'home.quick.newEvent': 'Nuovo evento',
+  'home.quick.account': 'Account',
+  'home.quick.titlePlaceholder': 'Aggiungi un titolo',
+  'home.quick.titleLabel': 'Titolo',
+  'home.quick.day': 'Giorno',
+  'home.quick.starts': 'Inizio',
+  'home.quick.ends': 'Fine',
+  'home.quick.allDay': 'Tutto il giorno',
+  'home.quick.removeGuest': 'Rimuovi {email}',
+  'home.quick.addAnother': 'Aggiungi un altro',
+  'home.quick.addGuests': 'Aggiungi invitati tramite email',
+  'home.quick.guests': 'Invitati',
+  'home.quick.badEmail': 'Questo non è un indirizzo email.',
+  'home.quick.calendar': 'Calendario',
+  'home.quick.location': 'Luogo',
+  'home.quick.locationPlaceholder': 'Aggiungi un luogo',
+  'home.quick.notes': 'Note',
+  'home.quick.notesPlaceholder': 'Aggiungi una descrizione',
+  'home.quick.moreOptions': 'Altre opzioni: calendario, luogo, note',
+  'home.quick.eventHint': '<kbd>{keys}</kbd> per salvare · <kbd>esc</kbd> per chiudere',
+  'home.quick.saving': 'Salvataggio…',
+  'home.quick.saveEvent': 'Salva evento',
+  'home.quick.eventSaved': 'Evento salvato',
+  'home.quick.sendTitle': 'Inviare le email di invito agli invitati?',
+  'home.quick.sendMessage': 'Gli invitati ricevono un’email da Google.',
+  'home.quick.send': 'Invia',
+  'home.quick.dontSend': 'Non inviare',
+  'home.quick.errorSignedOut': 'Sei uscito da quell’account Google. Accedi di nuovo, poi riprova.',
+  'home.quick.errorForbidden': 'Non puoi aggiungere eventi a quel calendario.',
+  'home.quick.errorOffline': 'Impossibile raggiungere Google. Controlla la connessione e riprova.',
+  'home.quick.errorUnsupported': 'Questo evento va creato in Google Calendar.',
+  'home.quick.errorGeneric': 'Impossibile salvare l’evento. Riprova.',
+};

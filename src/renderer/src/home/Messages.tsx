@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { AccountView, UiSnapshot } from '../../../shared/ipc';
 import { ago, type MessageView } from '../../../shared/messages';
+import { t } from '../i18n';
 import { ServiceLogo } from '../service-glyph';
 
 const SHOWN = 6;
@@ -22,20 +23,27 @@ export function Messages({ snapshot, now }: { snapshot: UiSnapshot; now: Date })
   const sources = new Set(snapshot.messageSources);
   const quietMail = others.some((a) => MAIL.has(a.service) && !sources.has(a.id));
   const where = (a: AccountView): string => (a.spaceId && spaces.get(a.spaceId)) || a.name;
+  const chipLabel = (a: AccountView): string => {
+    const w = where(a);
+    if (typeof a.unread === 'number') {
+      return w === a.name ? t('home.messages.unreadCount', { name: a.name, count: a.unread }) : t('home.messages.unreadCountIn', { name: a.name, where: w, count: a.unread });
+    }
+    return w === a.name ? t('home.messages.unreadDot', { name: a.name }) : t('home.messages.unreadDotIn', { name: a.name, where: w });
+  };
 
   return (
-    <section className="td-card td-msgs" aria-label="Messages">
+    <section className="td-card td-msgs" aria-label={t('home.messages.title')}>
       <div className="td-msgs-head">
-        <h2>Messages</h2>
+        <h2>{t('home.messages.title')}</h2>
         {list.length > 0 && (
           <button className="td-link" onClick={() => window.missiondesk.clearMessages()}>
-            Clear all
+            {t('home.messages.clearAll')}
           </button>
         )}
       </div>
 
       {list.length === 0 ? (
-        <p className="td-muted">No new messages. Chats and emails show up here as they arrive.</p>
+        <p className="td-muted">{t('home.messages.empty')}</p>
       ) : (
         <ul className="td-msg-list">
           {shown.map((m) => (
@@ -45,28 +53,28 @@ export function Messages({ snapshot, now }: { snapshot: UiSnapshot; now: Date })
       )}
       {list.length > SHOWN && (
         <button className="td-link td-msg-more" onClick={() => setAll((v) => !v)}>
-          {all ? 'Show fewer' : `Show all ${list.length}`}
+          {all ? t('home.messages.showFewer') : t('home.messages.showAll', { count: list.length })}
         </button>
       )}
 
       {others.length > 0 && (
         <div className="td-msg-others">
-          <span className="td-msg-others-label">{list.length ? 'Also unread' : 'Unread'}</span>
+          <span className="td-msg-others-label">{list.length ? t('home.messages.alsoUnread') : t('home.messages.unread')}</span>
           {others.map((a) => (
             <button
               key={a.id}
               className="td-msg-chip"
-              title={`${a.name}: ${unreadOf(a)} unread`}
-              aria-label={`${a.name}${where(a) === a.name ? '' : `, ${where(a)}`}: ${typeof a.unread === 'number' ? `${a.unread} unread` : 'unread'}`}
+              title={t('home.messages.unreadCount', { name: a.name, count: unreadOf(a) })}
+              aria-label={chipLabel(a)}
               onClick={() => window.missiondesk.selectAccount(a.id)}>
               <ServiceLogo service={a.service} className="td-msg-chip-logo" />
-              {where(a) === a.name ? a.name : `${a.name}, ${where(a)}`}
+              {where(a) === a.name ? a.name : t('home.messages.nameIn', { name: a.name, where: where(a) })}
               {typeof a.unread === 'number' && <span className="td-count">{a.unread}</span>}
             </button>
           ))}
         </div>
       )}
-      {quietMail && <p className="td-msg-hint">To see each email here, turn on desktop notifications in Gmail or Outlook settings.</p>}
+      {quietMail && <p className="td-msg-hint">{t('home.messages.mailHint')}</p>}
     </section>
   );
 }
@@ -74,7 +82,7 @@ export function Messages({ snapshot, now }: { snapshot: UiSnapshot; now: Date })
 function Line({ m, a, where, now }: { m: MessageView; a: AccountView; where: string; now: number }): React.JSX.Element {
   return (
     <li className="td-msg">
-      <button className="td-msg-open" onClick={() => window.missiondesk.openMessage(m.key)} title={`Open in ${a.name}`}>
+      <button className="td-msg-open" onClick={() => window.missiondesk.openMessage(m.key)} title={t('home.messages.openIn', { name: a.name })}>
         <span className="td-msg-app" style={{ boxShadow: `inset 0 0 0 1.5px ${a.color}` }}>
           <ServiceLogo service={a.service} />
         </span>
@@ -90,7 +98,7 @@ function Line({ m, a, where, now }: { m: MessageView; a: AccountView; where: str
           {m.body && <span className="td-msg-body">{m.body}</span>}
         </span>
       </button>
-      <button className="td-msg-x" aria-label={`Dismiss ${m.title || a.name}`} title="Dismiss" onClick={() => window.missiondesk.dismissMessage(m.key)}>
+      <button className="td-msg-x" aria-label={t('home.messages.dismissNamed', { name: m.title || a.name })} title={t('home.messages.dismiss')} onClick={() => window.missiondesk.dismissMessage(m.key)}>
         ×
       </button>
     </li>

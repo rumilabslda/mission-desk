@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { t } from '../i18n';
 
 export interface ToastState {
   message: string;
@@ -9,8 +10,8 @@ export interface ToastState {
 /** A short message at the bottom of the calendar; closes itself after 6 seconds. */
 export function Toast({ toast, onClose }: { toast: ToastState; onClose(): void }): React.JSX.Element {
   useEffect(() => {
-    const t = setTimeout(onClose, 6000);
-    return () => clearTimeout(t);
+    const timer = setTimeout(onClose, 6000);
+    return () => clearTimeout(timer);
   }, [toast, onClose]);
   return (
     <div className={`cal-toast${toast.error ? ' error' : ''}`} role="status">
@@ -26,7 +27,7 @@ export function Toast({ toast, onClose }: { toast: ToastState; onClose(): void }
           {a.label}
         </button>
       ))}
-      <button className="cal-toast-x" aria-label="Dismiss" onClick={onClose}>
+      <button className="cal-toast-x" aria-label={t('calendar.toast.dismiss')} onClick={onClose}>
         ×
       </button>
     </div>

@@ -1,0 +1,135 @@
+import type { Translation } from '../types';
+import type { home as en } from '../en/home';
+
+export const home: Translation<typeof en> = {
+  // Greeting by time of day (src/shared/today.ts).
+  'home.greeting.morning': 'Goedemorgen',
+  'home.greeting.afternoon': 'Goedemiddag',
+  'home.greeting.evening': 'Goedenavond',
+
+  // How long ago a message came, on its line (src/shared/messages.ts).
+  'home.ago.now': 'nu',
+  'home.ago.minutes': { one: '{count} min', other: '{count} min' },
+  'home.ago.hours': { one: '{count} u', other: '{count} u' },
+
+  // Lengths of time: "12 min", "2 h", "1 h 5 min"; on the timeline "1 h 15".
+  'home.duration.minutes': { one: '{count} min', other: '{count} min' },
+  'home.duration.hours': { one: '{count} u', other: '{count} u' },
+  'home.duration.hoursMinutes': '{hours} u {minutes} min',
+  'home.duration.hoursMinutesShort': '{hours} u {minutes}',
+
+  // The page's head.
+  'home.today.meetingsLeft': { one: 'Nog {count} vergadering', other: 'Nog {count} vergaderingen' },
+  'home.today.todos': { one: '{count} taak', other: '{count} taken' },
+  'home.today.unread': { one: '{count} ongelezen', other: '{count} ongelezen' },
+  'home.today.briefMe': 'Praat me bij',
+  'home.today.briefMeTitle': 'Een samenvatting van je dag in al je apps: wat dringend is en wie op je wacht',
+
+  // To-dos.
+  'home.todo.title': 'Taken',
+  'home.todo.addPlaceholder': 'Voeg een taak toe en druk op Return',
+  'home.todo.space': 'Ruimte',
+  'home.todo.carriedFrom': 'van {day}',
+  'home.todo.empty': 'Nog niets. Wat moet er vandaag gebeuren?',
+  'home.todo.clearDone': 'Wis voltooide',
+
+  // Agenda.
+  'home.agenda.title': 'Agenda',
+  'home.agenda.openCalendar': 'Open agenda',
+  'home.agenda.noGoogle': 'Voeg een Google-account toe om hier je vergaderingen te zien.',
+  'home.agenda.openInCalendars': 'Open in Alle agenda’s',
+  'home.agenda.join': 'Neem deel via {provider}',
+  'home.agenda.endsIn': 'Eindigt over {duration}',
+  'home.agenda.startingNow': 'Begint nu',
+  'home.agenda.startsIn': 'Over {duration}',
+  'home.agenda.endsInSub': 'eindigt over {duration}',
+  'home.agenda.startingNowSub': 'begint nu',
+  'home.agenda.startsInSub': 'over {duration}',
+  'home.agenda.notAnswered': 'niet beantwoord',
+  'home.agenda.anotherAccount': 'ander account',
+  'home.agenda.clashWith': 'Overlapt met {names}',
+  'home.agenda.problemSignedOut': 'Agenda van {name}: uitgelogd. Er kunnen vergaderingen ontbreken.',
+  'home.agenda.problemOffline': 'Agenda van {name}: offline. Er kunnen vergaderingen ontbreken.',
+  'home.agenda.problemError': 'Agenda van {name}: kon niet worden geladen. Er kunnen vergaderingen ontbreken.',
+  'home.agenda.now': 'Nu',
+  'home.agenda.upNext': 'Hierna',
+  'home.agenda.rowNow': 'nu',
+  'home.agenda.nextHours': 'Komende uren',
+  'home.agenda.hideEarlier': 'Verberg eerdere',
+  'home.agenda.earlierToday': 'Eerder vandaag ({count})',
+  'home.agenda.showLess': 'Toon minder',
+  'home.agenda.laterToday': { one: 'Later vandaag nog {count}', other: 'Later vandaag nog {count}' },
+  'home.agenda.noMore': 'Geen vergaderingen meer vandaag.',
+
+  // Timeline.
+  'home.timeline.free': 'Vrij',
+  'home.timeline.freeFor': '{duration} vrij',
+
+  // Messages.
+  'home.messages.title': 'Berichten',
+  'home.messages.clearAll': 'Wis alles',
+  'home.messages.empty': 'Geen nieuwe berichten. Chats en e-mails verschijnen hier zodra ze binnenkomen.',
+  'home.messages.showFewer': 'Toon minder',
+  'home.messages.showAll': { one: 'Toon {count}', other: 'Toon alle {count}' },
+  'home.messages.alsoUnread': 'Ook ongelezen',
+  'home.messages.unread': 'Ongelezen',
+  'home.messages.unreadCount': { one: '{name}: {count} ongelezen', other: '{name}: {count} ongelezen' },
+  'home.messages.unreadCountIn': { one: '{name}, {where}: {count} ongelezen', other: '{name}, {where}: {count} ongelezen' },
+  'home.messages.unreadDot': '{name}: ongelezen',
+  'home.messages.unreadDotIn': '{name}, {where}: ongelezen',
+  'home.messages.nameIn': '{name}, {where}',
+  'home.messages.mailHint': 'Zet bureaubladmeldingen aan in de instellingen van Gmail of Outlook om hier elke e-mail te zien.',
+  'home.messages.openIn': 'Open in {name}',
+  'home.messages.dismiss': 'Negeer',
+  'home.messages.dismissNamed': 'Negeer {name}',
+
+  // The ⚡ quick actions' menu.
+  'home.dial.label': 'Snelle acties',
+  'home.dial.for': 'Voor {label}',
+  'home.dial.meet': 'Nieuwe vergaderlink',
+  'home.dial.event': 'Nieuwe activiteit',
+  'home.dial.todo': 'Nieuwe taak',
+  'home.dial.assistant': 'Vraag het de assistent',
+
+  // The quick pop-ups: a new to-do.
+  'home.quick.newTodo': 'Nieuwe taak',
+  'home.quick.todoPlaceholder': 'Wat moet er gebeuren?',
+  'home.quick.space': 'Ruimte',
+  'home.quick.todoHint': '<kbd>↵</kbd> om toe te voegen · <kbd>esc</kbd> om te sluiten',
+  'home.quick.addTodo': 'Voeg taak toe',
+  'home.quick.todoAdded': 'Taak toegevoegd',
+
+  // The quick pop-ups: a new event.
+  'home.quick.newEvent': 'Nieuwe activiteit',
+  'home.quick.account': 'Account',
+  'home.quick.titlePlaceholder': 'Voeg een titel toe',
+  'home.quick.titleLabel': 'Titel',
+  'home.quick.day': 'Dag',
+  'home.quick.starts': 'Begin',
+  'home.quick.ends': 'Einde',
+  'home.quick.allDay': 'Hele dag',
+  'home.quick.removeGuest': 'Verwijder {email}',
+  'home.quick.addAnother': 'Voeg nog een toe',
+  'home.quick.addGuests': 'Voeg gasten toe via e-mail',
+  'home.quick.guests': 'Gasten',
+  'home.quick.badEmail': 'Dat is geen e-mailadres.',
+  'home.quick.calendar': 'Agenda',
+  'home.quick.location': 'Locatie',
+  'home.quick.locationPlaceholder': 'Voeg een plaats toe',
+  'home.quick.notes': 'Notities',
+  'home.quick.notesPlaceholder': 'Voeg een beschrijving toe',
+  'home.quick.moreOptions': 'Meer opties: agenda, plaats, notities',
+  'home.quick.eventHint': '<kbd>{keys}</kbd> om te bewaren · <kbd>esc</kbd> om te sluiten',
+  'home.quick.saving': 'Bewaren…',
+  'home.quick.saveEvent': 'Bewaar activiteit',
+  'home.quick.eventSaved': 'Activiteit bewaard',
+  'home.quick.sendTitle': 'Uitnodigingen per e-mail naar gasten sturen?',
+  'home.quick.sendMessage': 'Gasten krijgen een e-mail van Google.',
+  'home.quick.send': 'Verstuur',
+  'home.quick.dontSend': 'Verstuur niet',
+  'home.quick.errorSignedOut': 'Uitgelogd bij dat Google-account. Log opnieuw in en probeer het nog eens.',
+  'home.quick.errorForbidden': 'Je kunt geen activiteiten aan die agenda toevoegen.',
+  'home.quick.errorOffline': 'Kan Google niet bereiken. Controleer je verbinding en probeer het opnieuw.',
+  'home.quick.errorUnsupported': 'Deze activiteit moet in Google Agenda worden gemaakt.',
+  'home.quick.errorGeneric': 'Kan de activiteit niet bewaren. Probeer het opnieuw.',
+};

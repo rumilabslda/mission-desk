@@ -1,27 +1,36 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ASSISTANT_EFFORTS, ASSISTANT_MODELS, type AssistantEffort, type AssistantEvent, type AssistantModel, COMMANDS } from '../../../shared/assistant';
+import { ASSISTANT_EFFORTS, ASSISTANT_MODELS, type AssistantEffort, type AssistantEvent, type AssistantModel, COMMANDS, effortLabel } from '../../../shared/assistant';
 import type { UiSnapshot } from '../../../shared/ipc';
 import { applyEvent, type ChatMessage, type ToolStep } from '../../../shared/assistant-history';
+import { intlLocale, rich, t } from '../i18n';
 import { type Block, parseMarkdown, type Span } from './markdown';
 
 type Problem = { kind: 'not-found' | 'signed-out' | 'failed'; message: string } | null;
 
+const has = (v: unknown): boolean => v !== undefined && v !== null;
 const TOOL_LABEL: Record<string, (i: Record<string, unknown>) => string> = {
-  current_context: () => 'Looking at your screen',
-  list_accounts: () => 'Listing accounts',
-  read_page: (i) => `Reading ${i.account ?? 'a page'}${i.tab ? ` · ${i.tab}` : ''}`,
-  get_elements: (i) => `Looking at ${i.account ?? 'the page'}`,
-  screenshot: (i) => `Screenshot of ${i.account ?? 'the page'}`,
-  open_url: (i) => `Opening a page in ${i.account ?? 'an account'}`,
-  click: (i) => `Clicking in ${i.account ?? 'an account'}`,
-  type: (i) => `Typing in ${i.account ?? 'an account'}`,
-  press: (i) => `Pressing ${i.key ?? 'a key'}`,
-  calendar_events: () => 'Checking calendars',
-  find_free_time: () => 'Finding free time',
-  create_event: () => 'Waiting for your OK to create the event',
-  unread_counts: () => 'Counting unread',
+  current_context: () => t('assistant.tool.currentContext'),
+  list_accounts: () => t('assistant.tool.listAccounts'),
+  read_page: (i) =>
+    has(i.account)
+      ? i.tab
+        ? t('assistant.tool.readPageTab', { account: String(i.account), tab: String(i.tab) })
+        : t('assistant.tool.readPage', { account: String(i.account) })
+      : i.tab
+        ? t('assistant.tool.readPageAnyTab', { tab: String(i.tab) })
+        : t('assistant.tool.readPageAny'),
+  get_elements: (i) => (has(i.account) ? t('assistant.tool.getElements', { account: String(i.account) }) : t('assistant.tool.getElementsAny')),
+  screenshot: (i) => (has(i.account) ? t('assistant.tool.screenshot', { account: String(i.account) }) : t('assistant.tool.screenshotAny')),
+  open_url: (i) => (has(i.account) ? t('assistant.tool.openUrl', { account: String(i.account) }) : t('assistant.tool.openUrlAny')),
+  click: (i) => (has(i.account) ? t('assistant.tool.click', { account: String(i.account) }) : t('assistant.tool.clickAny')),
+  type: (i) => (has(i.account) ? t('assistant.tool.type', { account: String(i.account) }) : t('assistant.tool.typeAny')),
+  press: (i) => (has(i.key) ? t('assistant.tool.press', { key: String(i.key) }) : t('assistant.tool.pressAny')),
+  calendar_events: () => t('assistant.tool.calendarEvents'),
+  find_free_time: () => t('assistant.tool.findFreeTime'),
+  create_event: () => t('assistant.tool.createEvent'),
+  unread_counts: () => t('assistant.tool.unreadCounts'),
 };
-const label = (t: ToolStep): string => (TOOL_LABEL[t.name] ?? (() => t.name.replace(/_/g, ' ')))(t.input ?? {});
+const label = (step: ToolStep): string => (TOOL_LABEL[step.name] ?? (() => step.name.replace(/_/g, ' ')))(step.input ?? {});
 
 function Spans({ spans }: { spans: Span[] }): React.JSX.Element {
   return (
@@ -119,22 +128,22 @@ function segments(m: ChatMessage): (string | ToolStep[])[] {
   const out: (string | ToolStep[])[] = [];
   let pos = 0;
   const words = (end: number): void => {
-    const t = m.text.slice(pos, end);
-    if (t.trim()) out.push(t);
+    const piece = m.text.slice(pos, end);
+    if (piece.trim()) out.push(piece);
     pos = end;
   };
-  for (const t of m.tools) {
-    words(Math.min(Math.max(t.at ?? 0, pos), m.text.length));
+  for (const step of m.tools) {
+    words(Math.min(Math.max(step.at ?? 0, pos), m.text.length));
     const prev = out[out.length - 1];
-    if (Array.isArray(prev)) prev.push(t);
-    else out.push([t]);
+    if (Array.isArray(prev)) prev.push(step);
+    else out.push([step]);
   }
   words(m.text.length);
   return out;
 }
 
 const SUGGESTIONS = ['/brief', '/waiting', '/prep', '/summarize'];
-const when = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+const when = new Intl.DateTimeFormat(intlLocale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
 /** The assistant: the user's own Claude Code working across the accounts of a space. */
 export function AssistantPanel({
@@ -287,11 +296,11 @@ export function AssistantPanel({
   }
 
   return (
-    <div className="as-panel" aria-label="Assistant">
+    <div className="as-panel" aria-label={t('assistant.title')}>
       <header className="as-head">
         <span className="as-title">✦</span>
         {a.mode === 'space' ? (
-          <select className="as-scope" title="Which space this assistant works for" value={a.scope} onChange={(e) => window.missiondesk.assistantSetScope(e.target.value)}>
+          <select className="as-scope" title={t('assistant.panel.scopeTitle')} value={a.scope} onChange={(e) => window.missiondesk.assistantSetScope(e.target.value)}>
             {a.scopes.map((x) => (
               <option key={x.key} value={x.key}>
                 {x.name}
@@ -299,15 +308,15 @@ export function AssistantPanel({
             ))}
           </select>
         ) : (
-          <span className="as-scope-name">Assistant</span>
+          <span className="as-scope-name">{t('assistant.title')}</span>
         )}
-        <button className={`as-icon${showHistory ? ' on' : ''}`} title="History" aria-label="History" onClick={() => setShowHistory((v) => !v)}>
+        <button className={`as-icon${showHistory ? ' on' : ''}`} title={t('assistant.panel.history')} aria-label={t('assistant.panel.history')} onClick={() => setShowHistory((v) => !v)}>
           ⏱
         </button>
         <button
           className="as-icon"
-          title="New chat"
-          aria-label="New chat"
+          title={t('assistant.panel.newChat')}
+          aria-label={t('assistant.panel.newChat')}
           onClick={() => {
             setShowHistory(false);
             window.missiondesk.assistantNewChat();
@@ -315,15 +324,15 @@ export function AssistantPanel({
         >
           ＋
         </button>
-        <button className="as-icon" title="Close (⌘J)" aria-label="Close" onClick={() => window.missiondesk.toggleAssistant(false)}>
+        <button className="as-icon" title={t('assistant.closeShortcut')} aria-label={t('common.close')} onClick={() => window.missiondesk.toggleAssistant(false)}>
           ×
         </button>
       </header>
 
       {showHistory ? (
         <div className="as-history">
-          <h3>{scopeName} · history</h3>
-          {a.conversations.length === 0 && <p className="as-tip">No conversations yet.</p>}
+          <h3>{t('assistant.history.title', { scope: scopeName })}</h3>
+          {a.conversations.length === 0 && <p className="as-tip">{t('assistant.history.empty')}</p>}
           <ul>
             {a.conversations.map((c) => (
               <li key={c.id} className={c.id === a.conversationId ? 'on' : ''}>
@@ -337,7 +346,7 @@ export function AssistantPanel({
                   <span>{c.title}</span>
                   <small>{when.format(new Date(c.updatedAt))}</small>
                 </button>
-                <button className="as-icon" title="Delete" aria-label={`Delete ${c.title}`} onClick={() => window.missiondesk.assistantDeleteConversation(c.id)}>
+                <button className="as-icon" title={t('common.delete')} aria-label={t('assistant.history.deleteLabel', { title: c.title })} onClick={() => window.missiondesk.assistantDeleteConversation(c.id)}>
                   ×
                 </button>
               </li>
@@ -348,11 +357,9 @@ export function AssistantPanel({
         <div className="as-list" ref={listRef}>
           {a.engine === 'off' && (
             <div className="as-empty">
-              <p>
-                The assistant is off for <strong>{scopeName}</strong>.
-              </p>
+              <p>{rich('assistant.empty.off', { b: (s) => <strong>{s}</strong> }, { scope: scopeName })}</p>
               <button className="as-retry" onClick={() => window.missiondesk.openSettings('assistant')}>
-                Open Settings → Assistant
+                {t('assistant.empty.openSettings')}
               </button>
             </div>
           )}
@@ -360,15 +367,17 @@ export function AssistantPanel({
             <div className="as-empty">
               {shared.length === 0 ? (
                 <p>
-                  No account in <strong>{scopeName}</strong> is turned on for the assistant yet.{' '}
+                  {rich('assistant.empty.noAccount', { b: (s) => <strong>{s}</strong> }, { scope: scopeName })}{' '}
                   <button className="as-link" onClick={() => window.missiondesk.openSettings('assistant')}>
-                    Choose in Settings → Assistant
+                    {t('assistant.empty.chooseInSettings')}
                   </button>
                 </p>
               ) : (
                 <>
                   <p>
-                    Ask anything about <strong>{a.scope === 'all' ? 'all your accounts' : scopeName}</strong>, or start with:
+                    {a.scope === 'all'
+                      ? rich('assistant.empty.askAll', { b: (s) => <strong>{s}</strong> })
+                      : rich('assistant.empty.askScope', { b: (s) => <strong>{s}</strong> }, { scope: scopeName })}
                   </p>
                   <div className="as-suggest">
                     {SUGGESTIONS.map((s) => (
@@ -378,8 +387,10 @@ export function AssistantPanel({
                     ))}
                   </div>
                   <p className="as-tip">
-                    {a.scope === 'all' || a.mode === 'all' ? 'It sees every shared account.' : `It sees only ${scopeName}'s accounts: ${shared.map((x) => x.name).join(', ')}.`} Type / for
-                    commands, @ for an account. Nothing is sent for you.
+                    {a.scope === 'all' || a.mode === 'all'
+                      ? t('assistant.empty.seesAll')
+                      : t('assistant.empty.seesScope', { scope: scopeName, accounts: shared.map((x) => x.name).join(', ') })}{' '}
+                    {t('assistant.empty.tip')}
                   </p>
                 </>
               )}
@@ -395,9 +406,9 @@ export function AssistantPanel({
                     <Markdown key={j} text={seg} />
                   ) : (
                     <div key={j} className="as-tools">
-                      {seg.map((t) => (
-                        <span key={t.id} className={`as-tool${t.done ? ' done' : ''}${t.isError ? ' err' : ''}`}>
-                          {t.done ? (t.isError ? '⚠︎' : '✓') : '…'} {label(t)}
+                      {seg.map((step) => (
+                        <span key={step.id} className={`as-tool${step.done ? ' done' : ''}${step.isError ? ' err' : ''}`}>
+                          {step.done ? (step.isError ? '⚠︎' : '✓') : '…'} {label(step)}
                         </span>
                       ))}
                     </div>
@@ -406,21 +417,21 @@ export function AssistantPanel({
               )}
             </div>
           ))}
-          {working && <div className="as-working">Working…</div>}
+          {working && <div className="as-working">{t('assistant.working')}</div>}
           {problem && (
             <div className={`as-problem ${problem.kind}`}>
               {(problem.kind === 'signed-out' || problem.kind === 'not-found') && (
                 <>
-                  <strong>Claude Code can’t answer: it needs you to sign in again.</strong> Open Terminal and run <code>claude auth login</code>, then try again.
+                  {rich('assistant.problem.signedOut', { b: (s) => <strong>{s}</strong>, code: (s) => <code>{s}</code> })}
                 </>
               )}
               {problem.kind === 'failed' && (
                 <>
-                  <strong>Something went wrong.</strong> <span className="as-detail">{problem.message.slice(0, 300)}</span>
+                  <strong>{t('assistant.problem.failed')}</strong> <span className="as-detail">{problem.message.slice(0, 300)}</span>
                 </>
               )}
               <button className="as-retry" onClick={() => lastSent.current && send(lastSent.current)}>
-                Try again
+                {t('assistant.problem.retry')}
               </button>
             </div>
           )}
@@ -440,7 +451,9 @@ export function AssistantPanel({
         <textarea
           ref={inputRef}
           rows={Math.min(8, Math.max(2, input.split('\n').length))}
-          placeholder={a.engine === 'off' ? 'The assistant is off for this space' : shared.length ? 'Ask, or type / for commands…' : 'Turn on an account first (Settings → Assistant)'}
+          placeholder={
+            a.engine === 'off' ? t('assistant.compose.placeholderOff') : shared.length ? t('assistant.compose.placeholder') : t('assistant.compose.placeholderNoAccount')
+          }
           value={input}
           disabled={shared.length === 0 || a.engine === 'off'}
           onChange={(e) => {
@@ -451,7 +464,7 @@ export function AssistantPanel({
         />
         <div className="as-actions">
           {a.engine === 'claude' ? (
-            <select title="Model" value={a.model} onChange={(e) => window.missiondesk.assistantSetModel(e.target.value as AssistantModel, a.effort)}>
+            <select title={t('assistant.compose.model')} value={a.model} onChange={(e) => window.missiondesk.assistantSetModel(e.target.value as AssistantModel, a.effort)}>
               {ASSISTANT_MODELS.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.label}
@@ -459,12 +472,12 @@ export function AssistantPanel({
               ))}
             </select>
           ) : (
-            <button className="as-engine" title="Change in Settings → Assistant" onClick={() => window.missiondesk.openSettings('assistant')}>
+            <button className="as-engine" title={t('assistant.compose.changeEngine')} onClick={() => window.missiondesk.openSettings('assistant')}>
               {a.engine === 'codex' ? `Codex${a.configs[a.scope]?.codexModel ? ` · ${a.configs[a.scope].codexModel}` : ''}` : `OpenRouter · ${(a.configs[a.scope]?.openrouterModel ?? 'auto').replace(/^openrouter\//, '')}`}
             </button>
           )}
           <select
-            title="Effort (how hard it thinks)"
+            title={t('assistant.compose.effort')}
             value={a.effort}
             onChange={(e) =>
               a.engine === 'claude'
@@ -474,18 +487,18 @@ export function AssistantPanel({
           >
             {ASSISTANT_EFFORTS.map((ef) => (
               <option key={ef} value={ef}>
-                {ef}
+                {effortLabel(ef)}
               </option>
             ))}
           </select>
           <span className="as-model">{modelName ? modelName.replace(/^claude-/, '') : ''}</span>
           {working ? (
             <button className="as-stop" onClick={() => window.missiondesk.assistantStop()}>
-              Stop
+              {t('assistant.stop')}
             </button>
           ) : (
             <button className="primary as-send" disabled={!input.trim() || shared.length === 0 || a.engine === 'off'} onClick={() => send(input)}>
-              Send
+              {t('assistant.compose.send')}
             </button>
           )}
         </div>

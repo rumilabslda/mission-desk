@@ -1,3 +1,4 @@
+import type { LanguageSetting, Locale } from './i18n/locales';
 import type { AssistantEffort, AssistantEvent, AssistantModel, ClaudeStatus, MemoryNote } from './assistant';
 import type { Skill, SkillDraft, SkillSource } from './skills';
 import type { DialAction, FabToastShown, QuickRequest } from './quick';
@@ -79,6 +80,8 @@ export interface UiSnapshot {
   calendarDefaultAccount?: string;
   /** The week-start choice in Settings ('auto' = from the Mac). */
   weekStartSetting: 0 | 1 | 'auto';
+  /** The language choice in Settings ('system' = the Mac's). */
+  language: LanguageSetting;
   /** Google accounts hidden in that view. */
   calendarHidden: string[];
   /** 1 = Monday, 0 = Sunday (from the Mac's settings). */
@@ -263,6 +266,10 @@ export interface UiApi {
   ungroupSpace(id: string): void;
   setSidebarStyle(style: SidebarStyle): void;
   setWeekStart(v: 0 | 1 | 'auto'): void;
+  /** Changes the interface language; every Mission Desk page reloads in it. */
+  setLanguage(v: LanguageSetting): void;
+  /** The interface language and the locale for dates, read once when the page loads. */
+  locale: { locale: Locale; format: string; system: Locale } | null;
   showDataFolder(): void;
   showClaudeLog(): void;
 }
@@ -391,6 +398,8 @@ export const IPC = {
   ungroupSpace: 'ui:ungroup-space',
   setSidebarStyle: 'ui:set-sidebar-style',
   setWeekStart: 'ui:set-week-start',
+  setLanguage: 'ui:set-language',
+  getLocale: 'ui:get-locale',
   showDataFolder: 'ui:show-data-folder',
   showClaudeLog: 'ui:show-claude-log',
   openAddDialog: 'ui:open-add-dialog',

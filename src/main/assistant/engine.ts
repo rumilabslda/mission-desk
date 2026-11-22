@@ -1,5 +1,6 @@
 import { StringDecoder } from 'node:string_decoder';
 import type { AssistantEffort, AssistantEvent } from '../../shared/assistant';
+import { t } from '../../shared/i18n';
 import { buildArgs, classifyError, explainModelError, parseEvent } from './claude-code';
 
 /** What the session needs from a child process (node's ChildProcess fits). */
@@ -42,7 +43,6 @@ export interface AssistantSession {
 const STDERR_KEEP = 2000;
 /** Claude Code's answer to `--resume` of a session it no longer has (it cleans them up after 30 days). */
 const STALE_SESSION = /no conversation found|session[^\n]{0,40}(not found|does not exist|no longer)/i;
-const STARTED_FRESH = '(The earlier context of this conversation was no longer available, so I started fresh.)\n\n';
 
 /** One assistant conversation on the user's own Claude Code (one long-lived process). */
 export function createClaudeCodeSession(io: SessionIO, initial: { model: string; effort: AssistantEffort; resume?: string }): AssistantSession {
@@ -78,7 +78,7 @@ export function createClaudeCodeSession(io: SessionIO, initial: { model: string;
     const cmd = await io.claudePath();
     if (gen !== generation) return null; // stopped while looking for Claude Code
     if (!cmd) {
-      emit({ type: 'error', kind: 'not-found', message: 'Claude Code is not installed.' });
+      emit({ type: 'error', kind: 'not-found', message: t('assistant.error.claudeNotInstalled') });
       return null;
     }
     const args = buildArgs({ model, effort, mcpConfig: io.mcpConfig(), systemPrompt: io.systemPrompt(), ...(sessionId ? { resume: sessionId } : {}) });
@@ -94,7 +94,7 @@ export function createClaudeCodeSession(io: SessionIO, initial: { model: string;
       child = null;
       sessionId = null;
       working = false;
-      emit({ type: 'text', delta: STARTED_FRESH });
+      emit({ type: 'text', delta: `${t('assistant.startedFresh')}\n\n` });
       void api.send(lastText);
       return true;
     };
@@ -116,7 +116,7 @@ export function createClaudeCodeSession(io: SessionIO, initial: { model: string;
           }
           if (child === c) emit(e);
           if (e.type === 'done' && e.isError && child === c) {
-            const message = e.text ?? 'Claude Code reported an error.';
+            const message = e.text ?? t('assistant.error.claudeReported');
             emit({ type: 'error', kind: classifyError(message), message: explainModelError(message, model) });
           }
         }
@@ -137,7 +137,7 @@ export function createClaudeCodeSession(io: SessionIO, initial: { model: string;
       child = null;
       if (working) {
         working = false;
-        const message = stderr.trim() || 'Claude Code stopped unexpectedly.';
+        const message = stderr.trim() || t('assistant.error.claudeStopped');
         emit({ type: 'error', kind: classifyError(message), message: explainModelError(message, model) });
       }
     });

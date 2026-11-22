@@ -12,6 +12,8 @@ import {
   normalizeSpaces,
   ungroupSpace,
 } from '../../shared/spaces';
+import type { LanguageSetting } from '../../shared/i18n/locales';
+import { t } from '../../shared/i18n';
 import type { Account, AppState, GoogleSubApp, ServiceId, SidebarStyle, Space } from '../../shared/types';
 
 export interface Store {
@@ -44,6 +46,7 @@ export interface Store {
   moveWithin(accountId: string, delta: -1 | 1): void;
   setSidebarStyle(style: SidebarStyle): void;
   setWeekStart(v: 0 | 1 | 'auto'): void;
+  setLanguage(v: LanguageSetting): void;
   setCalendarDefaultAccount(id: string): void;
   setAssistantPrefs(prefs: { model?: string; effort?: string; width?: number; height?: number; defaultEngine?: string; button?: boolean; fab?: { side: 'left' | 'right'; y: number }; mode?: 'space' | 'all'; scopes?: Record<string, { engine?: string; model?: string; effort?: string; openrouterModel?: string; codexModel?: string }> }): void;
   setOpenOnToday(on: boolean): void;
@@ -87,7 +90,7 @@ function normalized(s: AppState): AppState {
 }
 
 export function createStore(filePath: string): Store {
-  let warning: string | null = null;
+  let unreadable = false; // the saved file couldn't be read (the warning is written when shown)
   let state = load();
 
   function load(): AppState {
@@ -104,7 +107,7 @@ export function createStore(filePath: string): Store {
       // fall through to recovery
     }
     fs.copyFileSync(filePath, `${filePath}.bak`);
-    warning = 'Your saved accounts could not be read, so Mission Desk started empty. A copy was kept as accounts.json.bak.';
+    unreadable = true;
     return defaultState();
   }
 
@@ -123,7 +126,7 @@ export function createStore(filePath: string): Store {
 
   return {
     state: () => state,
-    loadWarning: () => warning,
+    loadWarning: () => (unreadable ? t('main.store.loadWarning') : null),
 
     add(input, place) {
       const account: Account = { id: randomUUID(), ...input, muted: false, hibernateWhenIdle: false };
@@ -316,6 +319,12 @@ export function createStore(filePath: string): Store {
     setWeekStart(v) {
       const { weekStart: _drop, ...rest } = state;
       state = v === 'auto' ? rest : { ...rest, weekStart: v };
+      save();
+    },
+
+    setLanguage(v) {
+      const { language: _drop, ...rest } = state;
+      state = v === 'system' ? rest : { ...rest, language: v };
       save();
     },
 

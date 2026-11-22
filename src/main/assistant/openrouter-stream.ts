@@ -1,6 +1,8 @@
 // Reads an OpenAI-style chat completion stream (Server-Sent Events), as OpenRouter sends it:
 // text deltas as they come, tool calls assembled from their pieces, errors, and [DONE].
 
+import { t } from '../../shared/i18n';
+
 export interface ToolCall {
   id: string;
   name: string;
@@ -43,7 +45,7 @@ export function createChatStream() {
       return [];
     }
     if (msg.error) {
-      r.error = msg.error.message ?? 'The model returned an error.';
+      r.error = msg.error.message ?? t('assistant.error.modelError');
       return [];
     }
     const out: { type: 'text'; delta: string }[] = [];
@@ -71,7 +73,7 @@ export function createChatStream() {
         if (tc.function?.arguments) calls[i].arguments += tc.function.arguments;
       }
       if (ch.finish_reason) r.finish = ch.finish_reason;
-      if (ch.finish_reason === 'error' && !r.error) r.error = 'The model stopped with an error.';
+      if (ch.finish_reason === 'error' && !r.error) r.error = t('assistant.error.modelStopped');
     }
     return out;
   }

@@ -1,0 +1,135 @@
+import type { Translation } from '../types';
+import type { home as en } from '../en/home';
+
+export const home: Translation<typeof en> = {
+  // Greeting by time of day (src/shared/today.ts).
+  'home.greeting.morning': 'Guten Morgen',
+  'home.greeting.afternoon': 'Guten Tag',
+  'home.greeting.evening': 'Guten Abend',
+
+  // How long ago a message came, on its line (src/shared/messages.ts).
+  'home.ago.now': 'jetzt',
+  'home.ago.minutes': { one: '{count} Min.', other: '{count} Min.' },
+  'home.ago.hours': { one: '{count} Std.', other: '{count} Std.' },
+
+  // Lengths of time: "12 min", "2 h", "1 h 5 min"; on the timeline "1 h 15".
+  'home.duration.minutes': { one: '{count} Min.', other: '{count} Min.' },
+  'home.duration.hours': { one: '{count} Std.', other: '{count} Std.' },
+  'home.duration.hoursMinutes': '{hours} Std. {minutes} Min.',
+  'home.duration.hoursMinutesShort': '{hours} Std. {minutes}',
+
+  // The page's head.
+  'home.today.meetingsLeft': { one: 'Noch {count} Meeting', other: 'Noch {count} Meetings' },
+  'home.today.todos': { one: '{count} Aufgabe', other: '{count} Aufgaben' },
+  'home.today.unread': { one: '{count} ungelesen', other: '{count} ungelesen' },
+  'home.today.briefMe': 'Kurzüberblick',
+  'home.today.briefMeTitle': 'Eine Zusammenfassung deines Tages über alle Apps: Was dringend ist und wer auf dich wartet',
+
+  // To-dos.
+  'home.todo.title': 'Aufgaben',
+  'home.todo.addPlaceholder': 'Aufgabe eingeben und Eingabetaste drücken',
+  'home.todo.space': 'Bereich',
+  'home.todo.carriedFrom': 'von {day}',
+  'home.todo.empty': 'Noch nichts. Was muss heute passieren?',
+  'home.todo.clearDone': 'Erledigte entfernen',
+
+  // Agenda.
+  'home.agenda.title': 'Termine',
+  'home.agenda.openCalendar': 'Kalender öffnen',
+  'home.agenda.noGoogle': 'Füge ein Google-Konto hinzu, um deine Meetings hier zu sehen.',
+  'home.agenda.openInCalendars': 'In „Alle Kalender“ öffnen',
+  'home.agenda.join': '{provider} beitreten',
+  'home.agenda.endsIn': 'Endet in {duration}',
+  'home.agenda.startingNow': 'Beginnt jetzt',
+  'home.agenda.startsIn': 'In {duration}',
+  'home.agenda.endsInSub': 'endet in {duration}',
+  'home.agenda.startingNowSub': 'beginnt jetzt',
+  'home.agenda.startsInSub': 'in {duration}',
+  'home.agenda.notAnswered': 'nicht beantwortet',
+  'home.agenda.anotherAccount': 'anderes Konto',
+  'home.agenda.clashWith': 'Überschneidung mit {names}',
+  'home.agenda.problemSignedOut': 'Kalender von {name}: abgemeldet. Einige Meetings fehlen eventuell.',
+  'home.agenda.problemOffline': 'Kalender von {name}: offline. Einige Meetings fehlen eventuell.',
+  'home.agenda.problemError': 'Kalender von {name}: Laden fehlgeschlagen. Einige Meetings fehlen eventuell.',
+  'home.agenda.now': 'Jetzt',
+  'home.agenda.upNext': 'Als Nächstes',
+  'home.agenda.rowNow': 'jetzt',
+  'home.agenda.nextHours': 'Nächste Stunden',
+  'home.agenda.hideEarlier': 'Frühere ausblenden',
+  'home.agenda.earlierToday': 'Früher heute ({count})',
+  'home.agenda.showLess': 'Weniger anzeigen',
+  'home.agenda.laterToday': { one: '{count} weiteres später heute', other: '{count} weitere später heute' },
+  'home.agenda.noMore': 'Heute keine weiteren Meetings.',
+
+  // Timeline.
+  'home.timeline.free': 'Frei',
+  'home.timeline.freeFor': '{duration} frei',
+
+  // Messages.
+  'home.messages.title': 'Nachrichten',
+  'home.messages.clearAll': 'Alle entfernen',
+  'home.messages.empty': 'Keine neuen Nachrichten. Chats und E-Mails erscheinen hier, sobald sie eintreffen.',
+  'home.messages.showFewer': 'Weniger anzeigen',
+  'home.messages.showAll': { one: '{count} anzeigen', other: 'Alle {count} anzeigen' },
+  'home.messages.alsoUnread': 'Ebenfalls ungelesen',
+  'home.messages.unread': 'Ungelesen',
+  'home.messages.unreadCount': { one: '{name}: {count} ungelesen', other: '{name}: {count} ungelesen' },
+  'home.messages.unreadCountIn': { one: '{name}, {where}: {count} ungelesen', other: '{name}, {where}: {count} ungelesen' },
+  'home.messages.unreadDot': '{name}: ungelesen',
+  'home.messages.unreadDotIn': '{name}, {where}: ungelesen',
+  'home.messages.nameIn': '{name}, {where}',
+  'home.messages.mailHint': 'Um jede E-Mail hier zu sehen, aktiviere Desktop-Mitteilungen in den Einstellungen von Gmail oder Outlook.',
+  'home.messages.openIn': 'In {name} öffnen',
+  'home.messages.dismiss': 'Ausblenden',
+  'home.messages.dismissNamed': '{name} ausblenden',
+
+  // The ⚡ quick actions' menu.
+  'home.dial.label': 'Schnellaktionen',
+  'home.dial.for': 'Für {label}',
+  'home.dial.meet': 'Neuer Meeting-Link',
+  'home.dial.event': 'Neuer Termin',
+  'home.dial.todo': 'Neue Aufgabe',
+  'home.dial.assistant': 'Assistenten fragen',
+
+  // The quick pop-ups: a new to-do.
+  'home.quick.newTodo': 'Neue Aufgabe',
+  'home.quick.todoPlaceholder': 'Was ist zu tun?',
+  'home.quick.space': 'Bereich',
+  'home.quick.todoHint': '<kbd>↵</kbd> zum Hinzufügen · <kbd>esc</kbd> zum Schließen',
+  'home.quick.addTodo': 'Aufgabe hinzufügen',
+  'home.quick.todoAdded': 'Aufgabe hinzugefügt',
+
+  // The quick pop-ups: a new event.
+  'home.quick.newEvent': 'Neuer Termin',
+  'home.quick.account': 'Konto',
+  'home.quick.titlePlaceholder': 'Titel hinzufügen',
+  'home.quick.titleLabel': 'Titel',
+  'home.quick.day': 'Tag',
+  'home.quick.starts': 'Beginn',
+  'home.quick.ends': 'Ende',
+  'home.quick.allDay': 'Ganztägig',
+  'home.quick.removeGuest': '{email} entfernen',
+  'home.quick.addAnother': 'Weitere hinzufügen',
+  'home.quick.addGuests': 'Gäste per E-Mail hinzufügen',
+  'home.quick.guests': 'Gäste',
+  'home.quick.badEmail': 'Das ist keine E-Mail-Adresse.',
+  'home.quick.calendar': 'Kalender',
+  'home.quick.location': 'Ort',
+  'home.quick.locationPlaceholder': 'Ort hinzufügen',
+  'home.quick.notes': 'Notizen',
+  'home.quick.notesPlaceholder': 'Beschreibung hinzufügen',
+  'home.quick.moreOptions': 'Weitere Optionen: Kalender, Ort, Notizen',
+  'home.quick.eventHint': '<kbd>{keys}</kbd> zum Sichern · <kbd>esc</kbd> zum Schließen',
+  'home.quick.saving': 'Wird gesichert …',
+  'home.quick.saveEvent': 'Termin sichern',
+  'home.quick.eventSaved': 'Termin gesichert',
+  'home.quick.sendTitle': 'Einladungen per E-Mail an Gäste senden?',
+  'home.quick.sendMessage': 'Gäste erhalten eine E-Mail von Google.',
+  'home.quick.send': 'Senden',
+  'home.quick.dontSend': 'Nicht senden',
+  'home.quick.errorSignedOut': 'Von diesem Google-Konto abgemeldet. Melde dich erneut an und versuche es dann noch einmal.',
+  'home.quick.errorForbidden': 'Du kannst diesem Kalender keine Termine hinzufügen.',
+  'home.quick.errorOffline': 'Google ist nicht erreichbar. Prüfe deine Verbindung und versuche es erneut.',
+  'home.quick.errorUnsupported': 'Dieser Termin muss in Google Kalender erstellt werden.',
+  'home.quick.errorGeneric': 'Der Termin konnte nicht gesichert werden. Versuche es erneut.',
+};

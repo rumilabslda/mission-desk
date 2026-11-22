@@ -4,13 +4,14 @@ import type { Owner } from './CalendarView';
 import { sameDay } from './dates';
 import { createRange, isDrag, minutesAt, moveBy, resizeTo } from './drag';
 import { allDayFor, eventTimes, timedBlocksForDay } from './layout';
+import { intlLocale } from '../i18n';
 
 const HOUR_PX = 48;
 const PX_PER_MIN = HOUR_PX / 60;
 const HOURS = Array.from({ length: 24 }, (_, h) => h);
 
-const timeFmt = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
-const weekdayFmt = new Intl.DateTimeFormat(undefined, { weekday: 'short' });
+const timeFmt = new Intl.DateTimeFormat(intlLocale(), { hour: '2-digit', minute: '2-digit' });
+const weekdayFmt = new Intl.DateTimeFormat(intlLocale(), { weekday: 'short' });
 
 export function eventClass(e: CalEvent): string {
   return `cal-ev${e.response === 'needsAction' ? ' pending' : e.response === 'tentative' ? ' maybe' : ''}`;

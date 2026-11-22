@@ -5,12 +5,21 @@ import type { AccountView, UiSnapshot } from '../../../shared/ipc';
 import type { Account } from '../../../shared/types';
 import type { MemoryNote } from '../../../shared/assistant';
 import { ClaudeConnectPanel } from '../ConnectClaudeDialog';
+import { type MessageKey, rich, t } from '../i18n';
 
-const ACCESS: { value: NonNullable<Account['claudeAccess']>; label: string }[] = [
-  { value: 'off', label: 'Off' },
-  { value: 'read', label: 'Read' },
-  { value: 'act', label: 'Read & act' },
+const ACCESS: { value: NonNullable<Account['claudeAccess']>; label: MessageKey }[] = [
+  { value: 'off', label: 'common.off' },
+  { value: 'read', label: 'settings.assistant.accessRead' },
+  { value: 'act', label: 'settings.assistant.accessAct' },
 ];
+
+const EFFORT_LABEL: Record<AssistantEffort, MessageKey> = {
+  low: 'settings.assistant.effortLow',
+  medium: 'settings.assistant.effortMedium',
+  high: 'settings.assistant.effortHigh',
+  xhigh: 'settings.assistant.effortXhigh',
+  max: 'settings.assistant.effortMax',
+};
 
 /** The accounts a scope's card lists ('all' lists none: it uses every account turned on in the spaces). */
 function accountsOf(snap: UiSnapshot, scope: string): AccountView[] {
@@ -27,23 +36,23 @@ function MemoryList({ scope, notes, isAll }: { scope: string; notes: MemoryNote[
   const [draft, setDraft] = useState('');
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
   const add = (): void => {
-    const t = draft.trim();
-    if (!t) return;
-    window.missiondesk.assistantMemoryAdd(scope, t);
+    const text = draft.trim();
+    if (!text) return;
+    window.missiondesk.assistantMemoryAdd(scope, text);
     setDraft('');
   };
   const saveEdit = (): void => {
     if (!editing) return;
-    const t = editing.text.trim();
-    if (t) window.missiondesk.assistantMemoryUpdate(scope, editing.id, t);
+    const text = editing.text.trim();
+    if (text) window.missiondesk.assistantMemoryUpdate(scope, editing.id, text);
     setEditing(null);
   };
   return (
     <div className="asg-memory">
       <div className="asg-memory-head">
-        <span>Memory</span>
+        <span>{t('settings.memory.title')}</span>
         <span className="set-muted">
-          {isAll ? 'Only the All spaces assistant sees these; it never sees the spaces’ own notes.' : 'Only this space’s assistant sees these. It asks you before saving one.'}
+          {isAll ? t('settings.memory.allHint') : t('settings.memory.spaceHint')}
         </span>
       </div>
       {notes.length > 0 && (
@@ -64,11 +73,11 @@ function MemoryList({ scope, notes, isAll }: { scope: string; notes: MemoryNote[
                   }}
                 />
               ) : (
-                <button className="asg-note" title="Change" onClick={() => setEditing({ id: n.id, text: n.text })}>
+                <button className="asg-note" title={t('settings.memory.change')} onClick={() => setEditing({ id: n.id, text: n.text })}>
                   {n.text}
                 </button>
               )}
-              <button className="asg-note-remove" aria-label={`Forget: ${n.text}`} title="Forget" onClick={() => window.missiondesk.assistantMemoryRemove(scope, n.id)}>
+              <button className="asg-note-remove" aria-label={t('settings.memory.forgetLabel', { note: n.text })} title={t('settings.memory.forget')} onClick={() => window.missiondesk.assistantMemoryRemove(scope, n.id)}>
                 ×
               </button>
             </li>
@@ -78,14 +87,14 @@ function MemoryList({ scope, notes, isAll }: { scope: string; notes: MemoryNote[
       <div className="asg-key">
         <input
           className="set-input"
-          placeholder={notes.length ? 'Add a note' : 'Add a note, e.g. “Ana is Acme’s CFO” or “Reply in Portuguese”'}
+          placeholder={notes.length ? t('settings.memory.addPlaceholder') : t('settings.memory.addPlaceholderExample')}
           maxLength={300}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && add()}
         />
         <button className="set-action" disabled={!draft.trim() || notes.length >= 40} onClick={add}>
-          Add
+          {t('common.add')}
         </button>
       </div>
     </div>
@@ -103,20 +112,20 @@ function ScopeCard({ snap, scope, name, ready, orModels }: { snap: UiSnapshot; s
     <div className="set-card asg-card">
       <div className="asg-head">
         <strong>{name}</strong>
-        <select className="set-select" value={c.engine} onChange={(e) => set({ engine: e.target.value as AssistantEngine })} title="Which assistant answers in this space">
+        <select className="set-select" value={c.engine} onChange={(e) => set({ engine: e.target.value as AssistantEngine })} title={t('settings.assistant.engineTitle')}>
           {ENGINES.map((en) => (
             <option key={en.id} value={en.id}>
               {en.name}
             </option>
           ))}
-          <option value="off">Off</option>
+          <option value="off">{t('common.off')}</option>
         </select>
       </div>
       {c.engine !== 'off' && ready[c.engine] === false && (
         <p className="asg-error">
-          {ENGINES.find((x) => x.id === c.engine)?.name} isn't connected yet.{' '}
+          {t('settings.assistant.notConnected', { name: ENGINES.find((x) => x.id === c.engine)?.name ?? c.engine })}{' '}
           <button className="set-link" onClick={() => window.missiondesk.openSettings('integrations')}>
-            Connect it in Integrations
+            {t('settings.assistant.connectInIntegrations')}
           </button>
         </p>
       )}
@@ -124,11 +133,11 @@ function ScopeCard({ snap, scope, name, ready, orModels }: { snap: UiSnapshot; s
         <div className="asg-row">
           {c.engine === 'claude' && (
             <label>
-              Model
+              {t('settings.assistant.model')}
               <select className="set-select" value={c.model} onChange={(e) => set({ model: e.target.value as AssistantModel })}>
                 {ASSISTANT_MODELS.map((m) => (
                   <option key={m.id} value={m.id}>
-                    {m.label}
+                    {m.id === 'default' ? t('settings.assistant.modelDefault') : m.label}
                   </option>
                 ))}
               </select>
@@ -136,9 +145,9 @@ function ScopeCard({ snap, scope, name, ready, orModels }: { snap: UiSnapshot; s
           )}
           {c.engine === 'openrouter' && (
             <label>
-              Model
+              {t('settings.assistant.model')}
               <select className="set-select asg-model" value={c.openrouterModel} onChange={(e) => set({ openrouterModel: e.target.value })}>
-                <option value="openrouter/auto">Auto (OpenRouter picks)</option>
+                <option value="openrouter/auto">{t('settings.assistant.openrouterAuto')}</option>
                 {!orModels.some((m) => m.id === c.openrouterModel) && c.openrouterModel !== 'openrouter/auto' && <option value={c.openrouterModel}>{c.openrouterModel}</option>}
                 {orModels.map((m) => (
                   <option key={m.id} value={m.id}>
@@ -150,10 +159,10 @@ function ScopeCard({ snap, scope, name, ready, orModels }: { snap: UiSnapshot; s
           )}
           {c.engine === 'codex' && (
             <label>
-              Model
+              {t('settings.assistant.model')}
               <input
                 className="set-input"
-                placeholder="Codex default"
+                placeholder={t('settings.assistant.codexDefault')}
                 aria-invalid={codexModel !== '' && !/^[A-Za-z0-9][\w.:-]{0,59}$/.test(codexModel)}
                 value={codexModel}
                 maxLength={60}
@@ -167,23 +176,23 @@ function ScopeCard({ snap, scope, name, ready, orModels }: { snap: UiSnapshot; s
             </label>
           )}
           <label>
-            Effort
+            {t('settings.assistant.effort')}
             <select className="set-select" value={c.effort} onChange={(e) => set({ effort: e.target.value as AssistantEffort })}>
               {ASSISTANT_EFFORTS.map((ef) => (
                 <option key={ef} value={ef}>
-                  {ef}
+                  {t(EFFORT_LABEL[ef])}
                 </option>
               ))}
             </select>
           </label>
         </div>
       )}
-      {c.engine === 'off' && <p className="set-muted">No assistant in this space.</p>}
+      {c.engine === 'off' && <p className="set-muted">{t('settings.assistant.noAssistant')}</p>}
       {c.engine !== 'off' &&
         (scope === 'all' && snap.assistant.mode === 'space' ? (
-          <p className="set-muted">Sees every account turned on in the spaces above.</p>
+          <p className="set-muted">{t('settings.assistant.seesSpaces')}</p>
         ) : accounts.length === 0 ? (
-          <p className="set-muted">No accounts here.</p>
+          <p className="set-muted">{t('settings.assistant.noAccounts')}</p>
         ) : (
           <ul className="asg-accounts">
             {accounts.map((a) => (
@@ -193,11 +202,11 @@ function ScopeCard({ snap, scope, name, ready, orModels }: { snap: UiSnapshot; s
                   className="set-select"
                   value={a.claudeAccess ?? 'off'}
                   onChange={(e) => window.missiondesk.updateAccount(a.id, { claudeAccess: e.target.value as Account['claudeAccess'] })}
-                  title="What the assistant may do in this account"
+                  title={t('settings.assistant.accessTitle')}
                 >
                   {ACCESS.map((x) => (
                     <option key={x.value} value={x.value}>
-                      {x.label}
+                      {t(x.label)}
                     </option>
                   ))}
                 </select>
@@ -226,29 +235,26 @@ export function AssistantSettings({ snap }: { snap: UiSnapshot }): React.JSX.Ele
   }, [needModels, orModels.length]);
   return (
     <>
-      <h2>Assistant</h2>
+      <h2>{t('settings.section.assistant')}</h2>
       <div className="set-styles">
         <button className={`set-style${snap.assistant.mode === 'space' ? ' on' : ''}`} onClick={() => window.missiondesk.setAssistantMode('space')}>
-          <strong>One per space</strong>
-          <span>Each space has its own assistant and history, and it sees only that space's accounts.</span>
+          <strong>{t('settings.assistant.onePerSpace')}</strong>
+          <span>{t('settings.assistant.onePerSpaceHint')}</span>
         </button>
         <button className={`set-style${snap.assistant.mode === 'all' ? ' on' : ''}`} onClick={() => window.missiondesk.setAssistantMode('all')}>
-          <strong>One for everything</strong>
-          <span>A single assistant and history that sees every account turned on below.</span>
+          <strong>{t('settings.assistant.oneForAll')}</strong>
+          <span>{t('settings.assistant.oneForAllHint')}</span>
         </button>
       </div>
       <label className="set-toggle">
         <input type="checkbox" checked={snap.assistant.button} onChange={(e) => window.missiondesk.setAssistantButton(e.target.checked)} />
         <span>
-          Show the assistant button
-          <small>The round ✦ button. Drag it up, down or to the other side. ⌘J opens the assistant either way.</small>
+          {t('settings.assistant.button')}
+          <small>{t('settings.assistant.buttonHint')}</small>
         </span>
       </label>
-      <h3>{snap.assistant.mode === 'space' ? 'Spaces' : 'Everything'}</h3>
-      <p className="set-muted">
-        Choose the assistant for each one and what it may do in each account: Read, or Read & act (click and type, after asking you). It never sends anything for
-        you. Connect assistants in Integrations.
-      </p>
+      <h3>{snap.assistant.mode === 'space' ? t('settings.assistant.spacesHeading') : t('settings.assistant.everythingHeading')}</h3>
+      <p className="set-muted">{t('settings.assistant.intro')}</p>
       {snap.assistant.scopes.map((s) => (
         <ScopeCard key={s.key} snap={snap} scope={s.key} name={s.name} ready={ready} orModels={orModels} />
       ))}
@@ -260,9 +266,10 @@ const INSTALL_CLAUDE = 'curl -fsSL https://claude.ai/install.sh | bash';
 const INSTALL_CODEX = 'npm install -g @openai/codex';
 
 function statusText(st: ClaudeStatus | null, app: string): string {
-  if (st === null) return 'Checking…';
-  if (st.state === 'ready') return `Connected${'version' in st && st.version ? ` · ${app} ${st.version}` : ''}`;
-  return st.state === 'signed-out' ? 'Not signed in' : 'Not installed';
+  if (st === null) return t('settings.integrations.checking');
+  if (st.state === 'ready')
+    return 'version' in st && st.version ? t('settings.integrations.connectedVersion', { app, version: st.version }) : t('settings.integrations.connected');
+  return st.state === 'signed-out' ? t('settings.integrations.signedOut') : t('settings.integrations.notInstalled');
 }
 
 /** A CLI the user signs in to in the browser (Claude Code, Codex): status, install, sign in. */
@@ -304,9 +311,9 @@ function CliIntegration({
       {status?.state === 'signed-out' &&
         (waiting ? (
           <p className="set-muted">
-            Waiting for you to finish in the browser…{' '}
+            {t('settings.integrations.waiting')}{' '}
             <button className="set-link" onClick={cancel}>
-              Cancel
+              {t('common.cancel')}
             </button>
           </p>
         ) : (
@@ -321,19 +328,19 @@ function CliIntegration({
                 });
               }}
             >
-              Sign in
+              {t('settings.integrations.signIn')}
             </button>
           </div>
         ))}
       {status?.state === 'not-installed' && (
         <div className="asg-install">
-          <p className="set-muted">Install it: open Terminal, paste this and press Return.</p>
+          <p className="set-muted">{t('settings.integrations.installHint')}</p>
           <div className="ast-cmd">
             <code>{install}</code>
-            <button onClick={() => void navigator.clipboard.writeText(install).then(() => setCopied(true))}>{copied ? 'Copied' : 'Copy'}</button>
+            <button onClick={() => void navigator.clipboard.writeText(install).then(() => setCopied(true))}>{copied ? t('settings.integrations.copied') : t('settings.integrations.copy')}</button>
           </div>
           <button className="set-link" onClick={check}>
-            I’ve installed it
+            {t('settings.integrations.installed')}
           </button>
         </div>
       )}
@@ -363,13 +370,13 @@ function OpenRouterIntegration(): React.JSX.Element {
     <div className="set-card asg-card">
       <div className="asg-head">
         <strong>OpenRouter</strong>
-        <span className={`asg-state ${connected ? 'ready' : connected === false ? 'signed-out' : ''}`}>{connected === null ? 'Checking…' : connected ? 'Connected' : 'Not connected'}</span>
+        <span className={`asg-state ${connected ? 'ready' : connected === false ? 'signed-out' : ''}`}>{connected === null ? t('settings.integrations.checking') : connected ? t('settings.integrations.connected') : t('settings.integrations.notConnected')}</span>
       </div>
-      <p className="set-muted">GPT, Gemini, Llama, Mistral, Claude and many more, with your OpenRouter key. The key is kept encrypted by macOS on this Mac; usage is billed by OpenRouter.</p>
+      <p className="set-muted">{t('settings.integrations.openrouterBlurb')}</p>
       {connected ? (
         <div>
           <button className="set-link" onClick={() => (window.missiondesk.openRouterDisconnect(), setConnected(false))}>
-            Disconnect (forget the key)
+            {t('settings.integrations.disconnect')}
           </button>
         </div>
       ) : (
@@ -386,22 +393,24 @@ function OpenRouterIntegration(): React.JSX.Element {
               onKeyDown={(e) => e.key === 'Enter' && key.trim() && !busy && void connect()}
             />
             <button className="primary" disabled={!key.trim() || busy} onClick={() => void connect()}>
-              {busy ? 'Checking…' : 'Connect'}
+              {busy ? t('settings.integrations.checking') : t('settings.integrations.connect')}
             </button>
           </div>
           {error && <p className="asg-error">{error}</p>}
           <p className="set-muted">
-            Create a key at{' '}
-            <a
-              href="https://openrouter.ai/keys"
-              onClick={(e) => {
-                e.preventDefault();
-                window.missiondesk.openExternal('https://openrouter.ai/keys');
-              }}
-            >
-              openrouter.ai/keys
-            </a>
-            .
+            {rich('settings.integrations.createKey', {
+              link: (s) => (
+                <a
+                  href="https://openrouter.ai/keys"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    window.missiondesk.openExternal('https://openrouter.ai/keys');
+                  }}
+                >
+                  {s}
+                </a>
+              ),
+            })}
           </p>
         </>
       )}
@@ -413,27 +422,27 @@ function OpenRouterIntegration(): React.JSX.Element {
 export function IntegrationsSettings(): React.JSX.Element {
   return (
     <>
-      <h2>Integrations</h2>
-      <p className="set-muted">Connect the assistants you want. Then, in Assistant, choose which one each space uses.</p>
+      <h2>{t('settings.section.integrations')}</h2>
+      <p className="set-muted">{t('settings.integrations.intro')}</p>
       <CliIntegration
         title="Claude"
         app="Claude Code"
-        blurb="Runs on your own Claude Code, with your Claude plan."
+        blurb={t('settings.integrations.claudeBlurb')}
         install={INSTALL_CLAUDE}
         getStatus={() => window.missiondesk.claudeIntegrationStatus()}
         signIn={() => window.missiondesk.assistantSignIn()}
         cancel={() => window.missiondesk.assistantSignInCancel()}
       >
-        <h3>Claude in other apps</h3>
+        <h3>{t('settings.integrations.claudeOtherApps')}</h3>
         <ClaudeConnectPanel />
         <button className="set-link" onClick={() => window.missiondesk.showClaudeLog()}>
-          Show Claude's activity log
+          {t('settings.integrations.claudeLog')}
         </button>
       </CliIntegration>
       <CliIntegration
         title="OpenAI Codex"
         app="Codex"
-        blurb="Runs on your own Codex CLI, with your ChatGPT plan. Mission Desk turns off Codex's own tools (shell, web, files) and your Codex settings, and stops any answer that tries to use them."
+        blurb={t('settings.integrations.codexBlurb')}
         install={INSTALL_CODEX}
         getStatus={() => window.missiondesk.codexStatus()}
         signIn={() => window.missiondesk.codexSignIn()}

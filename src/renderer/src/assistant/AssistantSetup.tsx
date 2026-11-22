@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { ClaudeStatus } from '../../../shared/assistant';
 import type { UiSnapshot } from '../../../shared/ipc';
+import { rich, t } from '../i18n';
 
 const INSTALL = 'curl -fsSL https://claude.ai/install.sh | bash';
 
@@ -24,8 +25,8 @@ export function AssistantSetup({
   const [slow, setSlow] = useState(false);
   useEffect(() => {
     if (!signingIn) return setSlow(false);
-    const t = setTimeout(() => setSlow(true), 20_000);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setSlow(true), 20_000);
+    return () => clearTimeout(timer);
   }, [signingIn]);
   const claudeReady = status?.state === 'ready';
   const shared = snapshot.accounts.filter((x) => (x.claudeAccess ?? 'off') !== 'off');
@@ -41,23 +42,20 @@ export function AssistantSetup({
 
   return (
     <div className="ast">
-      <p className="ast-intro">
-        The assistant reads your accounts and answers questions, drafts replies and finds time for meetings. It runs on <strong>Claude Code</strong>, with your
-        own Claude plan. Two steps to start:
-      </p>
+      <p className="ast-intro">{rich('assistant.setup.intro', { b: (s) => <strong>{s}</strong> })}</p>
 
       <ol className="ast-steps">
         <li className={`ast-step${claudeReady ? ' done' : ' current'}`}>
           <div className="ast-step-head">
             <span className="ast-num">{claudeReady ? '✓' : '1'}</span>
-            <strong>Connect Claude</strong>
+            <strong>{t('assistant.setup.connectClaude')}</strong>
             {claudeReady && status && 'version' in status && status.version && <span className="ast-note">Claude Code {status.version}</span>}
           </div>
-          {status === null && <p className="ast-muted">Checking…</p>}
+          {status === null && <p className="ast-muted">{t('assistant.setup.checking')}</p>}
 
           {status?.state === 'not-installed' && (
             <div className="ast-body">
-              <p>Claude Code isn’t on this Mac yet. Open Terminal, paste this and press Return:</p>
+              <p>{t('assistant.setup.notInstalled')}</p>
               <div className="ast-cmd">
                 <code>{INSTALL}</code>
                 <button
@@ -65,47 +63,53 @@ export function AssistantSetup({
                     void navigator.clipboard.writeText(INSTALL).then(() => setCopied(true));
                   }}
                 >
-                  {copied ? 'Copied' : 'Copy'}
+                  {copied ? t('assistant.copied') : t('assistant.copy')}
                 </button>
               </div>
-              <p className="ast-muted">It needs a Claude Pro or Max plan (or an Anthropic Console account).</p>
+              <p className="ast-muted">{t('assistant.setup.needsPlan')}</p>
               <button className="ast-primary" onClick={() => onRecheck()}>
-                I’ve installed it
+                {t('assistant.setup.installed')}
               </button>
             </div>
           )}
 
           {status?.state === 'signed-out' && (
             <div className="ast-body">
-              <p>Sign in with your Claude account. Your browser opens; come back here when it says you’re signed in.</p>
+              <p>{t('assistant.setup.signInIntro')}</p>
               {signingIn ? (
                 <>
-                  <p className="ast-wait">Waiting for you to finish in the browser…</p>
+                  <p className="ast-wait">{t('assistant.setup.waiting')}</p>
                   <button className="ast-link" onClick={() => window.missiondesk.assistantSignInCancel()}>
-                    Cancel
+                    {t('common.cancel')}
                   </button>
                   {slow && (
                     <p className="ast-muted">
-                      Taking long? Open Terminal and run <code>claude auth login</code>, then{' '}
-                      <button className="ast-link" onClick={() => onRecheck()}>
-                        check again
-                      </button>
-                      .
+                      {rich('assistant.setup.slow', {
+                        code: (s) => <code>{s}</code>,
+                        link: (s) => (
+                          <button className="ast-link" onClick={() => onRecheck()}>
+                            {s}
+                          </button>
+                        ),
+                      })}
                     </p>
                   )}
                 </>
               ) : (
                 <button className="ast-primary" onClick={() => void signIn()}>
-                  Sign in to Claude
+                  {t('assistant.setup.signIn')}
                 </button>
               )}
               {signInFailed && (
                 <p className="ast-muted">
-                  Not signed in yet. You can also open Terminal and run <code>claude auth login</code>, then{' '}
-                  <button className="ast-link" onClick={() => onRecheck()}>
-                    check again
-                  </button>
-                  .
+                  {rich('assistant.setup.signInFailed', {
+                    code: (s) => <code>{s}</code>,
+                    link: (s) => (
+                      <button className="ast-link" onClick={() => onRecheck()}>
+                        {s}
+                      </button>
+                    ),
+                  })}
                 </p>
               )}
             </div>
@@ -115,11 +119,11 @@ export function AssistantSetup({
         <li className={`ast-step${!claudeReady ? ' later' : shared.length ? ' done' : ' current'}`}>
           <div className="ast-step-head">
             <span className="ast-num">{claudeReady && shared.length ? '✓' : '2'}</span>
-            <strong>Choose what it can read</strong>
+            <strong>{t('assistant.setup.chooseAccounts')}</strong>
           </div>
           {claudeReady && (
             <div className="ast-body">
-              <p>Only these accounts are visible to it. It never sends anything for you; to click or type it asks first.</p>
+              <p>{t('assistant.setup.accountsIntro')}</p>
               <ul className="ast-accounts">
                 {snapshot.accounts.map((x) => (
                   <li key={x.id}>
@@ -134,7 +138,7 @@ export function AssistantSetup({
                   </li>
                 ))}
               </ul>
-              <p className="ast-muted">You can change this later in Settings → Assistant.</p>
+              <p className="ast-muted">{t('assistant.setup.changeLater')}</p>
             </div>
           )}
         </li>

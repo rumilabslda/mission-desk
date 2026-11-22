@@ -1,5 +1,6 @@
 import { StringDecoder } from 'node:string_decoder';
 import type { AssistantEffort, AssistantEvent } from '../../shared/assistant';
+import { t } from '../../shared/i18n';
 import { buildCodexArgs, forbiddenItem, parseCodexEvent } from './codex';
 import type { AssistantSession, ChildLike } from './engine';
 
@@ -43,7 +44,7 @@ export function createCodexSession(io: CodexIO, initial: { model: string; effort
     if (!working) return; // stopped while looking for Codex
     if (!cmd) {
       working = false;
-      emit({ type: 'error', kind: 'not-found', message: 'OpenAI Codex is not installed.' });
+      emit({ type: 'error', kind: 'not-found', message: t('assistant.error.codexNotInstalled') });
       return;
     }
     const resumed = thread !== null;
@@ -69,7 +70,7 @@ export function createCodexSession(io: CodexIO, initial: { model: string; effort
           child = null;
           working = false;
           end(c);
-          emit({ type: 'error', kind: 'failed', message: `Codex tried to use ${forbidden}, which Mission Desk doesn't allow, so the answer was stopped.` });
+          emit({ type: 'error', kind: 'failed', message: forbidden });
           return;
         }
         for (const e of parseCodexEvent(line)) {
@@ -106,13 +107,13 @@ export function createCodexSession(io: CodexIO, initial: { model: string; effort
       if (!finished && working && resumed && !started && STALE_THREAD.test(stderr)) {
         // The saved thread is gone: answer the same message in a new one.
         thread = null;
-        emit({ type: 'text', delta: '(The earlier context of this conversation was no longer available, so I started fresh.)\n\n' });
+        emit({ type: 'text', delta: `${t('assistant.startedFresh')}\n\n` });
         void run(text);
         return;
       }
       if (!finished && working) {
         working = false;
-        const message = lastError || stderr.trim() || 'Codex stopped unexpectedly.';
+        const message = lastError || stderr.trim() || t('assistant.error.codexStopped');
         emit({ type: 'error', kind: SIGNED_OUT.test(message) ? 'signed-out' : 'failed', message });
       }
     });

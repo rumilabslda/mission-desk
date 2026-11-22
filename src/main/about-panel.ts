@@ -1,5 +1,6 @@
 import type { AboutPanelOptionsOptions } from 'electron';
 import { COPYRIGHT, LICENSE_NAME, SITE } from '../shared/about';
+import { t } from '../shared/i18n';
 
 /** The app's About window (Mission Desk → About Mission Desk). */
 export function aboutPanelOptions(version: string): AboutPanelOptionsOptions {
@@ -8,7 +9,7 @@ export function aboutPanelOptions(version: string): AboutPanelOptionsOptions {
     applicationVersion: version,
     copyright: COPYRIGHT,
     // macOS shows only this text (no website field), so the website goes here too.
-    credits: `${SITE.replace(/^https:\/\//, '')}\n${LICENSE_NAME}. Free and open source.`,
+    credits: t('main.about.credits', { site: SITE.replace(/^https:\/\//, ''), license: LICENSE_NAME }),
     website: SITE,
   };
 }

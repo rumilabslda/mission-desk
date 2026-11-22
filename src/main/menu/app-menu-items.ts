@@ -1,5 +1,6 @@
 import type { MenuItemConstructorOptions } from 'electron';
 import { APP_NAME } from '../../shared/about';
+import { t } from '../../shared/i18n';
 
 /**
  * The app menu's items; Services, Hide and Show All exist only on macOS.
@@ -7,22 +8,23 @@ import { APP_NAME } from '../../shared/about';
  */
 export function appMenuItems(platform: NodeJS.Platform, own: MenuItemConstructorOptions[] = [], onAbout: () => void = () => {}): MenuItemConstructorOptions[] {
   const mac = platform === 'darwin';
+  const app = APP_NAME;
   return [
     // Mission Desk's own About (Settings → About): the system's About panel can't show a clickable website.
-    { label: `About ${APP_NAME}`, click: () => onAbout() },
+    { label: t('main.menu.about', { app }), click: () => onAbout() },
     { type: 'separator' },
     ...own,
     { type: 'separator' },
     ...(mac
       ? ([
-          { role: 'services' },
+          { role: 'services', label: t('main.menu.services') },
           { type: 'separator' },
-          { role: 'hide', label: `Hide ${APP_NAME}` },
-          { role: 'hideOthers' },
-          { role: 'unhide' },
+          { role: 'hide', label: t('main.menu.hide', { app }) },
+          { role: 'hideOthers', label: t('main.menu.hideOthers') },
+          { role: 'unhide', label: t('main.menu.showAll') },
           { type: 'separator' },
         ] as MenuItemConstructorOptions[])
       : []),
-    mac ? { role: 'quit', label: `Quit ${APP_NAME}` } : { role: 'quit' },
+    mac ? { role: 'quit', label: t('main.menu.quit', { app }) } : { role: 'quit' },
   ];
 }

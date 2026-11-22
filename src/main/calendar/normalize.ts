@@ -1,5 +1,6 @@
 import { joinLinkOf } from '../../shared/meetings';
 import type { CalEvent } from '../../shared/types';
+import { t } from '../../shared/i18n';
 
 type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -136,7 +137,7 @@ export function normalizeEvents(
     const event: CalEvent = {
       id: `${accountId}:${id}`,
       accountId,
-      title: str(item.summary)?.trim() || '(No title)',
+      title: str(item.summary)?.trim() || t('main.calendar.noTitle'),
       start: start.value,
       end: end.value,
       allDay: start.allDay,

@@ -5,16 +5,17 @@ import type { SendUpdates, WriteError } from '../../shared/types';
 import type { Owner } from './calendar/CalendarView';
 import { type Choice, ChoiceDialog } from './calendar/ChoiceDialog';
 import { distinctColors } from './calendar/colors';
+import { type MessageKey, t } from './i18n';
 import type { EditorResult } from './calendar/EventEditor';
 import { QuickEventCard, QuickTodoCard } from './QuickCards';
 import { QuickDial } from './QuickDial';
 
-const CREATE_ERROR: Record<WriteError, string> = {
-  'signed-out': 'Signed out of that Google account. Sign in again, then retry.',
-  forbidden: "You can't add events to that calendar.",
-  offline: "Couldn't reach Google. Check your connection and try again.",
-  unsupported: 'This event has to be made in Google Calendar.',
-  error: "Couldn't save the event. Try again.",
+const CREATE_ERROR: Record<WriteError, MessageKey> = {
+  'signed-out': 'home.quick.errorSignedOut',
+  forbidden: 'home.quick.errorForbidden',
+  offline: 'home.quick.errorOffline',
+  unsupported: 'home.quick.errorUnsupported',
+  error: 'home.quick.errorGeneric',
 };
 
 /**
@@ -53,7 +54,7 @@ function QuickTodo({ snap, tag }: { snap: UiSnapshot; tag: { kind: 'space' | 'ac
   function add(text: string, where: string): void {
     const [kind, id] = where.split(':');
     window.missiondesk.todoAdd(text, where ? { kind: kind as 'space' | 'account', id } : undefined);
-    window.missiondesk.quickDone('To-do added');
+    window.missiondesk.quickDone(t('home.quick.todoAdded'));
   }
   return (
     <div className="overlay quick-overlay" onMouseDown={(e) => e.target === e.currentTarget && close()}>
@@ -90,13 +91,13 @@ function QuickEvent({ snap, accountId }: { snap: UiSnapshot; accountId: string |
     const res = await window.missiondesk.calendarCreate(r.accountId, r.draft, send).catch(() => ({ ok: false as const, error: 'error' as const }));
     setSaving(false);
     // On failure the editor stays open with what was typed.
-    if (res.ok) window.missiondesk.quickDone('Event saved');
-    else setError(CREATE_ERROR[res.error] ?? CREATE_ERROR.error);
+    if (res.ok) window.missiondesk.quickDone(t('home.quick.eventSaved'));
+    else setError(t(CREATE_ERROR[res.error] ?? CREATE_ERROR.error));
   }
 
   const choices: Choice<SendUpdates>[] = [
-    { label: 'Send', value: 'all', primary: true },
-    { label: "Don't send", value: 'none' },
+    { label: t('home.quick.send'), value: 'all', primary: true },
+    { label: t('home.quick.dontSend'), value: 'none' },
   ];
   return (
     <>
@@ -110,8 +111,8 @@ function QuickEvent({ snap, accountId }: { snap: UiSnapshot; accountId: string |
       )}
       {ask && (
         <ChoiceDialog
-          title="Send invitation emails to guests?"
-          message="Guests get an email from Google."
+          title={t('home.quick.sendTitle')}
+          message={t('home.quick.sendMessage')}
           choices={choices}
           onChoose={(v) => ask(v)}
           onCancel={() => ask(null)}

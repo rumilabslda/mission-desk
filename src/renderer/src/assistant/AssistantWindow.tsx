@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { ClaudeStatus } from "../../../shared/assistant";
 import type { UiSnapshot } from "../../../shared/ipc";
 import type { FabToastShown } from "../../../shared/quick";
+import { rich, t } from "../i18n";
 import { AssistantPanel } from "./AssistantPanel";
 import { AssistantSetup } from "./AssistantSetup";
 
@@ -130,11 +131,11 @@ export function AssistantWindow(): React.JSX.Element | null {
         ) : (
           <>
             <header className="as-head">
-              <span className="as-title">✦ Assistant</span>
+              <span className="as-title">✦ {t("assistant.title")}</span>
               <button
                 className="as-icon"
-                title="Close (⌘J)"
-                aria-label="Close"
+                title={t("assistant.closeShortcut")}
+                aria-label={t("common.close")}
                 onClick={() => window.missiondesk.toggleAssistant(false)}
               >
                 ×
@@ -150,11 +151,11 @@ export function AssistantWindow(): React.JSX.Element | null {
               ) : status.state !== "ready" ? (
                 <div className="ast">
                   <p className="ast-intro">
-                    This space uses{" "}
-                    <strong>
-                      {engine === "codex" ? "OpenAI Codex" : "OpenRouter"}
-                    </strong>
-                    , which isn't connected yet.
+                    {rich(
+                      "assistant.window.notConnected",
+                      { b: (s) => <strong>{s}</strong> },
+                      { engine: engine === "codex" ? "OpenAI Codex" : "OpenRouter" },
+                    )}
                   </p>
                   <button
                     className="ast-primary"
@@ -162,17 +163,19 @@ export function AssistantWindow(): React.JSX.Element | null {
                       window.missiondesk.openSettings("integrations")
                     }
                   >
-                    Connect it in Settings → Integrations
+                    {t("assistant.window.connect")}
                   </button>
                   <p className="ast-muted">
-                    Or choose another assistant for this space in{" "}
-                    <button
-                      className="ast-link"
-                      onClick={() => window.missiondesk.openSettings("assistant")}
-                    >
-                      Settings → Assistant
-                    </button>
-                    .
+                    {rich("assistant.window.chooseAnother", {
+                      link: (s) => (
+                        <button
+                          className="ast-link"
+                          onClick={() => window.missiondesk.openSettings("assistant")}
+                        >
+                          {s}
+                        </button>
+                      ),
+                    })}
                   </p>
                 </div>
               ) : (
@@ -227,9 +230,9 @@ export function AssistantFab(): React.JSX.Element {
   const [side, setSide] = useState<"left" | "right">("right");
   useEffect(
     () =>
-      window.missiondesk.onFabToast((t) => {
-        setToast(t);
-        if (t) setSide(t.side);
+      window.missiondesk.onFabToast((shown) => {
+        setToast(shown);
+        if (shown) setSide(shown.side);
       }),
     [],
   );
@@ -245,8 +248,8 @@ export function AssistantFab(): React.JSX.Element {
       {toast && <FabToast toast={toast} />}
       <button
         className={`fab ${side}${open ? " open" : ""}`}
-        title={open ? "Close the assistant  (⌘J)" : "Quick actions · drag to move"}
-        aria-label={open ? "Close the assistant" : "Quick actions"}
+        title={open ? t("assistant.fab.closeTitle") : t("assistant.fab.actionsTitle")}
+        aria-label={open ? t("assistant.fab.close") : t("assistant.fab.actions")}
         onPointerDown={(e) => {
           e.currentTarget.setPointerCapture(e.pointerId);
           press.current = { x: e.screenX, y: e.screenY, dragging: false };

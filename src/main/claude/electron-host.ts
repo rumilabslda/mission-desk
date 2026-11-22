@@ -3,6 +3,7 @@ import path from 'node:path';
 import { type BrowserWindow, dialog, type WebContents, type WebContentsView } from 'electron';
 import type { Account, UnreadCount, ViewKind } from '../../shared/types';
 import { appendLog } from './log';
+import { t } from '../../shared/i18n';
 import { createConsent, type Consent } from './consent';
 import { createControlService, type ControlHost, type PageHandle } from './control';
 
@@ -162,9 +163,9 @@ export function createClaudeIntegration(h: ClaudeHooks) {
       const { response } = await dialog.showMessageBox(h.win, {
         signal: abort,
         type: 'question',
-        message: `Allow Claude to act in ${a.name} for 30 minutes?`,
-        detail: 'Claude will be able to click and type in this account. Stop it any time with the Stop button or ⌘.',
-        buttons: ['Allow', 'Deny'],
+        message: t('main.claude.consentTitle', { name: a.name }),
+        detail: t('main.claude.consentDetail'),
+        buttons: [t('main.claude.allow'), t('main.claude.deny')],
         defaultId: 1,
         cancelId: 1,
       });

@@ -1,3 +1,5 @@
+import { t } from './i18n';
+
 /** Who makes Mission Desk and under which terms (About panel, Settings, docs). */
 /** The name people see: windows, menus, About, notifications, installers. */
 export const APP_NAME = 'Mission Desk';
@@ -13,5 +15,5 @@ export const SITE = 'https://missiondesk.rumilabs.pt';
 /** The company's website. */
 export const WEBSITE = 'https://rumilabs.pt';
 export const LICENSE_NAME = 'GNU General Public License v3.0 or later (GPL-3.0-or-later)';
-export const LICENSE_SUMMARY =
-  'Free and open source. Anyone, people and companies alike, may use it for anything, including work, and change and share it. Whoever shares Mission Desk or a changed version must share its source code under the same license, so it can never become a closed product.';
+/** The license in plain words, in the interface language. */
+export const licenseSummary = (): string => t('main.about.licenseSummary');

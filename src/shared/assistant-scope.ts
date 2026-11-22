@@ -2,6 +2,8 @@
 // assistant (seeing only that space's accounts); "All spaces" and the one-for-everything mode
 // see every account shared with Claude.
 
+import { t } from './i18n';
+
 export type AssistantMode = 'space' | 'all';
 
 type Acct = { id: string; spaceId?: string; claudeAccess?: 'off' | 'read' | 'act' };
@@ -21,11 +23,11 @@ export function accountsInScope<A extends Acct>(accounts: A[], scope: string): A
 }
 
 export function scopeList(accounts: { spaceId?: string }[], spaces: { id: string; name: string }[], mode: AssistantMode): { key: string; name: string }[] {
-  if (mode === 'all') return [{ key: 'all', name: 'Everything' }];
+  if (mode === 'all') return [{ key: 'all', name: t('main.scope.everything') }];
   return [
     ...spaces.map((s) => ({ key: `space:${s.id}`, name: s.name })),
-    ...(accounts.some((a) => !a.spaceId) ? [{ key: 'nospace', name: 'No space' }] : []),
-    { key: 'all', name: 'All spaces' },
+    ...(accounts.some((a) => !a.spaceId) ? [{ key: 'nospace', name: t('common.noSpace') }] : []),
+    { key: 'all', name: t('common.allSpaces') },
   ];
 }
 

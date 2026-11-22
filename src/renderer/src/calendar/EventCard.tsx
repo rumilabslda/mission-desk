@@ -4,10 +4,11 @@ import type { Reply } from '../../../shared/types';
 import type { OpenCard, Owner } from './CalendarView';
 import { addDays, sameDay } from './dates';
 import { eventTimes } from './layout';
+import { intlLocale, type MessageKey, t } from '../i18n';
 
 const CARD_W = 360;
-const dayFmt = new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
-const timeFmt = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
+const dayFmt = new Intl.DateTimeFormat(intlLocale(), { weekday: 'long', day: 'numeric', month: 'long' });
+const timeFmt = new Intl.DateTimeFormat(intlLocale(), { hour: '2-digit', minute: '2-digit' });
 
 function whenText(card: OpenCard): string {
   const e = card.event;
@@ -22,9 +23,9 @@ function whenText(card: OpenCard): string {
   return `${dayFmt.format(start)}, ${timeFmt.format(start)} – ${dayFmt.format(end)}, ${timeFmt.format(end)}`;
 }
 
-const RESPONSE: Record<string, string | undefined> = {
-  needsAction: 'You haven’t replied to this invitation',
-  tentative: 'You replied maybe',
+const RESPONSE: Record<string, MessageKey | undefined> = {
+  needsAction: 'calendar.card.notReplied',
+  tentative: 'calendar.card.repliedMaybe',
 };
 
 export function EventCard({
@@ -71,15 +72,15 @@ export function EventCard({
         <div className="cal-card-tools">
           {e.editable && (
             <>
-              <button aria-label="Edit event" title="Edit" onClick={onEdit}>
+              <button aria-label={t('calendar.card.edit')} title={t('common.edit')} onClick={onEdit}>
                 ✏️
               </button>
-              <button aria-label="Delete event" title="Delete" onClick={onDelete}>
+              <button aria-label={t('calendar.card.delete')} title={t('common.delete')} onClick={onDelete}>
                 🗑
               </button>
             </>
           )}
-          <button className="cal-card-close" aria-label="Close" onClick={onClose}>
+          <button className="cal-card-close" aria-label={t('common.close')} onClick={onClose}>
             ×
           </button>
         </div>
@@ -92,35 +93,35 @@ export function EventCard({
         </div>
         {e.location && <div className="cal-card-line">📍 {e.location}</div>}
         <div className="cal-card-line">
-          <span className="dot" style={{ background: owner?.color ?? '#888' }} /> {owner?.name ?? 'Account'}
+          <span className="dot" style={{ background: owner?.color ?? '#888' }} /> {owner?.name ?? t('calendar.card.account')}
         </div>
         {e.invited ? (
           <div className="cal-card-line cal-rsvp">
-            <span>Going?</span>
+            <span>{t('calendar.card.going')}</span>
             {(
               [
-                ['accepted', 'Yes'],
-                ['declined', 'No'],
-                ['tentative', 'Maybe'],
+                ['accepted', 'calendar.card.yes'],
+                ['declined', 'calendar.card.no'],
+                ['tentative', 'calendar.card.maybe'],
               ] as const
             ).map(([value, label]) => (
               <button key={value} className={e.response === value ? 'on' : ''} onClick={() => onRespond(value)}>
-                {label}
+                {t(label)}
               </button>
             ))}
           </div>
         ) : (
-          RESPONSE[e.response] && <div className="cal-card-line muted">{RESPONSE[e.response]}</div>
+          RESPONSE[e.response] && <div className="cal-card-line muted">{t(RESPONSE[e.response]!)}</div>
         )}
         <div className="cal-card-actions">
           {e.meetUrl && (
             <button className="primary" onClick={() => open(e.meetUrl)}>
-              Join with Google Meet
+              {t('calendar.card.joinMeet')}
             </button>
           )}
           {e.openUrl && (
             <button className="cal-btn" onClick={() => open(e.openUrl)}>
-              Open in {owner?.name ?? 'account'}
+              {owner ? t('calendar.card.openIn', { name: owner.name }) : t('calendar.card.openInAccount')}
             </button>
           )}
         </div>

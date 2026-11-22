@@ -117,6 +117,14 @@ const api: UiApi = {
   ungroupSpace: (id) => ipcRenderer.send(IPC.ungroupSpace, id),
   setSidebarStyle: (style) => ipcRenderer.send(IPC.setSidebarStyle, style),
   setWeekStart: (v) => ipcRenderer.send(IPC.setWeekStart, v),
+  setLanguage: (v) => ipcRenderer.send(IPC.setLanguage, v),
+  locale: (() => {
+    try {
+      return ipcRenderer.sendSync(IPC.getLocale) as UiApi['locale'];
+    } catch {
+      return null;
+    }
+  })(),
   showDataFolder: () => ipcRenderer.send(IPC.showDataFolder),
   showClaudeLog: () => ipcRenderer.send(IPC.showClaudeLog),
   onOpenAddDialog: (cb) => subscribe<'app' | 'space'>(IPC.openAddDialog, (k) => cb(k === 'space' ? 'space' : 'app')),

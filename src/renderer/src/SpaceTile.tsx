@@ -2,6 +2,7 @@ import type { AccountView } from '../../shared/ipc';
 import { ssoGroups } from '../../shared/sso';
 import type { Space, UnreadCount } from '../../shared/types';
 import { AccountAvatar, Badge } from './AccountAvatar';
+import { t } from './i18n';
 
 interface Props {
   space: Space;
@@ -19,7 +20,7 @@ export function SpaceTile({ space, members, active, panelOpen, unread, onClick, 
   return (
     <button
       className={`space-tile${active ? ' active' : ''}${panelOpen ? ' open' : ''}`}
-      title={`${space.name} (${members.length})${ssoGroups(members, [space]).length ? ' · shares Google sign-in' : ''}`}
+      title={t(ssoGroups(members, [space]).length ? 'app.spaceTile.titleSharesGoogle' : 'app.spaceTile.title', { name: space.name, count: members.length })}
       aria-label={space.name}
       onClick={(e) => onClick(e.currentTarget)}
       onContextMenu={onContextMenu}

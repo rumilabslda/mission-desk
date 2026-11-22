@@ -4,6 +4,8 @@ import { isScopeKey } from '../shared/assistant-scope';
 import { cleanDraft, isSkillMode, type SkillSource, skillFetchUrl } from '../shared/skills';
 import { isCodexModel, isEngine, isOpenRouterModel, type ScopeConfig } from '../shared/assistant-engines';
 import { IPC } from '../shared/ipc';
+import { isLanguageSetting } from '../shared/i18n/locales';
+import { t } from '../shared/i18n';
 import type { ViewKind } from '../shared/types';
 import type { AppController } from './app-controller';
 import { cleanSpaceName } from '../shared/spaces';
@@ -29,6 +31,10 @@ export function registerIpc(win: BrowserWindow, controller: AppController): void
     e.sender === controller.quickWebContents();
   const QUICK_CHANNELS = new Set<string>([IPC.calendarCalendars, IPC.calendarCreate, IPC.todoAdd]);
 
+  // Read synchronously by the preload of every Mission Desk page, before the page's scripts run.
+  ipcMain.on(IPC.getLocale, (e) => {
+    e.returnValue = fromUi(e) || fromPanel(e) || fromQuick(e) ? controller.localeInfo() : null;
+  });
   ipcMain.handle(IPC.getSnapshot, (e) => (fromUi(e) || fromPanel(e) || fromQuick(e) ? controller.snapshot() : null));
   ipcMain.handle(IPC.addAccount, (e, input: unknown) => {
     const parsed = fromUi(e) ? parseNewAccount(input) : null;
@@ -192,7 +198,7 @@ export function registerIpc(win: BrowserWindow, controller: AppController): void
   on(IPC.assistantMemoryAdd, (scope, text) => isScopeKey(scope) && typeof text === 'string' && text.length <= 600 && controller.assistantMemoryAdd(scope, text));
   on(IPC.assistantMemoryUpdate, (scope, id, text) => isScopeKey(scope) && isString(id) && id.length <= 64 && typeof text === 'string' && text.length <= 600 && controller.assistantMemoryUpdate(scope, id, text));
   on(IPC.assistantMemoryRemove, (scope, id) => isScopeKey(scope) && isString(id) && id.length <= 64 && controller.assistantMemoryRemove(scope, id));
-  ipcMain.handle(IPC.skillFetch, (e, url: unknown) => (fromUi(e) && isString(url) && url.length <= 2048 ? controller.skillFetch(url) : { ok: false, error: 'Not allowed.' }));
+  ipcMain.handle(IPC.skillFetch, (e, url: unknown) => (fromUi(e) && isString(url) && url.length <= 2048 ? controller.skillFetch(url) : { ok: false, error: t('main.skills.fetchNotAllowed') }));
   on(IPC.skillAdd, (draft, source, scopes) => {
     const d = cleanDraft(draft);
     const s = source as SkillSource | undefined;
@@ -223,7 +229,7 @@ export function registerIpc(win: BrowserWindow, controller: AppController): void
   on(IPC.codexSignInCancel, () => controller.codexSignInCancel());
   ipcMain.handle(IPC.openRouterStatus, (e) => (fromUi(e) ? controller.openRouterStatus() : null));
   ipcMain.handle(IPC.openRouterConnect, (e, key: unknown) =>
-    fromUi(e) && typeof key === 'string' && /^\S{10,300}$/.test(key.trim()) ? controller.openRouterConnect(key.trim()) : { connected: false, error: 'That doesn’t look like an OpenRouter key.' },
+    fromUi(e) && typeof key === 'string' && /^\S{10,300}$/.test(key.trim()) ? controller.openRouterConnect(key.trim()) : { connected: false, error: t('main.openRouter.badKey') },
   );
   on(IPC.openRouterDisconnect, () => controller.openRouterDisconnect());
   ipcMain.handle(IPC.openRouterModels, (e) => (fromUi(e) ? controller.openRouterModels() : []));
@@ -262,6 +268,7 @@ export function registerIpc(win: BrowserWindow, controller: AppController): void
     const style = parseSidebarStyle(v);
     if (style) controller.setSidebarStyle(style);
   });
+  on(IPC.setLanguage, (v) => isLanguageSetting(v) && controller.setLanguage(v));
   on(IPC.setWeekStart, (v) => {
     const w = parseWeekStart(v);
     if (w !== null) controller.setWeekStart(w);

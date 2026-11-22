@@ -20,6 +20,7 @@ import {
   type SetupStep,
 } from "../../../shared/setup";
 import type { ServiceId } from "../../../shared/types";
+import { rich, t } from "../i18n";
 import { useModal } from "../modal";
 import { ServiceLogo } from "../service-glyph";
 import "./setup.css";
@@ -29,20 +30,24 @@ const SERVICES: {
   name: string;
   what: string;
 }[] = [
-  { id: "google", name: "Google", what: "Gmail, Calendar, Drive" },
+  { id: "google", name: "Google", what: t("setup.service.googleWhat") },
   { id: "microsoft", name: "Microsoft 365", what: "Outlook, Teams" },
-  { id: "slack", name: "Slack", what: "A workspace" },
-  { id: "whatsapp", name: "WhatsApp", what: "Your chats" },
-  { id: "telegram", name: "Telegram", what: "Your chats" },
-  { id: "linkedin", name: "LinkedIn", what: "Messages, feed" },
-  { id: "discord", name: "Discord", what: "Servers, DMs" },
-  { id: "zoom", name: "Zoom", what: "Team Chat, meetings" },
-  { id: "notion", name: "Notion", what: "Pages, wikis" },
-  { id: "proton", name: "Proton Mail", what: "Private email" },
-  { id: "icloud", name: "iCloud Mail", what: "Apple email" },
-  { id: "fastmail", name: "Fastmail", what: "Email, calendar" },
+  { id: "slack", name: "Slack", what: t("setup.service.slackWhat") },
+  { id: "whatsapp", name: "WhatsApp", what: t("setup.service.whatsappWhat") },
+  { id: "telegram", name: "Telegram", what: t("setup.service.telegramWhat") },
+  { id: "linkedin", name: "LinkedIn", what: t("setup.service.linkedinWhat") },
+  { id: "discord", name: "Discord", what: t("setup.service.discordWhat") },
+  { id: "zoom", name: "Zoom", what: t("setup.service.zoomWhat") },
+  { id: "notion", name: "Notion", what: t("setup.service.notionWhat") },
+  { id: "proton", name: "Proton Mail", what: t("setup.service.protonWhat") },
+  { id: "icloud", name: "iCloud Mail", what: t("setup.service.icloudWhat") },
+  { id: "fastmail", name: "Fastmail", what: t("setup.service.fastmailWhat") },
 ];
-const SUGGESTED = ["Personal", "Work", "Side project"];
+const SUGGESTED = [
+  t("setup.spaceName.personal"),
+  t("setup.spaceName.work"),
+  t("setup.spaceName.sideProject"),
+];
 const MAX_SPACES = 20;
 const MAX_APPS = 12;
 const ENGINE_NAME: Record<AssistantEngine, string> = {
@@ -51,7 +56,13 @@ const ENGINE_NAME: Record<AssistantEngine, string> = {
   openrouter: "OpenRouter",
   off: "",
 };
-const STAGES = ["Welcome", "Assistant", "Spaces", "Apps", "Ready"];
+const STAGES = [
+  t("setup.stage.welcome"),
+  t("setup.stage.assistant"),
+  t("setup.stage.spaces"),
+  t("setup.stage.apps"),
+  t("setup.stage.ready"),
+];
 
 let seq = 0;
 const newKey = (): string => `k${++seq}`;
@@ -153,9 +164,7 @@ export function SetupView({
       await window.missiondesk.finishSetup(plan);
     } catch (e) {
       setFinishing(false);
-      setError(
-        "Mission Desk couldn't add them. Go back and check the space names and web addresses, then try again.",
-      );
+      setError(t("setup.finishError"));
     }
   }
 
@@ -186,17 +195,17 @@ export function SetupView({
   // Return continues, Escape goes back (unless a field is using the key).
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
-      const t = e.target as HTMLElement;
+      const el = e.target as HTMLElement;
       const inField =
-        t.tagName === "INPUT" ||
-        t.tagName === "TEXTAREA" ||
-        t.tagName === "SELECT";
+        el.tagName === "INPUT" ||
+        el.tagName === "TEXTAREA" ||
+        el.tagName === "SELECT";
       const onControl =
-        t.tagName === "BUTTON" ||
-        t.tagName === "A" ||
-        t.getAttribute("role") === "radio";
+        el.tagName === "BUTTON" ||
+        el.tagName === "A" ||
+        el.getAttribute("role") === "radio";
       // Only from the screen itself (its title has focus), never from <body> after a removal.
-      const onScreen = t === headRef.current;
+      const onScreen = el === headRef.current;
       if (
         e.key === "Enter" &&
         onScreen &&
@@ -209,7 +218,7 @@ export function SetupView({
         next();
       } else if (
         e.key === "Escape" &&
-        !(inField && (t as HTMLInputElement).value) &&
+        !(inField && (el as HTMLInputElement).value) &&
         index > 0 &&
         !finishing
       ) {
@@ -251,7 +260,11 @@ export function SetupView({
         <header className="su-top">
           <ol
             className="su-progress"
-            aria-label={`Step ${stage + 1} of 5: ${STAGES[stage]}`}
+            aria-label={t("setup.progressLabel", {
+              step: stage + 1,
+              total: STAGES.length,
+              stage: STAGES[stage],
+            })}
           >
             {STAGES.map((s, i) => (
               <li
@@ -276,9 +289,9 @@ export function SetupView({
             <button
               className="su-skip"
               onClick={() => window.missiondesk.skipSetup()}
-              title="You can run the setup again from Settings → General"
+              title={t("setup.skipTitle")}
             >
-              {hasAccounts ? "Close" : "Skip setup"}
+              {hasAccounts ? t("common.close") : t("setup.skip")}
             </button>
           )}
         </header>
@@ -334,14 +347,14 @@ export function SetupView({
                   onClick={() => go(-1)}
                   disabled={finishing}
                 >
-                  Back
+                  {t("common.back")}
                 </button>
               ) : (
-                <span className="su-note">Takes about a minute.</span>
+                <span className="su-note">{t("setup.nav.aboutAMinute")}</span>
               )}
               {!canGo && (
                 <span className="su-note su-why">
-                  Add a space, or keep everything together.
+                  {t("setup.nav.needSpace")}
                 </span>
               )}
               <button
@@ -350,14 +363,14 @@ export function SetupView({
                 disabled={!canGo || finishing}
               >
                 {step.kind === "welcome"
-                  ? "Get started"
+                  ? t("setup.nav.getStarted")
                   : step.kind === "ready"
                     ? finishing
-                      ? "Setting up…"
+                      ? t("setup.nav.settingUp")
                       : appCount > 0
-                        ? "Start signing in"
-                        : "Open Mission Desk"
-                    : "Continue"}
+                        ? t("setup.nav.startSigningIn")
+                        : t("setup.nav.openMissionDesk")
+                    : t("setup.nav.continue")}
               </button>
             </footer>
           </div>
@@ -395,43 +408,32 @@ function Welcome({
   return (
     <>
       <Title headRef={headRef}>
-        {again ? "Set up more of Mission Desk" : "Welcome to Mission Desk"}
+        {again ? t("setup.welcome.titleAgain") : t("setup.welcome.title")}
       </Title>
       <p className="su-lede">
-        {again
-          ? "Add spaces and apps the same way as the first time. What you already have stays as it is."
-          : "All your apps side by side, organised in spaces, with one Home for your day and an assistant that knows each space."}
+        {again ? t("setup.welcome.ledeAgain") : t("setup.welcome.lede")}
       </p>
       {!again && (
         <ul className="su-points">
           <li>
             <Glyph d="M4 5h6v14H4zM14 5h6v14h-6z" />
             <div>
-              <strong>Every account signed in on its own</strong>
-              <span>
-                Two Google accounts, three Slack workspaces: each keeps its own
-                login.
-              </span>
+              <strong>{t("setup.welcome.accountsTitle")}</strong>
+              <span>{t("setup.welcome.accountsText")}</span>
             </div>
           </li>
           <li>
             <Glyph d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" />
             <div>
-              <strong>Home shows what’s next</strong>
-              <span>
-                Your meetings, to-dos and unread messages, and one click to join
-                a call.
-              </span>
+              <strong>{t("setup.welcome.homeTitle")}</strong>
+              <span>{t("setup.welcome.homeText")}</span>
             </div>
           </li>
           <li>
             <Glyph d="M12 3l1.9 5.8L20 10l-6.1 1.2L12 17l-1.9-5.8L4 10l6.1-1.2z" />
             <div>
-              <strong>An assistant that stays in its space</strong>
-              <span>
-                It reads only the apps you share with it, and only in that
-                space.
-              </span>
+              <strong>{t("setup.welcome.assistantTitle")}</strong>
+              <span>{t("setup.welcome.assistantText")}</span>
             </div>
           </li>
         </ul>
@@ -454,19 +456,23 @@ const ENGINE_CHOICES: { id: AssistantEngine; name: string; hint: string }[] = [
   {
     id: "claude",
     name: "Claude",
-    hint: "Uses your Claude plan, through Claude Code on this Mac.",
+    hint: t("setup.assistant.claudeHint"),
   },
   {
     id: "codex",
     name: "OpenAI Codex",
-    hint: "Uses your ChatGPT plan, through Codex on this Mac.",
+    hint: t("setup.assistant.codexHint"),
   },
   {
     id: "openrouter",
     name: "OpenRouter",
-    hint: "GPT, Gemini, Llama and more, with your own OpenRouter key.",
+    hint: t("setup.assistant.openrouterHint"),
   },
-  { id: "off", name: "Not now", hint: "You can add one later in Settings." },
+  {
+    id: "off",
+    name: t("setup.assistant.offName"),
+    hint: t("setup.assistant.offHint"),
+  },
 ];
 
 function AssistantStep({
@@ -487,12 +493,13 @@ function AssistantStep({
   };
   return (
     <>
-      <Title headRef={headRef}>Would you like an assistant?</Title>
-      <p className="su-lede">
-        It briefs you on your day, finds who’s waiting on you and prepares your
-        meetings, from the apps you share with it.
-      </p>
-      <div className="su-choices" role="radiogroup" aria-label="Assistant">
+      <Title headRef={headRef}>{t("setup.assistant.title")}</Title>
+      <p className="su-lede">{t("setup.assistant.lede")}</p>
+      <div
+        className="su-choices"
+        role="radiogroup"
+        aria-label={t("setup.assistant.groupLabel")}
+      >
         {ENGINE_CHOICES.map((c, i) => (
           <button
             key={c.id}
@@ -616,31 +623,29 @@ function EngineConnect({
     if (r.connected) {
       setKey("");
       setStatus({ state: "ready" });
-    } else
-      setError(
-        r.error ?? "OpenRouter refused this key. Check it and try again.",
-      );
+    } else setError(r.error ?? t("setup.engine.keyRefused"));
   }
 
   return (
     <div className="su-connect" aria-live="polite">
       {status === null ? (
         <p className="su-state">
-          <span className="su-spin" aria-hidden="true" /> Checking{" "}
-          {engine === "openrouter" ? "OpenRouter" : app}…
+          <span className="su-spin" aria-hidden="true" />{" "}
+          {t("setup.engine.checking", {
+            name: engine === "openrouter" ? "OpenRouter" : app,
+          })}
         </p>
       ) : status.state === "ready" ? (
         <p className="su-state ok">
           <Check />{" "}
           {engine === "openrouter"
-            ? "OpenRouter is connected."
-            : `${app} is signed in on this Mac.`}{" "}
-          {name} is ready.
+            ? t("setup.engine.readyOpenRouter", { name })
+            : t("setup.engine.readySignedIn", { app, name })}
         </p>
       ) : engine === "openrouter" ? (
         <>
           <label className="su-label" htmlFor="su-key">
-            Your OpenRouter key
+            {t("setup.engine.keyLabel")}
           </label>
           <div className="su-row">
             <input
@@ -667,30 +672,33 @@ function EngineConnect({
               disabled={!key.trim() || busy}
               onClick={() => void connect()}
             >
-              {busy ? "Checking…" : "Connect"}
+              {busy ? t("setup.engine.checkingKey") : t("setup.engine.connect")}
             </button>
           </div>
           {error && <p className="su-error">{error}</p>}
           <p className="su-fine">
-            Create one at{" "}
-            <a
-              href="https://openrouter.ai/keys"
-              onClick={(e) => {
-                e.preventDefault();
-                window.missiondesk.openExternal("https://openrouter.ai/keys");
-              }}
-            >
-              openrouter.ai/keys
-            </a>
-            . macOS keeps it encrypted on this Mac; OpenRouter bills what you
-            use.
+            {rich("setup.engine.keyHelp", {
+              link: (s) => (
+                <a
+                  href="https://openrouter.ai/keys"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    window.missiondesk.openExternal(
+                      "https://openrouter.ai/keys",
+                    );
+                  }}
+                >
+                  {s}
+                </a>
+              ),
+            })}
           </p>
         </>
       ) : status.state === "signed-out" ? (
         waiting ? (
           <p className="su-state">
-            <span className="su-spin" aria-hidden="true" /> Finish signing in in
-            your browser…{" "}
+            <span className="su-spin" aria-hidden="true" />{" "}
+            {t("setup.engine.finishInBrowser")}{" "}
             <button
               className="su-link"
               onClick={() =>
@@ -699,17 +707,19 @@ function EngineConnect({
                   : window.missiondesk.codexSignInCancel()
               }
             >
-              Cancel
+              {t("common.cancel")}
             </button>
           </p>
         ) : (
           <div className="su-row spread">
             <p className="su-state">
-              {app} is installed. Sign in once, with your{" "}
-              {engine === "claude" ? "Claude" : "ChatGPT"} account.
+              {t("setup.engine.installed", {
+                app,
+                account: engine === "claude" ? "Claude" : "ChatGPT",
+              })}
             </p>
             <button className="su-btn" onClick={() => void signIn()}>
-              Sign in
+              {t("setup.engine.signIn")}
             </button>
           </div>
         )
@@ -717,9 +727,8 @@ function EngineConnect({
         <>
           <p className="su-state">
             {engine === "claude"
-              ? "Claude needs Claude Code on this Mac."
-              : "OpenAI Codex needs the Codex command-line tool on this Mac."}{" "}
-            Open Terminal, paste this and press Return:
+              ? t("setup.engine.installClaude")
+              : t("setup.engine.installCodex")}
           </p>
           <div className="su-cmd">
             <code>{INSTALL[engine]}</code>
@@ -731,24 +740,19 @@ function EngineConnect({
                   .then(() => setCopied(true))
               }
             >
-              {copied ? "Copied" : "Copy"}
+              {copied ? t("setup.engine.copied") : t("setup.engine.copy")}
             </button>
           </div>
           {engine === "codex" && (
-            <p className="su-fine su-tight">
-              If Terminal says npm isn’t found, install Node.js from nodejs.org
-              first.
-            </p>
+            <p className="su-fine su-tight">{t("setup.engine.npmMissing")}</p>
           )}
           <button className="su-link" onClick={check}>
-            I’ve installed it
+            {t("setup.engine.installedIt")}
           </button>
         </>
       )}
       {status !== null && status.state !== "ready" && !waiting && (
-        <p className="su-fine">
-          You can also finish this later, in Settings → Integrations.
-        </p>
+        <p className="su-fine">{t("setup.engine.later")}</p>
       )}
     </div>
   );
@@ -821,15 +825,12 @@ function SpacesStep({
 
   return (
     <>
-      <Title headRef={headRef}>How would you like to organise your work?</Title>
-      <p className="su-lede">
-        A space for each company, project or part of your life, like Personal,
-        Acme or Side project.
-      </p>
+      <Title headRef={headRef}>{t("setup.spaces.title")}</Title>
+      <p className="su-lede">{t("setup.spaces.lede")}</p>
 
       <div className={`su-spaces${draft.together ? " off" : ""}`}>
         {draft.spaces.length > 0 && (
-          <ul className="su-chips" aria-label="Your spaces">
+          <ul className="su-chips" aria-label={t("setup.spaces.listLabel")}>
             {draft.spaces.map((s) => (
               <li key={s.key} className="su-chip">
                 <span
@@ -840,8 +841,8 @@ function SpacesStep({
                 />
                 {s.name}
                 <button
-                  aria-label={`Remove ${s.name}`}
-                  title="Remove"
+                  aria-label={t("setup.remove", { name: s.name })}
+                  title={t("common.remove")}
                   onClick={() => remove(s.key)}
                 >
                   ×
@@ -854,13 +855,15 @@ function SpacesStep({
           <input
             className="su-input"
             placeholder={
-              draft.spaces.length ? "Another space" : "Name a space, like Acme"
+              draft.spaces.length
+                ? t("setup.spaces.placeholderMore")
+                : t("setup.spaces.placeholderFirst")
             }
             ref={input}
             value={name}
             maxLength={40}
             disabled={full}
-            aria-label="Space name"
+            aria-label={t("setup.spaces.nameLabel")}
             data-autofocus
             onChange={(e) => (setName(e.target.value), setProblem(""))}
             onKeyDown={(e) => {
@@ -875,19 +878,18 @@ function SpacesStep({
             disabled={!name.trim() || full}
             onClick={() => add(name)}
           >
-            Add
+            {t("common.add")}
           </button>
         </div>
         {problem && <p className="su-error">{problem}</p>}
         {full && (
           <p className="su-fine">
-            That’s {MAX_SPACES} spaces, the most the setup makes. You can add
-            more later.
+            {t("setup.spaces.full", { count: MAX_SPACES })}
           </p>
         )}
         {suggestions.length > 0 && !full && (
           <div className="su-suggest">
-            <span>Ideas:</span>
+            <span>{t("setup.spaces.ideas")}</span>
             {suggestions.map((s) => (
               <button key={s} onClick={() => add(s)}>
                 + {s}
@@ -915,11 +917,8 @@ function SpacesStep({
           }}
         />
         <span>
-          <strong>Keep everything together</strong>
-          <span>
-            All your apps in one list, without spaces. You can make spaces
-            later.
-          </span>
+          <strong>{t("setup.spaces.togetherTitle")}</strong>
+          <span>{t("setup.spaces.togetherText")}</span>
         </span>
       </label>
     </>
@@ -998,25 +997,28 @@ function AppsStep({
   };
   const addSite = (): void => {
     const url = cleanSiteUrl(site.trim());
-    if (!url)
-      return setSiteError(
-        "That doesn’t look like a web address. Try something like notion.so.",
-      );
+    if (!url) return setSiteError(t("setup.apps.badAddress"));
     if (sites.some((x) => x.url === url))
-      return setSiteError("It’s already in the list.");
+      return setSiteError(t("setup.apps.alreadyListed"));
     addOne("custom", url);
     setSite("");
     setSiteError("");
   };
 
-  const title = s ? `Which apps go in ${s.name}?` : "Which apps do you use?";
+  const title = s
+    ? t("setup.apps.titleSpace", { name: s.name })
+    : t("setup.apps.title");
   return (
     <>
       <Title headRef={headRef}>{title}</Title>
       <p className="su-lede">
-        Pick as many as you like
-        {s && count > 1 ? `. ${s.name} is space ${space + 1} of ${count}` : ""}.
-        You’ll sign in to each one at the end.
+        {s && count > 1
+          ? t("setup.apps.ledeSpace", {
+              name: s.name,
+              n: space + 1,
+              total: count,
+            })
+          : t("setup.apps.lede")}
       </p>
 
       <div className="su-tiles">
@@ -1034,7 +1036,9 @@ function AppsStep({
                 <ServiceLogo service={svc.id} className="su-logo" />
                 <span className="su-tile-text">
                   <strong>{svc.name}</strong>
-                  <span>{n > 1 ? `${n} accounts` : svc.what}</span>
+                  <span>
+                    {n > 1 ? t("setup.apps.accounts", { count: n }) : svc.what}
+                  </span>
                 </span>
                 <span className="su-tick" aria-hidden="true">
                   <Check />
@@ -1043,7 +1047,7 @@ function AppsStep({
               {n > 0 && (
                 <span className="su-stepper">
                   <button
-                    aria-label={`One ${svc.name} account fewer`}
+                    aria-label={t("setup.apps.oneFewer", { name: svc.name })}
                     onClick={() => {
                       const last = n === 1;
                       removeLast(svc.id);
@@ -1053,8 +1057,8 @@ function AppsStep({
                     −
                   </button>
                   <button
-                    aria-label={`Another ${svc.name} account`}
-                    title={`Another ${svc.name} account`}
+                    aria-label={t("setup.apps.another", { name: svc.name })}
+                    title={t("setup.apps.another", { name: svc.name })}
                     onClick={() => addOne(svc.id)}
                     disabled={full}
                   >
@@ -1075,10 +1079,10 @@ function AppsStep({
           >
             <ServiceLogo service="custom" className="su-logo" />
             <span className="su-tile-text">
-              <strong>Any website</strong>
+              <strong>{t("setup.apps.anyWebsite")}</strong>
               <span>
                 {sites.length
-                  ? `${sites.length} added`
+                  ? t("setup.apps.sitesAdded", { count: sites.length })
                   : "HubSpot, Jira, Linear…"}
               </span>
             </span>
@@ -1098,7 +1102,7 @@ function AppsStep({
                   <li key={a.key} className="su-chip" title={a.url}>
                     {siteNames[i]}
                     <button
-                      aria-label={`Remove ${siteNames[i]}`}
+                      aria-label={t("setup.remove", { name: siteNames[i] })}
                       onClick={() => {
                         setApps((list) => list.filter((x) => x.key !== a.key));
                         focusTile("custom");
@@ -1116,11 +1120,11 @@ function AppsStep({
               <div className="su-row">
                 <input
                   className="su-input"
-                  placeholder="Web address, like notion.so"
+                  placeholder={t("setup.apps.addressPlaceholder")}
                   value={site}
                   autoFocus
                   spellCheck={false}
-                  aria-label="Web address"
+                  aria-label={t("setup.apps.addressLabel")}
                   disabled={full}
                   onChange={(e) => (setSite(e.target.value), setSiteError(""))}
                   onKeyDown={(e) => {
@@ -1137,7 +1141,7 @@ function AppsStep({
                   disabled={!site.trim() || full}
                   onClick={addSite}
                 >
-                  Add
+                  {t("common.add")}
                 </button>
               </div>
               {siteError && <p className="su-error">{siteError}</p>}
@@ -1147,16 +1151,10 @@ function AppsStep({
       )}
 
       {full && (
-        <p className="su-fine">
-          That’s {MAX_APPS} apps, the most for one space here. You can add more
-          later.
-        </p>
+        <p className="su-fine">{t("setup.apps.full", { count: MAX_APPS })}</p>
       )}
       {s && apps.length === 0 && (
-        <p className="su-fine">
-          A space needs at least one app. With none, {s.name} is left out; you
-          can make it later.
-        </p>
+        <p className="su-fine">{t("setup.apps.needsOne", { name: s.name })}</p>
       )}
     </>
   );
@@ -1193,22 +1191,25 @@ function ReadyStep({
   if (appCount === 0)
     return (
       <>
-        <Title headRef={headRef}>Nothing to add yet</Title>
-        <p className="su-lede">
-          You haven’t picked any apps. Go back to choose some, or open Mission Desk
-          and add them one by one with the + in the sidebar.
-        </p>
+        <Title headRef={headRef}>{t("setup.ready.nothingTitle")}</Title>
+        <p className="su-lede">{t("setup.ready.nothingText")}</p>
       </>
     );
 
   return (
     <>
-      <Title headRef={headRef}>Ready to sign in</Title>
+      <Title headRef={headRef}>{t("setup.ready.title")}</Title>
       <p className="su-lede">
-        Mission Desk adds {appCount === 1 ? "your app" : `your ${appCount} apps`}
-        {plan.spaces.length > 1 ? ` in ${plan.spaces.length} spaces` : ""} and
-        opens {first?.name} first. Sign in to each one once; it stays signed in
-        on this Mac.
+        {plan.spaces.length > 1
+          ? t("setup.ready.ledeSpaces", {
+              count: appCount,
+              spaces: plan.spaces.length,
+              first: first?.name ?? "",
+            })
+          : t("setup.ready.lede", {
+              count: appCount,
+              first: first?.name ?? "",
+            })}
       </p>
 
       <div className="su-summary">
@@ -1221,7 +1222,7 @@ function ReadyStep({
                   {g.name}
                   {existing.some(
                     (e) => e.name.trim().toLowerCase() === g.name.toLowerCase(),
-                  ) && <small>Already there: adds to it</small>}
+                  ) && <small>{t("setup.ready.alreadyThere")}</small>}
                 </span>
               </span>
             )}
@@ -1245,11 +1246,8 @@ function ReadyStep({
             onChange={(e) => update((d) => ({ ...d, reads: e.target.checked }))}
           />
           <span>
-            <strong>Let {name} read these apps</strong>
-            <span>
-              So it can brief you and find who’s waiting on you. It can’t type,
-              click or send in them. You can change this per app in Settings.
-            </span>
+            <strong>{t("setup.ready.readsTitle", { name })}</strong>
+            <span>{t("setup.ready.readsText")}</span>
           </span>
         </label>
       )}
@@ -1261,9 +1259,9 @@ function ReadyStep({
 /* ───────────── The dock taking shape ───────────── */
 
 const EXAMPLE: { name: string; apps: ServiceId[] }[] = [
-  { name: "Personal", apps: ["google", "whatsapp"] },
+  { name: t("setup.spaceName.personal"), apps: ["google", "whatsapp"] },
   { name: "Acme", apps: ["microsoft", "slack"] },
-  { name: "Side project", apps: ["google", "discord"] },
+  { name: t("setup.spaceName.sideProject"), apps: ["google", "discord"] },
 ];
 
 /** A miniature of the sidebar, built from the answers as they come. */
@@ -1315,7 +1313,7 @@ function DockPreview({
   return (
     <aside className={`su-dock${example ? " example" : ""}`} aria-hidden="true">
       <div className="su-dock-col">
-        <div className="su-home" title="Home">
+        <div className="su-home" title={t("setup.dock.home")}>
           <svg viewBox="0 0 24 24">
             <path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" />
           </svg>
@@ -1347,8 +1345,8 @@ function DockPreview({
           {empty && (
             <p className="su-dock-empty">
               {draft.together && !example
-                ? "Your apps will appear here."
-                : "Your spaces will appear here."}
+                ? t("setup.dock.appsHere")
+                : t("setup.dock.spacesHere")}
             </p>
           )}
         </div>
@@ -1359,9 +1357,7 @@ function DockPreview({
         )}
       </div>
       <p className="su-dock-caption">
-        {example
-          ? "An example. Yours takes shape as you answer."
-          : "Your Mission Desk"}
+        {example ? t("setup.dock.example") : t("setup.dock.yours")}
       </p>
     </aside>
   );

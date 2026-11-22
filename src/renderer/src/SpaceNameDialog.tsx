@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { SpaceNameRequest } from '../../shared/ipc';
+import { t } from './i18n';
 
 /** Asks for a space's name, to create a space from some accounts or to rename one. */
 export function SpaceNameDialog({ request, onClose }: { request: SpaceNameRequest; onClose: () => void }): React.JSX.Element {
@@ -18,17 +19,17 @@ export function SpaceNameDialog({ request, onClose }: { request: SpaceNameReques
   return (
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <form className="dialog" onSubmit={submit} onKeyDown={(e) => e.key === 'Escape' && onClose()}>
-        <h2>{request.mode === 'create' ? 'New space' : 'Rename space'}</h2>
+        <h2>{request.mode === 'create' ? t('app.space.newTitle') : t('app.space.renameTitle')}</h2>
         <label>
-          Name
-          <input autoFocus value={name} maxLength={40} placeholder="e.g. Acme, Personal" onChange={(e) => setName(e.target.value)} />
+          {t('app.space.name')}
+          <input autoFocus value={name} maxLength={40} placeholder={t('app.space.namePlaceholder')} onChange={(e) => setName(e.target.value)} />
         </label>
         <div className="actions" style={{ marginTop: 20 }}>
           <button type="button" onClick={onClose}>
-            Cancel
+            {t('common.cancel')}
           </button>
           <button type="submit" className="primary" disabled={!valid}>
-            {request.mode === 'create' ? 'Create' : 'Rename'}
+            {request.mode === 'create' ? t('common.create') : t('app.space.rename')}
           </button>
         </div>
       </form>

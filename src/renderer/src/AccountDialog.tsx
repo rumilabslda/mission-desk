@@ -3,24 +3,25 @@ import { ACCOUNT_COLORS, type AccountView } from '../../shared/ipc';
 import type { ServiceId, Space } from '../../shared/types';
 import { SERVICE_LABEL, ServiceLogo } from './service-glyph';
 import { cleanSiteUrl } from '../../shared/custom-site';
+import { t } from './i18n';
 
 export type DialogState = { mode: 'add' } | { mode: 'edit'; accountId: string };
 
 const SERVICES: ServiceId[] = ['google', 'microsoft', 'slack', 'whatsapp', 'telegram', 'linkedin', 'discord', 'zoom', 'notion', 'proton', 'icloud', 'fastmail', 'custom'];
 const HINT: Record<ServiceId, string> = {
-  google: 'Gmail, Calendar, Drive and Meet for one Google or Workspace account.',
-  slack: 'One Slack workspace.',
-  whatsapp: 'WhatsApp Web. You will scan a QR code with your phone.',
-  microsoft: 'Outlook, Calendar and Teams for one work, school or personal Microsoft account.',
-  telegram: 'Telegram Web. You will scan a QR code with your phone.',
-  linkedin: 'LinkedIn messages and feed for one LinkedIn account.',
-  discord: 'Discord servers and messages for one Discord account.',
-  zoom: 'Zoom Team Chat, meetings and calendar on the web, for one Zoom account.',
-  proton: 'Proton Mail for one Proton account.',
-  icloud: 'iCloud Mail for one Apple Account.',
-  fastmail: 'Fastmail mail, calendar and contacts for one Fastmail account.',
-  notion: 'One Notion account, with all its workspaces. Pages it opens become tabs.',
-  custom: 'Any web app (Jira, HubSpot, Linear…), signed in on its own. Pages it opens become tabs.',
+  google: t('app.account.hint.google'),
+  slack: t('app.account.hint.slack'),
+  whatsapp: t('app.account.hint.whatsapp'),
+  microsoft: t('app.account.hint.microsoft'),
+  telegram: t('app.account.hint.telegram'),
+  linkedin: t('app.account.hint.linkedin'),
+  discord: t('app.account.hint.discord'),
+  zoom: t('app.account.hint.zoom'),
+  proton: t('app.account.hint.proton'),
+  icloud: t('app.account.hint.icloud'),
+  fastmail: t('app.account.hint.fastmail'),
+  notion: t('app.account.hint.notion'),
+  custom: t('app.account.hint.custom'),
 };
 
 /** A name from a site address: "app.notion.so" → "Notion". */
@@ -72,9 +73,9 @@ export function AccountDialog({
   return (
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <form className="dialog" onSubmit={submit} onKeyDown={(e) => e.key === 'Escape' && onClose()}>
-        <h2>{editing ? 'Edit account' : 'Add app'}</h2>
+        <h2>{editing ? t('app.account.editTitle') : t('app.account.addTitle')}</h2>
         {!editing && (
-          <div className="services" role="radiogroup" aria-label="Service">
+          <div className="services" role="radiogroup" aria-label={t('app.account.service')}>
             {SERVICES.map((s) => (
               <button
                 type="button"
@@ -93,32 +94,32 @@ export function AccountDialog({
         {!editing && <p className="hint">{HINT[service]}</p>}
         {!editing && service === 'custom' && (
           <label>
-            Address
+            {t('app.account.address')}
             <input
               autoFocus
               value={site}
               maxLength={2048}
               inputMode="url"
-              placeholder="e.g. notion.so"
+              placeholder={t('app.account.addressPlaceholder')}
               aria-invalid={site.trim() !== '' && siteUrl === null}
               onChange={(e) => setSite(e.target.value)}
               onBlur={() => siteUrl && !name.trim() && setName(nameFromSite(siteUrl))}
             />
-            {site.trim() !== '' && siteUrl === null && <small className="field-error">Use an https:// address.</small>}
+            {site.trim() !== '' && siteUrl === null && <small className="field-error">{t('app.account.addressError')}</small>}
           </label>
         )}
         {editing && account?.service === 'custom' && account.url && <p className="hint">{account.url}</p>}
         <label>
-          Name
+          {t('app.account.name')}
           <input
             autoFocus={service !== 'custom' || editing}
             value={name}
             maxLength={60}
-            placeholder="e.g. Acme"
+            placeholder={t('app.account.namePlaceholder')}
             onChange={(e) => setName(e.target.value)}
           />
         </label>
-        <div className="colors" role="radiogroup" aria-label="Colour">
+        <div className="colors" role="radiogroup" aria-label={t('app.account.colour')}>
           {ACCOUNT_COLORS.map((c) => (
             <button
               type="button"
@@ -134,30 +135,30 @@ export function AccountDialog({
         </div>
         {!editing && (
           <label className="space-field">
-            Space
+            {t('app.account.space')}
             <select value={spaceChoice} onChange={(e) => setSpaceChoice(e.target.value)}>
-              <option value="">None</option>
+              <option value="">{t('common.none')}</option>
               {spaces.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
                 </option>
               ))}
-              <option value="+new">New space…</option>
+              <option value="+new">{t('app.account.newSpace')}</option>
             </select>
           </label>
         )}
         {!editing && spaceChoice === '+new' && (
           <label className="space-field">
-            Space name
-            <input autoFocus value={newSpace} maxLength={40} placeholder="e.g. Acme, Personal" onChange={(e) => setNewSpace(e.target.value)} />
+            {t('app.account.spaceName')}
+            <input autoFocus value={newSpace} maxLength={40} placeholder={t('app.space.namePlaceholder')} onChange={(e) => setNewSpace(e.target.value)} />
           </label>
         )}
         <div className="actions">
           <button type="button" onClick={onClose}>
-            Cancel
+            {t('common.cancel')}
           </button>
           <button type="submit" className="primary" disabled={!valid}>
-            {editing ? 'Save' : 'Add'}
+            {editing ? t('common.save') : t('common.add')}
           </button>
         </div>
       </form>

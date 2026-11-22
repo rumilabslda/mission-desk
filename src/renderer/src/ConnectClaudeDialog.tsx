@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { ClaudeConnectInfo } from '../../shared/ipc';
+import { rich, t } from './i18n';
 
 function CopyBlock({ label, text }: { label: string; text: string }): React.JSX.Element {
   const [copied, setCopied] = useState(false);
@@ -16,7 +17,7 @@ function CopyBlock({ label, text }: { label: string; text: string }): React.JSX.
             });
           }}
         >
-          {copied ? 'Copied' : 'Copy'}
+          {copied ? t('assistant.copied') : t('assistant.copy')}
         </button>
       </div>
       <pre>{text}</pre>
@@ -41,23 +42,17 @@ export function ClaudeConnectPanel(): React.JSX.Element {
 
   return (
     <>
-      <p className="hint">
-        Let Claude Code or Claude Desktop on this Mac read and work in the accounts you choose. Nothing leaves your Mac
-        except through Claude itself.
-      </p>
+      <p className="hint">{t('assistant.connect.hint')}</p>
       <label className="switch-row">
         <input type="checkbox" checked={!!info?.enabled} disabled={!info || busy} onChange={(e) => void toggle(e.target.checked)} />
-        Allow Claude to connect
+        {t('assistant.connect.allow')}
       </label>
       {info?.error && <p className="error">{info.error}</p>}
       {info?.enabled && (
         <>
-          <CopyBlock label="Claude Code — run in Terminal" text={info.claudeCode} />
-          <CopyBlock label="Claude Desktop — add to claude_desktop_config.json" text={info.desktopJson} />
-          <p className="hint">
-            Then give each account access (Settings → Accounts, or right-click it → <strong>Claude access</strong>): Read, or
-            Read &amp; act. Claude must ask you before it clicks or types, and you can stop it any time with ⌘.
-          </p>
+          <CopyBlock label={t('assistant.connect.claudeCode')} text={info.claudeCode} />
+          <CopyBlock label={t('assistant.connect.claudeDesktop')} text={info.desktopJson} />
+          <p className="hint">{rich('assistant.connect.accessHint', { b: (s) => <strong>{s}</strong> })}</p>
         </>
       )}
     </>
@@ -68,11 +63,11 @@ export function ConnectClaudeDialog({ onClose }: { onClose: () => void }): React
   return (
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="dialog connect-dialog" onKeyDown={(e) => e.key === 'Escape' && onClose()} tabIndex={-1}>
-        <h2>Connect Claude</h2>
+        <h2>{t('assistant.connect.title')}</h2>
         <ClaudeConnectPanel />
         <div className="actions">
           <button type="button" className="primary" onClick={onClose}>
-            Done
+            {t('common.done')}
           </button>
         </div>
       </div>

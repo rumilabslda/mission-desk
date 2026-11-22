@@ -1,4 +1,5 @@
 import type { AssistantEffort, AssistantEvent } from '../../shared/assistant';
+import { t as tr } from '../../shared/i18n';
 
 // OpenAI Codex as an assistant: one `codex exec --json` run per message (`resume` continues the
 // thread). Only Mission Desk's tools: Codex's shell and web search are off, it runs read-only in an
@@ -55,7 +56,7 @@ const SIGNED_OUT = /not logged in|please log in|log in again|codex login|unautho
 
 /**
  * Codex started something other than Mission Desk's tools (a shell command, a file change, a web
- * search, another MCP server, an unknown tool): the reason, so the run is stopped at once.
+ * search, another MCP server, an unknown tool): the message saying so, so the run is stopped at once.
  */
 export function forbiddenItem(raw: string): string | null {
   let e: { type?: string; item?: { type?: string; server?: string; tool?: string; command?: string } };
@@ -67,9 +68,12 @@ export function forbiddenItem(raw: string): string | null {
   if (e.type !== 'item.started' && e.type !== 'item.updated' && e.type !== 'item.completed') return null;
   const t = e.item?.type;
   if (!t || t === 'agent_message' || t === 'reasoning' || t === 'todo_list' || t === 'error') return null;
-  if (t === 'mcp_tool_call') return e.item?.server === 'missiondesk' ? null : `a tool from "${e.item?.server ?? 'another server'}"`;
-  if (t === 'command_execution') return 'a command on the Mac';
-  return `its built-in "${t}" tool`;
+  if (t === 'mcp_tool_call') {
+    if (e.item?.server === 'missiondesk') return null;
+    return e.item?.server ? tr('assistant.error.codexForbiddenServer', { server: e.item.server }) : tr('assistant.error.codexForbiddenOtherServer');
+  }
+  if (t === 'command_execution') return tr('assistant.error.codexForbiddenCommand');
+  return tr('assistant.error.codexForbiddenBuiltIn', { tool: t });
 }
 
 /** One line of `codex exec --json` → what the chat needs. */
@@ -96,14 +100,14 @@ export function parseCodexEvent(raw: string): AssistantEvent[] {
     case 'turn.completed':
       return [{ type: 'done', isError: false }];
     case 'turn.failed': {
-      const message = e.error?.message ?? 'Codex could not answer.';
+      const message = e.error?.message ?? tr('assistant.error.codexCouldNotAnswer');
       return [
         { type: 'done', isError: true, text: message },
         { type: 'error', kind: SIGNED_OUT.test(message) ? 'signed-out' : 'failed', message },
       ];
     }
     case 'error': {
-      const message = e.message ?? 'Codex reported an error.';
+      const message = e.message ?? tr('assistant.error.codexReported');
       return [{ type: 'error', kind: SIGNED_OUT.test(message) ? 'signed-out' : 'failed', message }];
     }
     default:
