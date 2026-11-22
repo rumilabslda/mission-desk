@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { AccountView, UiSnapshot } from '../../shared/ipc';
 import { agendaView, greeting, localDay, todayView } from '../../shared/today';
 import type { CalendarData, Todo } from '../../shared/types';
+import { RecentMeetings } from './home/RecentMeetings';
+import { splitWaiting } from './home/waiting';
 import { Agenda } from './home/Agenda';
 import { Messages } from './home/Messages';
 import { distinctColors } from './calendar/colors';
@@ -140,6 +142,8 @@ export function TodayView({ snapshot }: { snapshot: UiSnapshot }): React.JSX.Ele
         <div className="td-right">
           <Messages snapshot={snapshot} now={now} />
 
+          <RecentMeetings items={snapshot.meetings.list} />
+
           <section className="td-card">
             <h2>{t('home.todo.title')}</h2>
             <div className="td-add">
@@ -161,8 +165,8 @@ export function TodayView({ snapshot }: { snapshot: UiSnapshot }): React.JSX.Ele
               </select>
             </div>
             <ul className="td-todos">
-              {view.open.map((todo) => (
-                <li key={todo.id} className="td-todo">
+              {[...splitWaiting(view.open).mine, ...splitWaiting(view.open).waiting].map((todo, i, all) => (
+                <li key={todo.id} className={`td-todo${todo.waitingOn ? ' waiting' : ''}${todo.waitingOn && !all[i - 1]?.waitingOn ? ' first-waiting' : ''}`} data-waiting-label={todo.waitingOn && !all[i - 1]?.waitingOn ? t('meetings.action.waitingOn') : undefined}>
                   <input type="checkbox" checked={false} onChange={() => window.missiondesk.todoUpdate(todo.id, { done: true })} />
                   {editing === todo.id ? (
                     <input
@@ -183,6 +187,7 @@ export function TodayView({ snapshot }: { snapshot: UiSnapshot }): React.JSX.Ele
                     />
                   ) : (
                     <span className="td-text" onDoubleClick={() => setEditing(todo.id)}>
+                      {todo.waitingOn && <span className="td-who">{todo.waitingOn}</span>}
                       {todo.text}
                     </span>
                   )}

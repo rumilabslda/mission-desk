@@ -1,4 +1,4 @@
-import type { EngineStatus, LiveMeeting, MeetingAction, MeetingEndedInfo, MeetingGlobalSettings, MeetingListItem, SpaceMeetingSettings } from './meeting';
+import type { EngineStatus, LiveMeeting, Meeting, MeetingAction, MeetingEndedInfo, MeetingGlobalSettings, MeetingListItem, SpaceMeetingSettings } from './meeting';
 import type { LanguageSetting, Locale } from './i18n/locales';
 import type { AssistantEffort, AssistantEvent, AssistantModel, ClaudeStatus, MemoryNote } from './assistant';
 import type { Skill, SkillDraft, SkillSource } from './skills';
@@ -83,6 +83,9 @@ export interface UiSnapshot {
   weekStartSetting: 0 | 1 | 'auto';
   /** The language choice in Settings ('system' = the Mac's). */
   language: LanguageSetting;
+  /** The meetings page is on screen; `meetingsFocus`: the space and meeting it opened on. */
+  meetingsOpen: boolean;
+  meetingsFocus?: { scope?: string; id?: string };
   /** Meeting transcription: the meetings (no transcripts), the live one, and the settings. */
   meetings: {
     list: MeetingListItem[];
@@ -293,6 +296,19 @@ export interface UiApi {
   /** Runs a meeting's chosen actions through its space's assistant. */
   meetingRun(scope: string, id: string, actions: MeetingAction[]): void;
   onMeetingEnded(cb: (info: MeetingEndedInfo) => void): () => void;
+  /** A meeting with its transcript (only from its own scope). */
+  meetingGet(scope: string, id: string): Promise<Meeting | null>;
+  /** Asks first (in main), then deletes. */
+  meetingDelete(scope: string, id: string): void;
+  /** Opens the follow-up e-mail as a new message in the space's mail account. */
+  meetingOpenDraft(scope: string, id: string): void;
+  meetingCopySummary(scope: string, id: string): void;
+  /** Saves a proposed memory note (after the usual confirmation). */
+  meetingSaveNote(scope: string, id: string, index: number): void;
+  /** Creates the proposed follow-up event (after the usual confirmation). */
+  meetingCreateEvent(scope: string, id: string): void;
+  /** The meetings page, optionally on one space and one meeting. */
+  openMeetings(scope?: string, id?: string): void;
   /** The hidden capture page only: main asks it to record a meeting view (tab audio) and the microphone. */
   onCaptureStart(cb: (o: { callSourceId: string | null }) => void): () => void;
   onCaptureStop(cb: () => void): () => void;
@@ -441,6 +457,13 @@ export const IPC = {
   meetingInstallLocale: 'ui:meeting-install-locale',
   meetingRun: 'ui:meeting-run',
   meetingEnded: 'ui:meeting-ended',
+  meetingGet: 'ui:meeting-get',
+  meetingDelete: 'ui:meeting-delete',
+  meetingOpenDraft: 'ui:meeting-open-draft',
+  meetingCopySummary: 'ui:meeting-copy-summary',
+  meetingSaveNote: 'ui:meeting-save-note',
+  meetingCreateEvent: 'ui:meeting-create-event',
+  openMeetings: 'ui:open-meetings',
   setMeetingGlobal: 'ui:set-meeting-global',
   getLocale: 'ui:get-locale',
   showDataFolder: 'ui:show-data-folder',

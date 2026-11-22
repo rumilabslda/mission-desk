@@ -284,6 +284,18 @@ export function registerIpc(win: BrowserWindow, controller: AppController): void
     const style = parseSidebarStyle(v);
     if (style) controller.setSidebarStyle(style);
   });
+  const meetingRef = (scope: unknown, id: unknown): scope is string => isScopeKey(scope) && scope !== 'all' && isString(id) && /^[\w-]{1,40}$/.test(id);
+  ipcMain.handle(IPC.meetingGet, (e, scope: unknown, id: unknown) => (fromUi(e) && meetingRef(scope, id) ? controller.meetingGet(scope, id as string) : null));
+  on(IPC.meetingDelete, (scope, id) => meetingRef(scope, id) && controller.meetingDelete(scope, id as string));
+  on(IPC.meetingOpenDraft, (scope, id) => meetingRef(scope, id) && controller.meetingOpenDraft(scope, id as string));
+  on(IPC.meetingCopySummary, (scope, id) => meetingRef(scope, id) && controller.meetingCopySummary(scope, id as string));
+  on(IPC.meetingSaveNote, (scope, id, i) => meetingRef(scope, id) && Number.isInteger(i) && (i as number) >= 0 && (i as number) < 10 && controller.meetingSaveNote(scope, id as string, i as number));
+  on(IPC.meetingCreateEvent, (scope, id) => meetingRef(scope, id) && controller.meetingCreateEvent(scope, id as string));
+  on(IPC.openMeetings, (scope, id) => {
+    const s = isScopeKey(scope) && scope !== 'all' ? scope : undefined;
+    const i = isString(id) && /^[\w-]{1,40}$/.test(id) ? id : undefined;
+    controller.openMeetings(s, i);
+  });
   on(IPC.meetingRun, (scope, id, actions) => {
     if (isScopeKey(scope) && scope !== 'all' && isString(id) && /^[\w-]{1,40}$/.test(id) && Array.isArray(actions) && actions.length <= 6 && actions.every(isMeetingAction))
       controller.meetingRun(scope, id, [...new Set(actions)]);

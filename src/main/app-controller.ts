@@ -8,12 +8,13 @@ import { type Ask, createOneShot } from './meetings/one-shot';
 import { createMeetingRunner } from './meetings/run';
 import { createMeetingOverlay } from './views/meeting-overlay';
 import { meetingBarBounds } from './views/meeting-bar-bounds';
+import { composeUrl } from '../shared/compose-url';
 import { matchEvent } from '../shared/meeting-detect';
 import { PROVIDER_NAME } from '../shared/meetings';
 import { PROBE_RELIABLE } from '../shared/meeting-probes';
 import { cleanName } from '../shared/meeting-speakers';
 import { createUpdater } from './updates/updater';
-import { DEFAULT_ACTIONS, type MeetingAction, type MeetingEndedInfo, meetingLocale, type MeetingGlobalSettings, type SpaceMeetingSettings, spaceMeetingSettings } from '../shared/meeting';
+import { DEFAULT_ACTIONS, type Meeting, type MeetingAction, type MeetingEndedInfo, meetingLocale, type MeetingGlobalSettings, type SpaceMeetingSettings, spaceMeetingSettings } from '../shared/meeting';
 import { type LanguageSetting, type Locale, type MessageKey, resolveLocale, setLocale, t } from '../shared/i18n';
 import { updateMode } from '../shared/updates';
 import { addMessage, closeMessage, type Feed, messageViews, removeMessage, trimToUnread } from '../shared/messages';
@@ -54,7 +55,7 @@ import type { ChatMessage } from '../shared/assistant-history';
 import { type AssistantOverlay, createAssistantOverlay } from './views/assistant-overlay';
 import { execFile } from 'node:child_process';
 import { assistantPrompt } from './assistant/prompt';
-import { assistantTools } from './assistant/tools';
+import { assistantTools, confirmSummary } from './assistant/tools';
 import { ssoGroups } from '../shared/sso';
 import { sidebarStyleOf } from '../shared/spaces';
 import { type CookieStore, createGoogleSync, type SyncCookie } from './sso/google-sync';
@@ -214,6 +215,13 @@ export interface AppController {
   meetingInstallLocale(locale: string): void;
   meetingBarWebContents(): WebContents | null;
   meetingRun(scope: string, id: string, actions: MeetingAction[]): void;
+  meetingGet(scope: string, id: string): Meeting | null;
+  meetingDelete(scope: string, id: string): void;
+  meetingOpenDraft(scope: string, id: string): void;
+  meetingCopySummary(scope: string, id: string): void;
+  meetingSaveNote(scope: string, id: string, index: number): void;
+  meetingCreateEvent(scope: string, id: string): void;
+  openMeetings(scope?: string, id?: string): void;
   /** The recorder (the hidden capture page and its audio). */
   captureHost(): CaptureHost;
   /** Listens to the recorder's audio frames and state. */
@@ -533,6 +541,8 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     }, 100);
   }
   let todayOpen = false;
+  let meetingsOpen = false;
+  let meetingsFocus: { scope?: string; id?: string } | undefined;
   const todos = createTodoStore(path.join(app.getPath('userData'), 'todos.json'));
   // The assistant's notes, kept apart per space (one space's assistant never sees another's).
   const memory = createMemoryStore(path.join(app.getPath('userData'), 'assistant', 'memory.json'));
@@ -1655,6 +1665,8 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       todos: todos.list(),
       weekStartSetting: s.weekStart ?? 'auto',
       language: s.language ?? 'system',
+      meetingsOpen,
+      ...(meetingsFocus ? { meetingsFocus } : {}),
       meetings: {
         list: meetingStore.listAll(meetingScopes(), orchestrator.live()?.id).map((it) => {
           const st = meetingRunner.state(it.id);
@@ -1757,6 +1769,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     calendarOpen = false;
     settingsOpen = false;
     todayOpen = false;
+    meetingsOpen = false;
     spacePanel?.close();
     // Entering an account wakes its background views (Gmail/Slack/WhatsApp, Outlook and Teams) too.
     for (const k of backgroundKinds(a)) if (k !== kind) viewManager.ensure(a, k);
@@ -2060,6 +2073,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       setupOpen = false;
       settingsOpen = false;
       todayOpen = false;
+      meetingsOpen = false;
       spacePanel?.close();
       viewManager.hideAll();
       win.webContents.focus(); // keys (T, D, W, M…) go to the calendar, not the hidden page
@@ -2398,6 +2412,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
 
     openToday() {
       todayOpen = true;
+      meetingsOpen = false;
       setupOpen = false;
       calendarOpen = false;
       settingsOpen = false;
@@ -2546,6 +2561,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       setupOpen = false;
       settingsOpen = true;
       todayOpen = false;
+      meetingsOpen = false;
       calendarOpen = false;
       spacePanel?.close();
       viewManager.hideAll();
@@ -2637,6 +2653,75 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     },
     meetingBarWebContents: () => meetingBar.webContents(),
     meetingRun: (scope, id, actions) => void meetingRunner.run(scope, id, actions),
+    meetingGet: (scope, id) => meetingStore.get(scope, id),
+    meetingDelete(scope, id) {
+      const m = meetingStore.get(scope, id);
+      if (!m) return;
+      const r = dialog.showMessageBoxSync(win, { type: 'warning', message: t('meetings.delete.title', { title: m.title }), detail: t('meetings.delete.detail'), buttons: [t('common.delete'), t('common.cancel')], defaultId: 1, cancelId: 1 });
+      if (r !== 0) return;
+      meetingStore.remove(scope, id);
+      push();
+    },
+    meetingOpenDraft(scope, id) {
+      const m = meetingStore.get(scope, id);
+      const email = m?.result?.email;
+      if (!m || !email) return;
+      // The space's mail: the meeting's own Google account first, then any Google or Microsoft account in the space.
+      const inScope = store.state().accounts.filter((a) => scopeOfAccount(a, 'space') === scope && (a.service === 'google' || a.service === 'microsoft'));
+      const a = inScope.find((x) => x.id === m.event?.accountId) ?? inScope.find((x) => x.id === m.accountId) ?? inScope[0];
+      if (!a) return;
+      const { url, bodyInClipboard } = composeUrl(a.service === 'google' ? 'google' : 'microsoft', email);
+      if (bodyInClipboard) {
+        clipboard.writeText(email.body);
+        assistantOverlay?.toast({ state: 'done', title: t('meetings.draft.bodyCopied') });
+      }
+      follow(a, routeLink({ service: a.service, url, disposition: 'new-window', busySubApps: busySubApps(a.id) }));
+    },
+    meetingCopySummary(scope, id) {
+      const m = meetingStore.get(scope, id);
+      const s = m?.result?.summary;
+      if (!m || !s) return;
+      const part = (key: 'meetings.section.decisions' | 'meetings.section.points' | 'meetings.section.nextSteps', items: string[]): string => (items.length ? `${t(key)}\n${items.map((x) => `• ${x}`).join('\n')}` : '');
+      const date = new Date(m.startedAt).toLocaleDateString(localeNow.format, { day: 'numeric', month: 'long', year: 'numeric' });
+      clipboard.writeText(
+        [t('meetings.copy.heading', { title: m.title, date }), part('meetings.section.decisions', s.decisions), part('meetings.section.points', s.points), part('meetings.section.nextSteps', s.nextSteps)]
+          .filter(Boolean)
+          .join('\n\n'),
+      );
+    },
+    meetingSaveNote(scope, id, index) {
+      const note = meetingStore.get(scope, id)?.result?.memoryNotes?.[index];
+      if (!note) return;
+      const host = toolHostFor(scope);
+      void host.confirmMemory('remember', note).then((ok) => {
+        if (ok) host.remember(note);
+      });
+    },
+    meetingCreateEvent(scope, id) {
+      const m = meetingStore.get(scope, id);
+      const ev = m?.result?.followUpEvent;
+      if (!m || !ev) return;
+      const google = store.state().accounts.filter((a) => a.service === 'google' && scopeOfAccount(a, 'space') === scope);
+      const a = google.find((x) => x.id === m.event?.accountId) ?? google[0];
+      if (!a) return;
+      const draft: EventDraft = { calendarId: 'primary', title: ev.title, allDay: false, start: ev.start, end: ev.end, location: '', description: '', guests: ev.guests, meet: true };
+      const host = toolHostFor(scope);
+      void host.confirmCreate(confirmSummary(draft, a.name), draft.guests.length > 0).then((r) => {
+        if (r.create) void host.createEvent(a.id, draft, r.notify).then(() => push());
+      });
+    },
+    openMeetings(scope, id) {
+      meetingsOpen = true;
+      meetingsFocus = scope || id ? { ...(scope ? { scope } : {}), ...(id ? { id } : {}) } : undefined;
+      todayOpen = false;
+      calendarOpen = false;
+      settingsOpen = false;
+      setupOpen = false;
+      spacePanel?.close();
+      viewManager.hideAll();
+      win.webContents.focus();
+      push();
+    },
 
     onCapture(pcm, state) {
       capturePcmCbs.add(pcm);

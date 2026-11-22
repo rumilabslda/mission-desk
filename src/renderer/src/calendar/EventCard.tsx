@@ -1,6 +1,8 @@
 import { useModal } from '../modal';
 import { useLayoutEffect, useRef, useState } from 'react';
-import type { Reply } from '../../../shared/types';
+import type { Reply, Todo } from '../../../shared/types';
+import type { MeetingAction, MeetingListItem } from '../../../shared/meeting';
+import { MeetingSection } from '../meetings/MeetingSection';
 import type { OpenCard, Owner } from './CalendarView';
 import { addDays, sameDay } from './dates';
 import { eventTimes } from './layout';
@@ -35,6 +37,7 @@ export function EventCard({
   onEdit,
   onDelete,
   onRespond,
+  meeting,
 }: {
   card: OpenCard;
   owner?: Owner;
@@ -42,6 +45,8 @@ export function EventCard({
   onEdit(): void;
   onDelete(): void;
   onRespond(reply: Reply): void;
+  /** The transcribed meeting of this event, if any. */
+  meeting?: { item: MeetingListItem; todos: Todo[]; spaceName: string; defaults: MeetingAction[] };
 }): React.JSX.Element {
   useModal(); // the floating assistant and pages stay out of its way
   const ref = useRef<HTMLDivElement>(null);
@@ -112,6 +117,12 @@ export function EventCard({
           </div>
         ) : (
           RESPONSE[e.response] && <div className="cal-card-line muted">{t(RESPONSE[e.response]!)}</div>
+        )}
+        {meeting && (
+          <div className="cal-card-meeting">
+            <div className="cal-card-meeting-title">{t('meetings.section.title')}</div>
+            <MeetingSection {...meeting} />
+          </div>
         )}
         <div className="cal-card-actions">
           {e.meetUrl && (

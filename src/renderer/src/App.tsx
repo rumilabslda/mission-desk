@@ -13,10 +13,11 @@ import { Sidebar } from './Sidebar';
 import { SpaceNameDialog } from './SpaceNameDialog';
 import { SetupView } from './setup/SetupView';
 import { MeetingEndedDialog } from './meetings/MeetingEndedDialog';
+import { MeetingsView } from './meetings/MeetingsView';
 import type { MeetingEndedInfo } from '../../shared/meeting';
 import { t } from './i18n';
 
-const EMPTY: UiSnapshot = { accounts: [], activeAccountId: null, googleTabs: {}, claude: { enabled: false, acting: [] }, calendarOpen: false, settingsOpen: false, todayOpen: false, openOnToday: true, messages: [], messagePreviews: true, messageSources: [], update: { mode: 'off', auto: true, state: { kind: 'idle' } }, todos: [], weekStartSetting: 'auto', language: 'system', meetings: { list: [], live: null, asking: null, localeInstall: null, settings: {}, spaces: {}, engines: [] }, calendarHidden: [], weekStart: 1, spaces: [], sidebarStyle: 'sections', assistant: { open: false, width: 380, model: 'default', effort: 'medium', button: true, mode: 'space', scope: 'all', scopes: [], conversationId: null, conversations: [], working: false, engine: 'claude', configs: {}, memory: {}, skills: [], skillsActive: {} }, settingsSection: null, setupOpen: false };
+const EMPTY: UiSnapshot = { accounts: [], activeAccountId: null, googleTabs: {}, claude: { enabled: false, acting: [] }, calendarOpen: false, settingsOpen: false, todayOpen: false, openOnToday: true, messages: [], messagePreviews: true, messageSources: [], update: { mode: 'off', auto: true, state: { kind: 'idle' } }, todos: [], weekStartSetting: 'auto', language: 'system', meetingsOpen: false, meetings: { list: [], live: null, asking: null, localeInstall: null, settings: {}, spaces: {}, engines: [] }, calendarHidden: [], weekStart: 1, spaces: [], sidebarStyle: 'sections', assistant: { open: false, width: 380, model: 'default', effort: 'medium', button: true, mode: 'space', scope: 'all', scopes: [], conversationId: null, conversations: [], working: false, engine: 'claude', configs: {}, memory: {}, skills: [], skillsActive: {} }, settingsSection: null, setupOpen: false };
 
 export function App(): React.JSX.Element {
   const [snap, setSnap] = useState<UiSnapshot>(EMPTY);
@@ -64,7 +65,7 @@ export function App(): React.JSX.Element {
         <main className="content">
           <ClaudeBanner snapshot={snap} />
           <GoogleTabStrip snapshot={snap} />
-          {snap.settingsOpen ? <SettingsView snapshot={snap} /> : snap.todayOpen && snap.accounts.length > 0 ? <TodayView snapshot={snap} /> : snap.calendarOpen && <CalendarView snapshot={snap} />}
+          {snap.settingsOpen ? <SettingsView snapshot={snap} /> : snap.meetingsOpen ? <MeetingsView key={`${snap.meetingsFocus?.scope}|${snap.meetingsFocus?.id}`} snapshot={snap} /> : snap.todayOpen && snap.accounts.length > 0 ? <TodayView snapshot={snap} /> : snap.calendarOpen && <CalendarView snapshot={snap} />}
           {loaded && snap.accounts.length === 0 && !snap.settingsOpen && !snap.setupOpen && (
             <div className="empty">
               <h1>{t('app.welcome.title')}</h1>

@@ -8,6 +8,7 @@ import { Toast, type ToastState } from './Toast';
 import { distinctColors } from './colors';
 import { addDays, type CalView, dayKey, rangeOf, startOfDay, step, title, visibleDays } from './dates';
 import { EventCard } from './EventCard';
+import { DEFAULT_ACTIONS } from '../../../shared/meeting';
 import { MiniMonth } from './MiniMonth';
 import { MonthGrid } from './MonthGrid';
 import { TimeGrid } from './TimeGrid';
@@ -422,6 +423,12 @@ export function CalendarView({ snapshot }: { snapshot: UiSnapshot }): React.JSX.
           onEdit={() => void editEvent(card.event)}
           onDelete={() => void deleteEvent(card.event)}
           onRespond={(reply) => void respond(card.event, reply)}
+          meeting={(() => {
+            const item = snapshot.meetings.list.find((x) => x.event?.accountId === card.event.accountId && x.event.eventId === card.event.id);
+            if (!item) return undefined;
+            const space = snapshot.spaces.find((s) => `space:${s.id}` === item.scope);
+            return { item, todos: snapshot.todos, spaceName: space?.name ?? t('common.noSpace'), defaults: snapshot.meetings.spaces[item.scope]?.actions ?? DEFAULT_ACTIONS };
+          })()}
         />
       )}
       {quick && (
