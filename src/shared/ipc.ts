@@ -1,4 +1,4 @@
-import type { EngineStatus, LiveMeeting, MeetingGlobalSettings, MeetingListItem, SpaceMeetingSettings } from './meeting';
+import type { EngineStatus, LiveMeeting, MeetingAction, MeetingEndedInfo, MeetingGlobalSettings, MeetingListItem, SpaceMeetingSettings } from './meeting';
 import type { LanguageSetting, Locale } from './i18n/locales';
 import type { AssistantEffort, AssistantEvent, AssistantModel, ClaudeStatus, MemoryNote } from './assistant';
 import type { Skill, SkillDraft, SkillSource } from './skills';
@@ -290,6 +290,9 @@ export interface UiApi {
   meetingSetLanguage(locale: string): void;
   meetingCopyNotice(): void;
   meetingInstallLocale(locale: string): void;
+  /** Runs a meeting's chosen actions through its space's assistant. */
+  meetingRun(scope: string, id: string, actions: MeetingAction[]): void;
+  onMeetingEnded(cb: (info: MeetingEndedInfo) => void): () => void;
   /** The hidden capture page only: main asks it to record a meeting view (tab audio) and the microphone. */
   onCaptureStart(cb: (o: { callSourceId: string | null }) => void): () => void;
   onCaptureStop(cb: () => void): () => void;
@@ -436,6 +439,8 @@ export const IPC = {
   meetingSetLanguage: 'ui:meeting-set-language',
   meetingCopyNotice: 'ui:meeting-copy-notice',
   meetingInstallLocale: 'ui:meeting-install-locale',
+  meetingRun: 'ui:meeting-run',
+  meetingEnded: 'ui:meeting-ended',
   setMeetingGlobal: 'ui:set-meeting-global',
   getLocale: 'ui:get-locale',
   showDataFolder: 'ui:show-data-folder',

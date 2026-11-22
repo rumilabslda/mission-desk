@@ -5,6 +5,7 @@ import { createTranscriber, type Transcriber } from './meetings/transcriber';
 import { createOrchestrator } from './meetings/orchestrator';
 import { createDetector } from './meetings/detector';
 import { type Ask, createOneShot } from './meetings/one-shot';
+import { createMeetingRunner } from './meetings/run';
 import { createMeetingOverlay } from './views/meeting-overlay';
 import { meetingBarBounds } from './views/meeting-bar-bounds';
 import { matchEvent } from '../shared/meeting-detect';
@@ -12,7 +13,7 @@ import { PROVIDER_NAME } from '../shared/meetings';
 import { PROBE_RELIABLE } from '../shared/meeting-probes';
 import { cleanName } from '../shared/meeting-speakers';
 import { createUpdater } from './updates/updater';
-import { meetingLocale, type MeetingGlobalSettings, type SpaceMeetingSettings, spaceMeetingSettings } from '../shared/meeting';
+import { DEFAULT_ACTIONS, type MeetingAction, type MeetingEndedInfo, meetingLocale, type MeetingGlobalSettings, type SpaceMeetingSettings, spaceMeetingSettings } from '../shared/meeting';
 import { type LanguageSetting, type Locale, type MessageKey, resolveLocale, setLocale, t } from '../shared/i18n';
 import { updateMode } from '../shared/updates';
 import { addMessage, closeMessage, type Feed, messageViews, removeMessage, trimToUnread } from '../shared/messages';
@@ -212,6 +213,7 @@ export interface AppController {
   meetingCopyNotice(): void;
   meetingInstallLocale(locale: string): void;
   meetingBarWebContents(): WebContents | null;
+  meetingRun(scope: string, id: string, actions: MeetingAction[]): void;
   /** The recorder (the hidden capture page and its audio). */
   captureHost(): CaptureHost;
   /** Listens to the recorder's audio frames and state. */
@@ -576,6 +578,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
   const transcriberNow = (): Transcriber =>
     (transcriber ??= createTranscriber({ spawn: () => spawn(helperPath, [], { stdio: ['pipe', 'pipe', 'pipe'] }), now: () => Date.now() }));
   const meetingScopes = (): string[] => ['nospace', ...(store.state().spaces ?? []).map((sp) => `space:${sp.id}`)];
+  const meetingScopeName = (scope: string): string => (scope === 'nospace' ? t('common.noSpace') : ((store.state().spaces ?? []).find((sp) => `space:${sp.id}` === scope)?.name ?? ''));
   const meetingSettingsFor = (scope: string): SpaceMeetingSettings =>
     scope === 'nospace' ? spaceMeetingSettings({ meetings: store.state().meetings?.nospace }) : spaceMeetingSettings((store.state().spaces ?? []).find((sp) => `space:${sp.id}` === scope));
   const orchestrator = createOrchestrator({
@@ -596,7 +599,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     async matchEvent(_accountId, url, at) {
       const data = await calendar.load({ start: new Date(at - 12 * 3_600_000).toISOString(), end: new Date(at + 12 * 3_600_000).toISOString() }, false).catch(() => null);
       const ev = data ? matchEvent(data.events, url, at) : null;
-      return ev ? { event: { accountId: ev.accountId, eventId: ev.id }, title: ev.title } : undefined;
+      return ev ? { event: { accountId: ev.accountId, eventId: ev.id, calendarId: ev.calendarId, googleEventId: ev.eventId }, title: ev.title } : undefined;
     },
     titleFor: (provider, accountId) => t('meetings.defaultTitle', { provider: PROVIDER_NAME[provider], account: account(accountId)?.name ?? '' }),
     webContentsOf: (accountId, kind) => registry.get(accountId, kind)?.webContents ?? null,
@@ -606,8 +609,47 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     },
     probeReliable: (provider) => PROBE_RELIABLE[provider],
     push: () => push(),
-    ended: () => push(),
+    ended: (m) => {
+      push();
+      const scopeName = meetingScopeName(m.scope);
+      const info: MeetingEndedInfo = {
+        scope: m.scope,
+        id: m.id,
+        title: m.title,
+        minutes: Math.max(1, Math.round((Date.parse(m.endedAt ?? m.startedAt) - Date.parse(m.startedAt)) / 60_000)),
+        language: m.language,
+        spaceName: scopeName,
+        defaults: meetingSettingsFor(m.scope).actions ?? DEFAULT_ACTIONS,
+        askAvailable: askFor(m.scope) !== null,
+      };
+      if (!win.isDestroyed()) win.webContents.send(IPC.meetingEnded, info);
+    },
     now: () => Date.now(),
+  });
+  const meetingRunner = createMeetingRunner({
+    store: meetingStore,
+    askFor: (scope) => askFor(scope),
+    notes: (scope) => memory.list(scope).map((n) => n.text),
+    async guests(m) {
+      const e = m.event;
+      if (!e?.calendarId || !e.googleEventId || !isGoogleAccount(e.accountId)) return [];
+      const r = await calendarWriter.getEvent(e.accountId, e.calendarId, e.googleEventId).catch(() => null);
+      return r?.ok ? r.event.guests : [];
+    },
+    myName: () => 'Me',
+    addTodo: (text, tag, extra) => void todos.add(text, tag, extra),
+    tagFor: (scope) => todoTagFor(scope),
+    saveActions: (scope, actions) => store.setSpaceMeetings(scope, { ...meetingSettingsFor(scope), actions }),
+    progress: (m, state, message) => {
+      const space = meetingScopeName(m.scope);
+      if (state === 'busy') assistantOverlay?.toast({ state: 'busy', title: t('meetings.run.busy', { title: m.title }) });
+      else if (state === 'error') assistantOverlay?.toast({ state: 'error', title: t('meetings.run.failed', { title: m.title, reason: message ?? '' }) });
+      else {
+        assistantOverlay?.toast({ state: 'done', title: t('meetings.run.done', { space, title: m.title }) });
+        if (!win.isFocused()) new Notification({ title: t('meetings.run.done', { space, title: m.title }) }).show();
+      }
+    },
+    push: () => push(),
   });
   let localeInstall: { locale: string; fraction: number } | null = null;
   let modalOpen = false;
@@ -1614,7 +1656,11 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       weekStartSetting: s.weekStart ?? 'auto',
       language: s.language ?? 'system',
       meetings: {
-        list: meetingStore.listAll(meetingScopes(), orchestrator.live()?.id),
+        list: meetingStore.listAll(meetingScopes(), orchestrator.live()?.id).map((it) => {
+          const st = meetingRunner.state(it.id);
+          const error = meetingRunner.error(it.id);
+          return st ? { ...it, state: st, ...(error ? { error } : {}) } : it;
+        }),
         live: orchestrator.live(),
         asking: (() => {
           const q = orchestrator.asking();
@@ -2590,6 +2636,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
         });
     },
     meetingBarWebContents: () => meetingBar.webContents(),
+    meetingRun: (scope, id, actions) => void meetingRunner.run(scope, id, actions),
 
     onCapture(pcm, state) {
       capturePcmCbs.add(pcm);

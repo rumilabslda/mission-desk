@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 import { IPC, type SpaceNameRequest, type UiApi, type UiSnapshot } from '../shared/ipc';
 import type { FabToastShown, QuickRequest } from '../shared/quick';
 import { CAPTURE_IPC } from '../shared/capture-ipc';
+import type { MeetingEndedInfo } from '../shared/meeting';
 
 function subscribe<T>(channel: string, cb: (value: T) => void): () => void {
   const listener = (_e: Electron.IpcRendererEvent, value: T): void => cb(value);
@@ -128,6 +129,8 @@ const api: UiApi = {
   meetingSetLanguage: (locale) => ipcRenderer.send(IPC.meetingSetLanguage, locale),
   meetingCopyNotice: () => ipcRenderer.send(IPC.meetingCopyNotice),
   meetingInstallLocale: (locale) => ipcRenderer.send(IPC.meetingInstallLocale, locale),
+  meetingRun: (scope, id, actions) => ipcRenderer.send(IPC.meetingRun, scope, id, actions),
+  onMeetingEnded: (cb) => subscribe<MeetingEndedInfo>(IPC.meetingEnded, cb),
   onCaptureStart: (cb) => subscribe<{ callSourceId: string | null }>(CAPTURE_IPC.start, cb),
   onCaptureStop: (cb) => subscribe<void>(CAPTURE_IPC.stop, () => cb()),
   capturePcm: (ch, pcm) => ipcRenderer.send(CAPTURE_IPC.pcm, ch, pcm),

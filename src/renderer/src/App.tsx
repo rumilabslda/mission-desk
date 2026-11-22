@@ -12,6 +12,8 @@ import { GoogleTabStrip } from './GoogleTabStrip';
 import { Sidebar } from './Sidebar';
 import { SpaceNameDialog } from './SpaceNameDialog';
 import { SetupView } from './setup/SetupView';
+import { MeetingEndedDialog } from './meetings/MeetingEndedDialog';
+import type { MeetingEndedInfo } from '../../shared/meeting';
 import { t } from './i18n';
 
 const EMPTY: UiSnapshot = { accounts: [], activeAccountId: null, googleTabs: {}, claude: { enabled: false, acting: [] }, calendarOpen: false, settingsOpen: false, todayOpen: false, openOnToday: true, messages: [], messagePreviews: true, messageSources: [], update: { mode: 'off', auto: true, state: { kind: 'idle' } }, todos: [], weekStartSetting: 'auto', language: 'system', meetings: { list: [], live: null, asking: null, localeInstall: null, settings: {}, spaces: {}, engines: [] }, calendarHidden: [], weekStart: 1, spaces: [], sidebarStyle: 'sections', assistant: { open: false, width: 380, model: 'default', effort: 'medium', button: true, mode: 'space', scope: 'all', scopes: [], conversationId: null, conversations: [], working: false, engine: 'claude', configs: {}, memory: {}, skills: [], skillsActive: {} }, settingsSection: null, setupOpen: false };
@@ -22,6 +24,7 @@ export function App(): React.JSX.Element {
   const [connectOpen, setConnectOpen] = useState(false);
   const [spaceName, setSpaceName] = useState<SpaceNameRequest | null>(null);
   const [addSpace, setAddSpace] = useState(false);
+  const [ended, setEnded] = useState<MeetingEndedInfo | null>(null);
   // Until main's first snapshot arrives nothing is known (no flash of the empty screen before the setup).
   const [loaded, setLoaded] = useState(false);
 
@@ -37,8 +40,10 @@ export function App(): React.JSX.Element {
     const offEdit = window.missiondesk.onEditRequest((id) => setDialog({ mode: 'edit', accountId: id }));
     const offConnect = window.missiondesk.onOpenConnectClaude(() => setConnectOpen(true));
     const offSpaceName = window.missiondesk.onSpaceNameRequest(setSpaceName);
+    const offEnded = window.missiondesk.onMeetingEnded(setEnded);
     const offAdd = window.missiondesk.onOpenAddDialog((kind) => (kind === 'space' ? setAddSpace(true) : setDialog({ mode: 'add' })));
     return () => {
+      offEnded();
       offAdd();
       offSnap();
       offEdit();
@@ -47,7 +52,7 @@ export function App(): React.JSX.Element {
     };
   }, []);
 
-  useModal(dialog !== null || connectOpen || spaceName !== null || addSpace);
+  useModal(dialog !== null || connectOpen || spaceName !== null || addSpace || ended !== null);
 
   const editing = dialog?.mode === 'edit' ? snap.accounts.find((a) => a.id === dialog.accountId) : undefined;
 
@@ -81,6 +86,7 @@ export function App(): React.JSX.Element {
           defaultEngine={snap.assistant.defaultEngine}
         />
       )}
+      {ended && <MeetingEndedDialog info={ended} onClose={() => setEnded(null)} />}
       {connectOpen && <ConnectClaudeDialog onClose={() => setConnectOpen(false)} />}
       {addSpace && <AddSpaceDialog snapshot={snap} onClose={() => setAddSpace(false)} />}
       {spaceName && <SpaceNameDialog request={spaceName} onClose={() => setSpaceName(null)} />}

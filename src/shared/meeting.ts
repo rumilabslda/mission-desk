@@ -62,7 +62,7 @@ export interface Meeting {
   language: string;
   engine: EngineId;
   /** The calendar event it was matched to (by its meeting link and time). */
-  event?: { accountId: string; eventId: string };
+  event?: { accountId: string; eventId: string; calendarId?: string; googleEventId?: string };
   segments: Segment[];
   gaps: { start: number; end: number }[];
   result?: FollowUpResult;
@@ -85,6 +85,22 @@ export interface MeetingListItem {
   minutes: number;
   state: MeetingState;
   event?: Meeting['event'];
+  /** Why the last run failed. */
+  error?: string;
+}
+
+/** What the "Meeting ended" window shows. */
+export interface MeetingEndedInfo {
+  scope: string;
+  id: string;
+  title: string;
+  minutes: number;
+  language: string;
+  spaceName: string;
+  /** The space's saved ticks. */
+  defaults: MeetingAction[];
+  /** The space has an assistant to run them. */
+  askAvailable: boolean;
 }
 
 /** The meeting being transcribed. */

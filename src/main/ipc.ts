@@ -6,7 +6,7 @@ import { isCodexModel, isEngine, isOpenRouterModel, type ScopeConfig } from '../
 import { IPC } from '../shared/ipc';
 import { CAPTURE_IPC } from '../shared/capture-ipc';
 import { isLanguageSetting } from '../shared/i18n/locales';
-import { isMeetingLocale } from '../shared/meeting';
+import { isMeetingAction, isMeetingLocale } from '../shared/meeting';
 import { t } from '../shared/i18n';
 import type { ViewKind } from '../shared/types';
 import type { AppController } from './app-controller';
@@ -283,6 +283,10 @@ export function registerIpc(win: BrowserWindow, controller: AppController): void
   on(IPC.setSidebarStyle, (v) => {
     const style = parseSidebarStyle(v);
     if (style) controller.setSidebarStyle(style);
+  });
+  on(IPC.meetingRun, (scope, id, actions) => {
+    if (isScopeKey(scope) && scope !== 'all' && isString(id) && /^[\w-]{1,40}$/.test(id) && Array.isArray(actions) && actions.length <= 6 && actions.every(isMeetingAction))
+      controller.meetingRun(scope, id, [...new Set(actions)]);
   });
   on(IPC.setLanguage, (v) => isLanguageSetting(v) && controller.setLanguage(v));
   on(IPC.setSpaceMeetings, (scope, v) => {
