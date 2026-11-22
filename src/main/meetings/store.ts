@@ -10,7 +10,7 @@ import type { Meeting, MeetingListItem, Segment } from '../../shared/meeting';
  * Stored only on this Mac, readable only by the user.
  */
 const ID = /^[\w-]{1,40}$/;
-type Patch = Partial<Pick<Meeting, 'endedAt' | 'language' | 'result' | 'applied' | 'actions' | 'title' | 'event'>>;
+type Patch = Partial<Pick<Meeting, 'endedAt' | 'language' | 'engine' | 'result' | 'applied' | 'actions' | 'title' | 'event'>>;
 
 export function createMeetingStore(dir: string, now: () => Date = () => new Date()) {
   const scopeDir = (scope: string): string | null => (isScopeKey(scope) && scope !== 'all' ? path.join(dir, scope.replace(':', '-')) : null);

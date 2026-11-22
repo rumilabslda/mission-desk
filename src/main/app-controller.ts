@@ -1,7 +1,15 @@
 import { app, type BrowserWindow, clipboard, dialog, ipcMain, Menu, net, Notification, safeStorage, session, shell, systemPreferences, type WebContents, webContents, type WebContentsView } from 'electron';
 import { capturePage, type CaptureHost, type CaptureState, createCaptureHost } from './meetings/capture-host';
+import { createMeetingStore } from './meetings/store';
+import { createTranscriber, type Transcriber } from './meetings/transcriber';
+import { createOrchestrator } from './meetings/orchestrator';
+import { createDetector } from './meetings/detector';
+import { matchEvent } from '../shared/meeting-detect';
+import { PROVIDER_NAME } from '../shared/meetings';
+import { PROBE_RELIABLE } from '../shared/meeting-probes';
+import { cleanName } from '../shared/meeting-speakers';
 import { createUpdater } from './updates/updater';
-import { type MeetingGlobalSettings, type SpaceMeetingSettings, spaceMeetingSettings } from '../shared/meeting';
+import { meetingLocale, type MeetingGlobalSettings, type SpaceMeetingSettings, spaceMeetingSettings } from '../shared/meeting';
 import { type LanguageSetting, type Locale, type MessageKey, resolveLocale, setLocale, t } from '../shared/i18n';
 import { updateMode } from '../shared/updates';
 import { addMessage, closeMessage, type Feed, messageViews, removeMessage, trimToUnread } from '../shared/messages';
@@ -192,7 +200,13 @@ export interface AppController {
   setWeekStart(v: 0 | 1 | 'auto'): void;
   setSpaceMeetings(scope: string, s: SpaceMeetingSettings): void;
   setMeetingGlobal(patch: Partial<MeetingGlobalSettings>): void;
-  /** The meeting recorder (the hidden capture page and its audio). */
+  /** The transcription bar: the Ask answer, pause, resume, stop and the meeting's language. */
+  meetingAnswer(yes: boolean, never: boolean): void;
+  meetingPause(): void;
+  meetingResume(): void;
+  meetingStop(): void;
+  meetingSetLanguage(locale: string): void;
+  /** The recorder (the hidden capture page and its audio). */
   captureHost(): CaptureHost;
   /** Listens to the recorder's audio frames and state. */
   onCapture(pcm: (ch: 'me' | 'call', data: Int16Array) => void, state: (s: CaptureState) => void): () => void;
@@ -410,6 +424,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     // where it was (it would otherwise stay blank until a restart).
     onViewGone: (a, kind, onScreen) => {
       // Next tick: when the window itself is closing, its pages go first and nothing must reopen.
+      if (meetingsOn) detector.viewGone(a.id, kind);
       setImmediate(() => {
         if (quitting || win.isDestroyed()) return;
         scheduler.unregister(key(a.id, kind));
@@ -543,6 +558,62 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     now: () => Date.now(),
   });
   const calendarWriter = createCalendarWriter(calendarFetcher);
+
+  // --- Meeting transcription (macOS): detection → orchestrator → helper; text stored per scope ---
+  const meetingsOn = process.platform === 'darwin';
+  const meetingStore = createMeetingStore(path.join(app.getPath('userData'), 'meetings'));
+  const helperPath = app.isPackaged ? path.join(process.resourcesPath, 'md-transcriber') : path.join(app.getAppPath(), 'build', 'bin', 'md-transcriber');
+  let transcriber: Transcriber | null = null;
+  const transcriberNow = (): Transcriber =>
+    (transcriber ??= createTranscriber({ spawn: () => spawn(helperPath, [], { stdio: ['pipe', 'pipe', 'pipe'] }), now: () => Date.now() }));
+  const meetingScopes = (): string[] => ['nospace', ...(store.state().spaces ?? []).map((sp) => `space:${sp.id}`)];
+  const meetingSettingsFor = (scope: string): SpaceMeetingSettings =>
+    scope === 'nospace' ? spaceMeetingSettings({ meetings: store.state().meetings?.nospace }) : spaceMeetingSettings((store.state().spaces ?? []).find((sp) => `space:${sp.id}` === scope));
+  const orchestrator = createOrchestrator({
+    store: meetingStore,
+    transcriber: transcriberNow,
+    capture,
+    onCapture: (pcm, state) => controller.onCapture(pcm, state),
+    settingsFor: meetingSettingsFor,
+    setSpaceMeetings: (scope, s) => store.setSpaceMeetings(scope, s),
+    engineFor: () => ({ engine: 'apple', modelDir: null }),
+    alternateEngine: () => null,
+    defaultLanguage: () => meetingLocale(localeNow.locale, localeNow.format),
+    scopeOf: (accountId) => {
+      const a = account(accountId);
+      return a ? scopeOfAccount(a, 'space') : null;
+    },
+    scopes: meetingScopes,
+    async matchEvent(_accountId, url, at) {
+      const data = await calendar.load({ start: new Date(at - 12 * 3_600_000).toISOString(), end: new Date(at + 12 * 3_600_000).toISOString() }, false).catch(() => null);
+      const ev = data ? matchEvent(data.events, url, at) : null;
+      return ev ? { event: { accountId: ev.accountId, eventId: ev.id }, title: ev.title } : undefined;
+    },
+    titleFor: (provider, accountId) => t('meetings.defaultTitle', { provider: PROVIDER_NAME[provider], account: account(accountId)?.name ?? '' }),
+    webContentsOf: (accountId, kind) => registry.get(accountId, kind)?.webContents ?? null,
+    probe: (accountId, kind, provider) => {
+      const wc = registry.get(accountId, kind)?.webContents;
+      if (wc && !wc.isDestroyed()) wc.send(SERVICE_IPC.meetingProbeControl, provider);
+    },
+    probeReliable: (provider) => PROBE_RELIABLE[provider],
+    push: () => push(),
+    ended: () => push(),
+    now: () => Date.now(),
+  });
+  const detector = createDetector({
+    onStart: (m) => void orchestrator.start(m),
+    onEnd: (accountId, kind, key) => void orchestrator.end(accountId, kind, key),
+    setTimer: (fn, ms) => setTimeout(fn, ms),
+    clearTimer: (id) => clearTimeout(id as ReturnType<typeof setTimeout>),
+  });
+  if (meetingsOn) orchestrator.recover();
+  ipcMain.on(SERVICE_IPC.meetingProbe, (e, r: unknown) => {
+    const owner = registry.accountFor(e.sender.id);
+    if (!owner || typeof r !== 'object' || r === null) return;
+    const o = r as { speaking?: unknown; muted?: unknown };
+    const speaking = Array.isArray(o.speaking) ? o.speaking.filter((x): x is string => typeof x === 'string').map(cleanName).filter((x): x is string => !!x).slice(0, 20) : [];
+    orchestrator.onProbe(owner.accountId, owner.kind, { speaking, muted: typeof o.muted === 'boolean' ? o.muted : null });
+  });
   const isGoogleAccount = (id: string): boolean => account(id)?.service === 'google';
   const tabbed = (id: string): boolean => { const a = account(id); return !!a && hasTabs(a.service); };
   const NOT_ALLOWED = { ok: false, error: 'error' } as const;
@@ -1178,6 +1249,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
 
   const inCall = new Set<string>();
   function inCallChanged(accountId: string, kind: ViewKind, active: boolean): void {
+    if (meetingsOn) detector.callChanged(accountId, kind, active, registry.get(accountId, kind)?.webContents.getURL() ?? '');
     if (active) inCall.add(key(accountId, kind));
     else inCall.delete(key(accountId, kind));
     scheduler.setInCall(key(accountId, kind), active);
@@ -1353,7 +1425,13 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     });
     let pageNavigated = false; // the page itself navigated (not only its first load and redirects)
     wc.on('will-navigate', () => (pageNavigated = true));
+    if (meetingsOn) {
+      wc.on('did-navigate-in-page', (_e, url, isMainFrame) => {
+        if (isMainFrame) detector.urlChanged(a.id, kind, url);
+      });
+    }
     wc.on('did-navigate', (_e, url) => {
+      if (meetingsOn) detector.urlChanged(a.id, kind, url);
       if (/^https?:/.test(url)) failed.delete(wc);
       // A custom app whose address moved on load to another domain of the same site (notion.so → notion.com).
       const acct = account(a.id);
@@ -1473,8 +1551,8 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       weekStartSetting: s.weekStart ?? 'auto',
       language: s.language ?? 'system',
       meetings: {
-        list: [],
-        live: null,
+        list: meetingStore.listAll(meetingScopes(), orchestrator.live()?.id),
+        live: orchestrator.live(),
         settings: (({ nospace: _n, ...rest }) => rest)(s.meetings ?? {}),
         spaces: Object.fromEntries([
           ...(s.spaces ?? []).map((sp) => [`space:${sp.id}`, spaceMeetingSettings(sp)] as const),
@@ -2408,6 +2486,12 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     },
 
     captureHost: () => capture,
+
+    meetingAnswer: (yes, never) => void orchestrator.answer(yes, never),
+    meetingPause: () => orchestrator.pause(),
+    meetingResume: () => orchestrator.resume(),
+    meetingStop: () => void orchestrator.stop(),
+    meetingSetLanguage: (locale) => void orchestrator.setLanguage(locale),
 
     onCapture(pcm, state) {
       capturePcmCbs.add(pcm);

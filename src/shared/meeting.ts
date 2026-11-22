@@ -118,3 +118,26 @@ export const isMeetingLocale = (v: unknown): v is string => typeof v === 'string
 export function spaceMeetingSettings(s: { meetings?: SpaceMeetingSettings } | undefined): SpaceMeetingSettings {
   return s?.meetings ?? { mode: 'ask' };
 }
+
+/** The regional variants transcription engines know, per language (the first is the default). */
+const LOCALE_REGIONS: Record<string, string[]> = {
+  en: ['US', 'GB', 'AU', 'CA', 'IE', 'IN', 'NZ', 'SG', 'ZA'],
+  es: ['ES', 'MX', 'US', 'CL'],
+  fr: ['FR', 'BE', 'CA', 'CH'],
+  de: ['DE', 'AT', 'CH'],
+  it: ['IT', 'CH'],
+  nl: ['NL'],
+};
+
+/**
+ * The meetings' default language for the engines: the interface language, in the Mac's region
+ * when the engines know that variant ("en-PT" → en-US, "de-AT" → de-AT).
+ */
+export function meetingLocale(uiLocale: string, format: string): string {
+  if (uiLocale === 'pt-PT' || uiLocale === 'pt-BR') return uiLocale;
+  const lang = uiLocale.split('-')[0];
+  const regions = LOCALE_REGIONS[lang];
+  if (!regions) return 'en-US';
+  const region = format.split('-')[1]?.toUpperCase();
+  return `${lang}-${region && regions.includes(region) ? region : regions[0]}`;
+}

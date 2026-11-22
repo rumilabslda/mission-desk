@@ -42,3 +42,21 @@ export function meetingKey(raw: string): { provider: MeetingProviderId; key: str
   }
   return null;
 }
+
+/**
+ * The calendar event a meeting belongs to: same meeting link, and the meeting started between
+ * 30 minutes before the event and its end.
+ */
+export function matchEvent<E extends { start: string; end: string; join?: { url: string } }>(events: E[], meetingUrl: string, at: number): E | null {
+  const key = meetingKey(meetingUrl)?.key;
+  if (!key) return null;
+  let best: E | null = null;
+  for (const e of events) {
+    if (!e.join || meetingKey(e.join.url)?.key !== key) continue;
+    const start = Date.parse(e.start);
+    const end = Date.parse(e.end);
+    if (!(at >= start - 30 * 60_000 && at <= end)) continue;
+    if (!best || Math.abs(start - at) < Math.abs(Date.parse(best.start) - at)) best = e;
+  }
+  return best;
+}

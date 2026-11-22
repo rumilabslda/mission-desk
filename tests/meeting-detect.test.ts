@@ -102,3 +102,18 @@ test('a view that goes away is held the same 2 minutes', () => {
   fire();
   expect(events.at(-1)).toBe('end g1/meet meet:abc-defg-hij');
 });
+
+import { matchEvent } from '../src/shared/meeting-detect';
+
+test('a meeting is matched to the calendar event with the same link, around its time', () => {
+  const ev = (id: string, url: string, start: string, end: string) => ({ id, eventId: id, accountId: 'g1', title: id, start, end, join: { provider: 'meet' as const, url } });
+  const events = [
+    ev('other', 'https://meet.google.com/xyz-abcd-efg', '2026-11-22T10:00:00Z', '2026-11-22T11:00:00Z'),
+    ev('yesterday', MEET, '2026-11-21T10:00:00Z', '2026-11-21T11:00:00Z'),
+    ev('weekly', MEET + '?authuser=0', '2026-11-22T10:00:00Z', '2026-11-22T11:00:00Z'),
+  ];
+  expect(matchEvent(events, MEET, Date.parse('2026-11-22T09:50:00Z'))?.id).toBe('weekly');
+  expect(matchEvent(events, MEET, Date.parse('2026-11-22T10:40:00Z'))?.id).toBe('weekly');
+  expect(matchEvent(events, MEET, Date.parse('2026-11-22T12:00:00Z'))).toBeNull();
+  expect(matchEvent(events, 'https://meet.google.com/aaa-bbbb-ccc', Date.parse('2026-11-22T10:00:00Z'))).toBeNull();
+});

@@ -50,3 +50,18 @@ test('the store keeps a space’s meeting settings, and the no-space ones apart'
   // survives a reload
   expect(createStore(path.join(dir, 'accounts.json')).state().spaces![0].meetings).toEqual({ mode: 'off' });
 });
+
+import { meetingLocale } from '../src/shared/meeting';
+
+test('a space’s meetings default to the interface language, with the Mac’s region', () => {
+  expect(meetingLocale('pt-PT', 'pt-PT')).toBe('pt-PT');
+  expect(meetingLocale('pt-BR', 'pt-BR')).toBe('pt-BR');
+  expect(meetingLocale('en', 'en-PT')).toBe('en-US');
+  expect(meetingLocale('en', 'en-GB')).toBe('en-GB');
+  expect(meetingLocale('de', 'de-AT')).toBe('de-AT');
+  expect(meetingLocale('de', 'de')).toBe('de-DE');
+  expect(meetingLocale('es', 'es-PT')).toBe('es-ES');
+  expect(meetingLocale('fr', 'fr-CA')).toBe('fr-CA');
+  expect(meetingLocale('it', 'it')).toBe('it-IT');
+  expect(meetingLocale('nl', 'nl-BE')).toBe('nl-NL');
+});
