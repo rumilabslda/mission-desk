@@ -53,7 +53,7 @@ import { SERVICE_IPC } from '../shared/service-ipc';
 import { backgroundKinds, IDLE_MS, STAGGER_MS, startupPlan, viewPolicy } from './hibernation/policy';
 import { createHibernationScheduler } from './hibernation/scheduler';
 import { isHomeHost } from './accounts/services';
-import { chainStep, isSafeExternal, type LinkDecision, type RedirectChain, routeLink, routePopup, routeRedirect, signInFor } from './links/router';
+import { chainStep, isNotionSamlHandoff, isSafeExternal, type LinkDecision, type RedirectChain, routeLink, routePopup, routeRedirect, signInFor } from './links/router';
 import { accountIdForShortcut } from './menu/shortcuts';
 import { registerNotificationBridge } from './notifications/bridge';
 import { createUnreadTracker, dockBadgeText } from './unread/aggregator';
@@ -230,6 +230,9 @@ export interface ControllerDeps {
 
 export function createAppController({ win, store, preloadPath, uiPreloadPath }: ControllerDeps): AppController {
   const registry = createViewRegistry<WebContentsView>();
+  /** Pages Claude asked to load: a redirect off the service is cancelled, never opened in the browser (it could carry data out). */
+  const assistantLoads = new WeakMap<WebContents, string>();
+  const assistantNavigation = new WeakSet<WebContents>();
   let quitting = false;
   app.on('before-quit', () => (quitting = true));
   // "Folders with panel" overlay; created once the controller exists (it pushes snapshots).
@@ -401,7 +404,11 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     userData: app.getPath('userData'),
     accounts: () => store.state().accounts,
     account,
-    ensure: (a, kind, url) => viewManager.ensure(a, kind, url),
+    ensure: (a, kind, url) => {
+      const view = viewManager.ensure(a, kind, url);
+      if (url) assistantLoads.set(view.webContents, url); // its redirects never leave the app
+      return view;
+    },
     extraKinds: (id) => (extras.get(id) ?? []).map((t) => t.kind),
     currentKind: (id) => (viewManager.current()?.accountId === id ? viewManager.current()!.kind : null),
     inCall: (id, kind) => inCall.has(key(id, kind)),
@@ -414,7 +421,12 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
         claudeShowing = false;
       }
     },
-    openExtra: (a, url) => addExtraTab(a, url, false),
+    openExtra: (a, url) => {
+      const tab = addExtraTab(a, url, false);
+      const view = registry.get(a.id, tab);
+      if (view) assistantLoads.set(view.webContents, url); // its redirects never leave the app
+      return tab;
+    },
     unread: (id) => unread.get(id),
     onChange: () => {
       viewManager.layout();
@@ -1183,7 +1195,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
 
   function wireView(a: Account, kind: ViewKind, view: WebContentsView): void {
     const wc = view.webContents;
-    wc.setWindowOpenHandler(({ url, disposition }) => {
+    wc.setWindowOpenHandler(({ url, disposition, referrer }) => {
       const current = account(a.id);
       if (!current) return { action: 'deny' };
       const decision = routeLink({
@@ -1194,6 +1206,10 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
         homeHosts: homeHostsOf(current),
         busySubApps: busySubApps(a.id),
       });
+      // A blank popup is filled by whoever opened it: only the service's own page may (not an embedded
+      // third-party frame, which could draw a fake sign-in in a window with no address bar). A page
+      // that sends no referrer is checked by its opener frame in did-create-window.
+      if (decision.kind === 'auth-popup' && (url === '' || url === 'about:blank') && referrer?.url && !isHomeUrl(current, referrer.url)) return { action: 'deny' };
       if (decision.kind === 'auth-popup') {
         return {
           action: 'allow',
@@ -1209,18 +1225,34 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       return { action: 'deny' };
     });
     // A sign-in popup: every navigation in it is checked too (it starts blank for MSAL).
-    wc.on('did-create-window', (child) => {
+    wc.on('did-create-window', (child, details) => {
       const cwc = child.webContents;
       let childSigningIn = signingIn.get(wc) ?? false;
-      // The popup's title bar shows where it is (it has no address bar).
+      const blank = details.url === '' || details.url === 'about:blank';
+      // A blank popup must come from the service's own top page (checked again here: the opener frame).
+      const opener = cwc.opener;
+      const acct0 = account(a.id) ?? a;
+      if (blank && (!opener || opener.parent !== null || !isHomeUrl(acct0, opener.url))) {
+        child.destroy();
+        return;
+      }
+      const openerHost = ((): string => {
+        try {
+          return new URL(opener?.url ?? wc.getURL()).host;
+        } catch {
+          return '';
+        }
+      })();
+      // The popup's title bar shows where it is (it has no address bar); while blank, who opened it.
       const showHost = (): void => {
         try {
           const host = new URL(cwc.getURL()).host;
-          if (host) child.setTitle(host);
+          child.setTitle(host || openerHost || 'Sign in');
         } catch {
-          // still blank
+          child.setTitle(openerHost || 'Sign in');
         }
       };
+      showHost();
       child.on('page-title-updated', (e) => {
         e.preventDefault();
         showHost();
@@ -1258,7 +1290,16 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       const acct = account(a.id) ?? a;
       // Mission Desk's own first load of a view (not a page's link, not an extra tab) may be redirected by the service.
       const trusted = !details.initiator && !/^https?:/.test(wc.getURL()) && !kind.startsWith('extra:');
-      chains.set(wc, chainStep(acct.service, details.url, { signIn: false, trusted }, homeHostsOf(acct)));
+      // Notion's SSO hand-off: started by Notion's sign-in page itself (its top frame), toward a SAML
+      // request on the identity provider. Only that may start a sign-in chain (this event comes before
+      // will-navigate, so the starting frame is checked here).
+      const handoff =
+        acct.service === 'notion' && !!details.initiator && details.initiator.parent === null && isNotionSamlHandoff(details.url, details.initiator.url);
+      if (assistantLoads.get(wc) === details.url) {
+        assistantLoads.delete(wc);
+        assistantNavigation.add(wc);
+      } else assistantNavigation.delete(wc);
+      chains.set(wc, chainStep(acct.service, details.url, { signIn: false, trusted }, homeHostsOf(acct), handoff));
     });
     wc.on('will-redirect', (details) => {
       if (!details.isMainFrame) return;
@@ -1269,7 +1310,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
         return;
       }
       details.preventDefault();
-      if (acct) openExternal(details.url);
+      if (acct && !assistantNavigation.has(wc)) openExternal(details.url); // a page Claude opened goes nowhere outside
     });
     wc.on('render-process-gone', (_e, details) => {
       if (details.reason === 'clean-exit') return;
@@ -2352,9 +2393,9 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
         return;
       }
       if (provider === 'zoom') {
-        // No Zoom app on this computer: in a Zoom account added here (the one in this space first).
-        const zooms = store.state().accounts.filter((x) => x.service === 'zoom');
-        const z = zooms.find((x) => a?.spaceId && x.spaceId === a.spaceId) ?? zooms[0];
+        // No Zoom app on this computer: in a Zoom account added here, in the same space.
+        // Never another space's Zoom (another client's identity): the same space, or both in none.
+        const z = a ? store.state().accounts.find((x) => x.service === 'zoom' && (x.spaceId ?? null) === (a.spaceId ?? null)) : undefined;
         if (z) {
           follow(z, routeLink({ service: 'zoom', url, disposition: 'new-window', busySubApps: busySubApps(z.id) }));
           return;

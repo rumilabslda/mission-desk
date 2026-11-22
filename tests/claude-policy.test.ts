@@ -79,7 +79,8 @@ describe('logLine', () => {
 
 describe('resolveOpenUrl', () => {
   test.each([
-    ['google', 'https://docs.google.com/d/x', { kind: 'extra', url: 'https://docs.google.com/d/x' }],
+    ['google', 'https://docs.google.com/document/d/x/edit', { kind: 'extra', url: 'https://docs.google.com/document/d/x/edit' }],
+    ['google', 'https://docs.google.com/spreadsheets/d/x', { kind: 'extra', url: 'https://docs.google.com/spreadsheets/d/x' }],
     ['google', 'https://calendar.google.com/r', { kind: 'calendar', url: 'https://calendar.google.com/r' }],
     ['google', 'https://mail.google.com/mail/u/0/#search/x', { kind: 'main', url: 'https://mail.google.com/mail/u/0/#search/x' }],
     ['slack', 'https://app.slack.com/client/T/C', { kind: 'main', url: 'https://app.slack.com/client/T/C' }],

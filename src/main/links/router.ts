@@ -135,6 +135,20 @@ function isSamlRequest(url: URL): boolean {
   return url.protocol === 'https:' && url.searchParams.has('SAMLRequest');
 }
 
+/**
+ * Notion's company SSO hand-off: from Notion's own sign-in page to a SAML request on the company's
+ * identity provider (never a Notion or sign-in host, which can't be the identity provider).
+ */
+export function isNotionSamlHandoff(raw: string, currentUrl: string | undefined): boolean {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return false;
+  }
+  return isSamlRequest(url) && !isHomeHost('notion', url.hostname) && !isAuthHost('notion', url.hostname) && isNotionLogin(currentUrl);
+}
+
 /** A navigation and its server redirects: whether it signs in to this account, or is the app's own load. */
 export interface RedirectChain {
   /** It passed a sign-in page of this account (so its identity provider's hops are expected). */
@@ -144,15 +158,18 @@ export interface RedirectChain {
 }
 
 /** The chain after one more hop. */
-export function chainStep(service: ServiceId, raw: string, chain: RedirectChain, homeHosts: string[] = []): RedirectChain {
+/**
+ * `samlHandoff`: this navigation is the one routeLink let through as Notion's SSO hand-off (the app
+ * marks it in will-navigate). Only that starts a sign-in; a SAMLRequest anywhere else does nothing.
+ */
+export function chainStep(service: ServiceId, raw: string, chain: RedirectChain, homeHosts: string[] = [], samlHandoff = false): RedirectChain {
   let url: URL;
   try {
     url = new URL(raw);
   } catch {
     return chain;
   }
-  // Notion's SAML request only gets here from its sign-in page (routeLink lets nothing else through).
-  const saml = service === 'notion' && isSamlRequest(url);
+  const saml = service === 'notion' && samlHandoff && isSamlRequest(url) && !isHomeHost('notion', url.hostname) && !isAuthHost('notion', url.hostname);
   const signIn = chain.signIn || signInFor(service, raw, homeHosts) === true || isOwnSsoUrl(service, url) || saml;
   return { signIn, trusted: chain.trusted };
 }
@@ -250,7 +267,7 @@ export function routeLink({ service, url: raw, disposition, currentUrl, signingI
     return popup ? { kind: 'auth-popup' } : { kind: 'extra-tab', url: href };
   }
   // Notion's company SSO: its sign-in page sends the SAML request straight to the identity provider.
-  if (service === 'notion' && disposition === 'navigate' && isSamlRequest(url) && isNotionLogin(currentUrl)) return { kind: 'stay' };
+  if (service === 'notion' && disposition === 'navigate' && isNotionSamlHandoff(href, currentUrl)) return { kind: 'stay' };
 
   // A custom app's sign-in on another domain (its return address is the site).
   if (service === 'custom' && signInFor('custom', href, homeHosts) === true) {

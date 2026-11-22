@@ -17,6 +17,13 @@ const BLOCKED_HOSTS = new Set([
   'takeout.google.com', 'script.google.com', 'pay.google.com', 'payments.google.com', 'passwords.google.com',
   'login.microsoftonline.com', 'login.live.com', 'login.microsoft.com', 'account.live.com', 'mysignins.microsoft.com',
 ]);
+/**
+ * The Google hosts Claude may open, and on Docs only documents, sheets, slides and drawings: not
+ * Forms (a GET to a form's formResponse submits it), Sites, Translate or other Google hosts whose
+ * content anyone can publish, which could carry data out of the account.
+ */
+const GOOGLE_OPEN_HOSTS = new Set(['mail.google.com', 'calendar.google.com', 'drive.google.com', 'meet.google.com', 'docs.google.com', 'chat.google.com']);
+const GOOGLE_DOCS_PATHS = /^\/(document|spreadsheets|presentation|drawings)\//;
 /** OAuth / SSO / admin paths on any allowed host (e.g. installing a Slack app). */
 const BLOCKED_PATHS = /^\/(oauth|openid|sso|admin|apps\/manage)(\/|$)|oauth/i;
 /** Outlook settings (forwarding, rules, connected accounts) and sign-out. */
@@ -40,5 +47,7 @@ export function resolveOpenUrl(service: ServiceId, url: string, homeHosts: strin
   }
   if (service === 'custom' || service === 'notion') return { kind: 'extra', url }; // its own tab: Home stays as it is
   if (service !== 'google') return { kind: 'main', url };
+  if (!GOOGLE_OPEN_HOSTS.has(u.hostname)) return { error: 'Only Gmail, Calendar, Drive, Meet, Chat and Docs pages can be opened in a Google account.' };
+  if (u.hostname === 'docs.google.com' && !GOOGLE_DOCS_PATHS.test(u.pathname)) return { error: 'Only documents, sheets, slides and drawings can be opened on Google Docs.' };
   return { kind: GOOGLE_KINDS[u.hostname] ?? 'extra', url };
 }

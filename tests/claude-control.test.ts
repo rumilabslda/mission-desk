@@ -12,6 +12,7 @@ interface FakePage extends PageHandle {
   keys: [string, string[]][];
   point: { x: number; y: number } | { error: string };
   focused: boolean;
+  takesText: boolean;
   elements: { ref: number; role: string; name: string }[];
   scripts: string[];
 }
@@ -27,7 +28,7 @@ function setup(opts: Opts = {}) {
   const consentSignals: (AbortSignal | undefined)[] = [];
   const makePage = (): FakePage => {
     const page: FakePage = {
-      clicks: [], inserted: [], keys: [], scripts: [], point: { x: 10, y: 20 }, focused: true,
+      clicks: [], inserted: [], keys: [], scripts: [], point: { x: 10, y: 20 }, focused: true, takesText: true,
       elements: [{ ref: 1, role: 'textbox', name: 'Message' }, { ref: 2, role: 'button', name: 'Send' }],
       url: () => 'https://mail.google.com/mail/u/0/#inbox',
       title: () => 'Inbox (2) - user@example.com - Gmail',
@@ -37,6 +38,7 @@ function setup(opts: Opts = {}) {
         if (code.includes('/*collect*/')) return page.elements as T;
         if (code.includes('/*focus*/')) return page.focused as T;
         if (code.includes('/*point*/')) return page.point as T;
+        if (code.includes('/*takes-text*/')) return page.takesText as T;
         throw new Error(`unexpected script ${code.slice(0, 40)}`);
       },
       capturePng: async () => Buffer.from('png'),
@@ -302,7 +304,32 @@ test('unknown tab is an error', async () => {
 test('open_url refuses other sites and opens service pages', async () => {
   const { session } = setup();
   expect((await session.call('open_url', { account: 'Globex', url: 'https://evil.example' })).isError).toBe(true);
-  expect((await session.call('open_url', { account: 'Globex', url: 'https://docs.google.com/d/x' })).text).toBe('Opened in Globex (tab extra:1).');
+  expect((await session.call('open_url', { account: 'Globex', url: 'https://docs.google.com/document/d/x/edit' })).text).toBe('Opened in Globex (tab extra:1).');
+  expect((await session.call('open_url', { account: 'Globex', url: 'https://mail.google.com/mail/u/0/#search/invoice' })).text).toBe('Opened in Globex (tab mail).');
+});
+
+test('open_url never opens Google pages that could carry data out', async () => {
+  const { session } = setup();
+  for (const url of [
+    'https://docs.google.com/forms/d/e/abc/formResponse?entry.1=secret&submit=Submit',
+    'https://docs.google.com/forms/d/e/abc/viewform',
+    'https://sites.google.com/view/attacker',
+    'https://translate.google.com/translate?u=https://evil.example',
+    'https://www.google.com/url?q=https://evil.example',
+    'https://script.google.com/macros/s/x/exec',
+  ]) expect((await session.call('open_url', { account: 'Acme', url })).isError).toBe(true);
+});
+
+test('a link with parameters counts as acting: refused with Read only, asks consent with Read & act', async () => {
+  const env = setup();
+  const r = await env.session.call('open_url', { account: 'Globex', url: 'https://drive.google.com/drive/search?q=secret' });
+  expect(r.isError).toBe(true);
+  expect(r.text).toMatch(/counts as acting/);
+  expect(env.consentCalls()).toBe(0);
+  expect((await env.session.call('open_url', { account: 'Acme', url: 'https://drive.google.com/drive/search?q=report' })).text).toBe('Opened in Acme (tab drive).');
+  expect(env.consentCalls()).toBe(1);
+  const declined = setup({ consent: false });
+  expect((await declined.session.call('open_url', { account: 'Acme', url: 'https://drive.google.com/drive/search?q=x' })).isError).toBe(true);
 });
 
 test('screenshot returns a png without switching what the user sees', async () => {
@@ -337,6 +364,40 @@ describe('assistant sessions never send', () => {
     expect((await s.call('press', { account: 'Acme', key: 'Enter', modifiers: ['cmd'] })).isError).toBe(true);
     expect((await s.call('press', { account: 'Acme', key: 'Enter' })).isError).toBe(true);
     expect((await s.call('press', { account: 'Acme', key: 'Escape' })).isError).toBeFalsy();
+  });
+  test('Send in other languages, Schedule send and unnamed buttons are refused too', async () => {
+    for (const name of ['Senden (⌘Enter)', 'Envoyer', 'Invia', 'Verzenden', 'Wyślij', 'Schedule send', 'Enviar ahora', '送信', 'Send ‪(⌘Enter)‬', '']) {
+      const env = setup();
+      env.pages.clear();
+      const s = env.control.session({ neverSend: true });
+      const page = await env.hostPage('t', 'main');
+      page.elements = [{ ref: 1, role: 'button', name }];
+      const [btn] = refs((await s.call('get_elements', { account: 'Acme' })).text);
+      const r = await s.call('click', { account: 'Acme', ref: btn });
+      expect(r.isError, name).toBe(true);
+      expect(page.clicks, name).toEqual([]);
+    }
+  });
+  test('ordinary buttons still work (words that only contain "send" are not Send)', async () => {
+    for (const name of ['Archive', 'Reply', 'Sender details', 'Resend code later', 'Postpone']) {
+      const env = setup();
+      const s = env.control.session({ neverSend: true });
+      const page = await env.hostPage('t', 'main');
+      page.elements = [{ ref: 1, role: 'button', name }];
+      const [btn] = refs((await s.call('get_elements', { account: 'Acme' })).text);
+      expect((await s.call('click', { account: 'Acme', ref: btn })).isError, name).toBeFalsy();
+    }
+  });
+  test('Space presses a focused button: only allowed in a text field', async () => {
+    const env = setup();
+    const s = env.control.session({ neverSend: true });
+    const page = await env.hostPage('t', 'main');
+    page.takesText = false; // Tab moved the focus to Send
+    expect((await s.call('press', { account: 'Acme', key: 'Space' })).isError).toBe(true);
+    expect(page.keys).toEqual([]);
+    page.takesText = true;
+    expect((await s.call('press', { account: 'Acme', key: 'Space' })).isError).toBeFalsy();
+    expect((await s.call('press', { account: 'Acme', key: 'Tab' })).isError).toBeFalsy();
   });
   test('external Claude connections keep the old behaviour', async () => {
     const env = setup();

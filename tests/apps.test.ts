@@ -8,7 +8,7 @@ import { chainStep, routeLink, routeRedirect, signInFor } from '../src/main/link
 import { isPermissionAllowed } from '../src/main/views/permissions';
 import { hasTab, hasTabs, mainIsMail } from '../src/shared/tabs';
 import { resolveOpenUrl } from '../src/main/claude/open-url';
-import { routePopup } from '../src/main/links/router';
+import { isNotionSamlHandoff, routePopup } from '../src/main/links/router';
 import { userAgentFor } from '../src/main/views/user-agent';
 import { SERVICES } from '../src/main/accounts/services';
 import { iconCandidates } from '../src/main/avatars/sources';
@@ -333,13 +333,32 @@ describe('Notion', () => {
   test("company SSO: the sign-in page's SAML request goes to the identity provider, and its pages stay until back", () => {
     expect(routeLink({ service: 'notion', url: SAML, disposition: 'navigate', currentUrl: LOGIN })).toEqual({ kind: 'stay' });
     expect(routeLink({ service: 'notion', url: SAML, disposition: 'navigate', currentUrl: 'https://www.notion.so/login?redirectURL=x' })).toEqual({ kind: 'stay' });
-    // The request marks the navigation as this account's sign-in: the provider's redirects are followed.
-    const chain = chainStep('notion', SAML, { signIn: false, trusted: false });
+    // The hand-off the app marked (routeLink let it through from the sign-in page) starts the sign-in:
+    // the provider's redirects are followed.
+    expect(isNotionSamlHandoff(SAML, LOGIN)).toBe(true);
+    const chain = chainStep('notion', SAML, { signIn: false, trusted: false }, [], true);
     expect(chain.signIn).toBe(true);
+    // Without that mark, a SAMLRequest starts nothing.
+    expect(chainStep('notion', SAML, { signIn: false, trusted: false }).signIn).toBe(false);
     expect(routeRedirect({ service: 'notion', url: 'https://acme.okta.com/signin/verify', chain })).toBe('allow');
     // On the provider (the app then marks the view as signing in), its own steps stay, then back to Notion.
     expect(routeLink({ service: 'notion', url: 'https://acme.okta.com/signin/verify/push', disposition: 'navigate', currentUrl: SAML, signingIn: true })).toEqual({ kind: 'stay' });
     expect(routeLink({ service: 'notion', url: 'https://app.notion.com/sso/saml/callback', disposition: 'navigate', currentUrl: 'https://acme.okta.com/x', signingIn: true })).toEqual({ kind: 'stay' });
+  });
+
+  test('a SAMLRequest on a Notion or sign-in address never turns off redirect checks', () => {
+    const fresh = { signIn: false, trusted: false };
+    // A planted link to Notion's own pages or a sign-in host with ?SAMLRequest=, then a redirect off-site.
+    for (const url of ['https://www.notion.so/x?SAMLRequest=1', 'https://app.notion.com/acme/Page-1?SAMLRequest=1', 'https://login.microsoftonline.com/t/saml2?SAMLRequest=1', 'https://accounts.google.com/x?SAMLRequest=1']) {
+      expect(isNotionSamlHandoff(url, LOGIN)).toBe(false);
+      for (const flagged of [false, true]) {
+        const chain = chainStep('notion', url, fresh, [], flagged);
+        expect(chain.signIn).toBe(false);
+        expect(routeRedirect({ service: 'notion', url: 'https://evil.example/phish', chain })).toBe('external');
+      }
+    }
+    // A later hop never counts as the hand-off (the app marks only the first URL).
+    expect(isNotionSamlHandoff(SAML, 'https://app.notion.com/acme/Page-1')).toBe(false);
   });
 
   test('a SAML-looking link anywhere but the sign-in page goes to the browser', () => {

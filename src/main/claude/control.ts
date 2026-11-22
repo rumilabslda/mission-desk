@@ -62,8 +62,21 @@ interface RefEntry {
   name: string;
 }
 
-/** Buttons that send a message or email (the assistant never presses them). */
-const SEND_NAME = /^\s*(send|enviar|submit|post|publish|publicar)\b|\bsend (now|message|email|reply)\b/i;
+/**
+ * Buttons that send a message or email, in the languages people use (the assistant never presses
+ * them): anywhere in the name, so "Send (⌘Enter)", "Schedule send" and "Senden" all count.
+ */
+const SEND_NAME =
+  /(^|[^\p{L}])(send|senden|absenden|versenden|envoyer|enviar|envia|invia|inviare|verzenden|versturen|verstuur|skicka|sende|wyślij|odeslat|odoslať|küldés|gönder|lähetä|отправить|надіслати|submit|post|publish|publicar|publier|veröffentlichen)($|[^\p{L}])|送信|发送|傳送|보내기|schedule send|programar (envío|envio)/iu;
+
+/** Whether the focused element takes text (Space there types a space; elsewhere it presses a button). */
+const FOCUS_TAKES_TEXT = `/*takes-text*/(() => {
+  const el = document.activeElement;
+  if (!el || el === document.body) return false;
+  if (el.isContentEditable) return true;
+  if (el.tagName === 'TEXTAREA') return true;
+  return el.tagName === 'INPUT' && !/^(button|submit|reset|image|checkbox|radio|file|color|range)$/i.test(el.type || '');
+})()`;
 
 /**
  * Tool semantics: who may do what, consent, element refs. No Electron here.
@@ -190,6 +203,13 @@ export function createControlService(host: ControlHost, consent: Consent) {
       if (tool === 'open_url') {
         const target = resolveOpenUrl(a.service, String(args.url ?? ''), a.service === 'custom' ? customHomeHosts(a.url, a.siteMoves) : []);
         if ('error' in target) return fail(target.error);
+        // A link with parameters can carry what the assistant read to whoever reads them: it counts as
+        // acting (Read & act, and the user's consent), never as reading.
+        if (new URL(target.url).search) {
+          if (!allows(a.claudeAccess, 'click')) fail(`Opening a link with parameters (?…) counts as acting. ${accessError(a)}`);
+          await ensureConsent(a, signal);
+          cp(a.id, 'click', signal);
+        }
         const kind = await host.openUrl(a.id, target);
         return { text: `Opened in ${a.name} (tab ${tabName(a, kind)}).` };
       }
@@ -197,7 +217,11 @@ export function createControlService(host: ControlHost, consent: Consent) {
       // Acting tools: which view is decided by the ref (never by what the user happens to look at).
       if (tool === 'click' || tool === 'type') {
         const entry = lookupRef(a, args.ref, args.tab);
-        if (opts.neverSend && tool === 'click' && SEND_NAME.test(entry.name)) fail(NO_SEND);
+        if (opts.neverSend && tool === 'click') {
+          if (SEND_NAME.test(entry.name)) fail(NO_SEND);
+          // An icon-only button could be Send: without a name it isn't pressed.
+          if (!entry.name.trim() && entry.role !== 'textbox' && entry.role !== 'searchbox' && entry.role !== 'combobox') fail("That control has no name, so the assistant won't press it (it could be Send).");
+        }
         if (tool === 'type') {
           if (typeof args.text !== 'string') fail('text must be a string.');
           if (!TEXT_ROLES.has(entry.role)) fail(`Ref ${String(args.ref)} is a ${entry.role}, not a text field.`);
@@ -228,6 +252,9 @@ export function createControlService(host: ControlHost, consent: Consent) {
         await ensureConsent(a, signal);
         host.show(a.id, kind);
         const page = await pageFor(a, kind);
+        cp(a.id, tool, signal);
+        // Space on a focused button presses it (Tab to Send, then Space): only in a text field.
+        if (opts.neverSend && key === 'Space' && !(await page.evalIsolated<boolean>(FOCUS_TAKES_TEXT))) fail(`${NO_SEND} (Space only types into a text field.)`);
         cp(a.id, tool, signal);
         page.key(key, mods as ('cmd' | 'shift')[]);
         return { text: `Pressed ${[...mods, key].join('+')} in ${a.name}.` };
