@@ -2,6 +2,15 @@
 
 All notable changes to Mission Desk. Versions follow [Semantic Versioning](https://semver.org). Until 1.0.0 Mission Desk is an early preview: a new minor number (0.2.0) adds features and may change how things work, a patch (0.1.1) fixes bugs. 1.0.0 will be the first version ready for everyone.
 
+## Unreleased
+
+### Meetings
+- **Transcription on your Mac** for the meetings you join in Google Meet, Microsoft Teams and Zoom inside Mission Desk. Each space chooses **Always**, **Ask** or **Off** (Settings → Meetings). A bar over the meeting shows it's transcribing, with Pause, Stop, the meeting's language and **Copy notice** to tell the participants. The audio is never stored or sent anywhere: only the text is kept, in the meeting's space.
+- **Three engines**, all on the Mac: Apple's (macOS 26, nothing to download), **Whisper large-v3 turbo** (the most accurate) and **Parakeet v3** (very fast), downloaded with one click in Settings → Meetings, checked file by file, and deleted when you ask.
+- **When a meeting ends**, choose what the space's assistant does: the summary, your to-dos, what others owe you ("Waiting on"), a follow-up e-mail draft (opened in your Gmail or Outlook, never sent), notes for the space's memory and a follow-up event (both as proposals). The transcript goes to the assistant with no tools, so nothing said in a meeting can make it act.
+- **Find them later** in the calendar event's card, on Home ("Meetings today") and on the new meetings page. Each space's assistant can read its own meetings ("what did we decide with Acme about pricing?"), never another space's.
+- Removing a space deletes its meetings (Mission Desk asks first). Transcripts can be deleted after 30 or 90 days, keeping the summaries.
+
 ## 0.2.0 — 2026-11-22
 
 ### Languages

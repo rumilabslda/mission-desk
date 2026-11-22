@@ -75,6 +75,19 @@ The calendar button at the top of the sidebar (⌘0) shows the events of all you
 
 It reads and writes the calendar the same way Google's own Calendar web page does. That method isn't documented by Google, so if Google changes it, an account shows "Couldn't load this calendar" (or a save fails with a link to open it in Google Calendar) until Mission Desk is updated. Everything else keeps working.
 
+## Meetings
+
+Mission Desk can transcribe the meetings you join in **Google Meet**, **Microsoft Teams** and **Zoom** inside it (not their Mac apps), on this Mac. The audio is never recorded or sent anywhere: it is turned into text as the meeting goes, and only the text is kept, in the meeting's space.
+
+- **When it transcribes:** each space chooses in **Settings → Meetings**: **Always**, **Ask** (a bar over the meeting asks "Transcribe this meeting?", with **Never in this space**) or **Off**. New spaces ask.
+- **The bar:** while it transcribes, a bar over the meeting shows the space, the meeting's language (change it there), **Pause**, **Stop** and **Copy notice**. In the EU you must tell participants when a meeting is transcribed: **Copy notice** copies a short sentence (yours, set in Settings → Meetings) to paste in the meeting chat. Nothing is transcribed while the bar isn't there.
+- **Who said what:** your microphone is "Me"; the other side is "Others" (names from the meeting page are coming). While you're muted in the call, your microphone isn't transcribed.
+- **Engines:** Apple's (macOS 26; nothing to download, fast, light on the battery), **Whisper large-v3 turbo** (1.6 GB, the most accurate) and **Parakeet v3** (0.5 GB, very fast). Download, use or delete them in Settings → Meetings; every file is checked before it's used. Apple's languages are downloaded by macOS (the same page, or the bar, offers it when one is missing).
+- **When the meeting ends:** "The meeting ended" lists what the space's assistant can do: the **summary**, **your to-dos**, **waiting on** (what others owe you, with who), a **follow-up e-mail draft**, **notes** for the space's memory and a **follow-up event**. Your choice is remembered for the space. Notes and events are proposals you confirm; the draft opens as a new message in the space's Gmail or Outlook and is never sent by Mission Desk. The transcript goes to the assistant with no tools at all: whatever someone says in a meeting, it can only write text.
+- **Later:** a meeting shows in its calendar event's card, on Home under **Meetings today**, and on the meetings page (Home → **See all**), with its summary, to-dos, draft, transcript and **Run actions** for what hasn't run. The space's assistant can read its own meetings, never another space's; "All spaces" only reads meetings outside spaces.
+- **Deleting:** delete a meeting from its card. Removing or ungrouping a space deletes its meetings (Mission Desk asks first). **Delete transcripts after 30 or 90 days** keeps the summaries and to-dos and removes the full text.
+- Short calls (under a minute) and calls with nothing said are dropped. A meeting interrupted by quitting Mission Desk keeps its text and can be run later.
+
 ## Assistant
 
 The round **+** button floats over your apps. Click it for the quick actions: **New meeting link** (copied for you, with a confirmation beside the button), **New event**, **New to-do** and **Ask the assistant**. Press 1–4 or the arrows and Enter to pick one, Esc to close. ⌘J opens and closes the assistant directly. Drag the button to move it; drag the chat's edges to resize it. With the button turned off, the ⚡ button in the sidebar holds the quick actions.

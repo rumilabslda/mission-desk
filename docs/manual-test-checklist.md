@@ -84,3 +84,21 @@ Run with your real accounts before adopting a new version. Tick each line.
 - [ ] Delete asks first; with guests it asks whether to notify them.
 - [ ] Yes / No / Maybe on an invitation updates your answer.
 - [ ] Offline: a save shows "You're offline" and nothing changes.
+
+## Meetings (macOS)
+- [ ] Settings → Meetings: a space on **Ask**. Join a Meet call in that space's Google account: the bar asks; **Yes** starts it (bar: Transcribing · space · language). **Never in this space** turns the space Off.
+- [ ] A space on **Always** starts at once in Meet, Teams (web) and Zoom (web client).
+- [ ] The other side stays audible while transcribing; your voice is "Me", theirs "Others".
+- [ ] Mute in the call: what you say while muted isn't in the transcript.
+- [ ] **Pause** / **Resume** leaves a marked gap; **Stop** ends it and shows "The meeting ended".
+- [ ] **Copy notice** pastes the notice (yours if set) into the meeting chat.
+- [ ] A second call while one is transcribed asks "Transcribe this one instead?".
+- [ ] Reload the meeting page mid-call: it continues the same meeting, no dialog.
+- [ ] Quit Mission Desk mid-meeting and reopen: the meeting is there as "Not run"; **Run actions** works.
+- [ ] "The meeting ended" → **Run** with the space's assistant: summary, to-dos (and "Waiting on" on Home), a draft that opens in Gmail/Outlook unsent; **Save note** and **Create event** ask first.
+- [ ] The meeting shows in its calendar card, on Home and on the meetings page; **View transcript**, **Copy summary**, **Delete** (asks).
+- [ ] Ask the space's assistant about the meeting; another space's assistant can't see it.
+- [ ] Settings → Meetings: download Whisper and Parakeet (progress, Cancel), **Use** each in a call, **Delete** (asks, frees the space).
+- [ ] Apple's language missing (e.g. Portuguese): the bar and Settings offer to download it.
+- [ ] Ungroup a space with meetings: Mission Desk asks; Cancel keeps everything.
+
