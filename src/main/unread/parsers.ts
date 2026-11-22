@@ -53,6 +53,34 @@ function parseZoom(title: string): UnreadCount | null {
   return /\bZoom\b/.test(title) ? 0 : null;
 }
 
+const INBOX = /^(?:inbox|caixa de entrada|entrada|bandeja de entrada|boîte de réception|posteingang|posta in arrivo|postvak in)(?:\s*\((\d[\d.,]*)\))?$/i;
+
+/**
+ * Proton Mail, iCloud Mail, Fastmail: the Inbox's unread count from the title, which names the
+ * open folder ("(3) Inbox | ann@proton.me | Proton Mail", "[3] Inbox | Fastmail", "Inbox (3) – …").
+ * Another folder or a message says nothing about the Inbox: unknown (null), the last count stays.
+ */
+function parseMailInbox(title: string): UnreadCount | null {
+  const prefix = /^[([](\d[\d.,]*)(\+)?[)\]]\s*/.exec(title);
+  const rest = prefix ? title.slice(prefix[0].length) : title;
+  for (const part of rest.split(/\s+[|–—·-]\s+/)) {
+    const inbox = INBOX.exec(part.trim());
+    if (!inbox) continue;
+    if (prefix?.[2]) return 'dot'; // "(99+)"
+    const n = prefix?.[1] ?? inbox[1];
+    return n ? toNumber(n) : 0;
+  }
+  return null;
+}
+
+/** Notion: a "(N) " title prefix for unread Inbox notifications; page names otherwise. */
+function parseNotion(title: string): UnreadCount | null {
+  if (/^\(\d+\+\)\s/.test(title)) return 'dot';
+  const count = /^\((\d{1,3}(?:[.,]\d{3})*)\)\s/.exec(title);
+  if (count) return toNumber(count[1]);
+  return title.trim() && !/^(?:Loading|Notion)\b/i.test(title) ? 0 : null;
+}
+
 /** Any website: a "(N) " title prefix, the common convention; otherwise nothing. */
 function parseCustom(title: string): UnreadCount | null {
   if (/^\(\d+\+\)\s/.test(title)) return 'dot'; // "(99+) …"
@@ -75,6 +103,12 @@ export function parseUnread(service: ServiceId, title: string): UnreadCount | nu
       return parseDiscord(title);
     case 'zoom':
       return parseZoom(title);
+    case 'proton':
+    case 'icloud':
+    case 'fastmail':
+      return parseMailInbox(title);
+    case 'notion':
+      return parseNotion(title);
     case 'custom':
       return parseCustom(title);
     case 'telegram':

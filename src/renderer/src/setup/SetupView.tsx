@@ -37,6 +37,10 @@ const SERVICES: {
   { id: "linkedin", name: "LinkedIn", what: "Messages, feed" },
   { id: "discord", name: "Discord", what: "Servers, DMs" },
   { id: "zoom", name: "Zoom", what: "Team Chat, meetings" },
+  { id: "notion", name: "Notion", what: "Pages, wikis" },
+  { id: "proton", name: "Proton Mail", what: "Private email" },
+  { id: "icloud", name: "iCloud Mail", what: "Apple email" },
+  { id: "fastmail", name: "Fastmail", what: "Email, calendar" },
 ];
 const SUGGESTED = ["Personal", "Work", "Side project"];
 const MAX_SPACES = 20;
@@ -1075,7 +1079,7 @@ function AppsStep({
               <span>
                 {sites.length
                   ? `${sites.length} added`
-                  : "Notion, HubSpot, Jira…"}
+                  : "HubSpot, Jira, Linear…"}
               </span>
             </span>
             <span className="su-tick" aria-hidden="true">

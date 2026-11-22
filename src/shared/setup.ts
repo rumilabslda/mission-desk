@@ -29,6 +29,10 @@ export const SERVICE_NAMES: Record<ServiceId, string> = {
   linkedin: 'LinkedIn',
   discord: 'Discord',
   zoom: 'Zoom',
+  proton: 'Proton Mail',
+  icloud: 'iCloud Mail',
+  fastmail: 'Fastmail',
+  notion: 'Notion',
   custom: 'Website',
 };
 

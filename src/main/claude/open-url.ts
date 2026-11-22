@@ -38,7 +38,7 @@ export function resolveOpenUrl(service: ServiceId, url: string, homeHosts: strin
     if (sub) return { kind: subAppToKind(sub), url };
     return { kind: OUTLOOK_HOSTS.has(u.hostname) ? 'main' : 'extra', url };
   }
-  if (service === 'custom') return { kind: 'extra', url }; // its own tab: Home stays as it is
+  if (service === 'custom' || service === 'notion') return { kind: 'extra', url }; // its own tab: Home stays as it is
   if (service !== 'google') return { kind: 'main', url };
   return { kind: GOOGLE_KINDS[u.hostname] ?? 'extra', url };
 }

@@ -1,5 +1,5 @@
 import { customHomeHosts } from '../../shared/custom-site';
-import { hasTabs } from '../../shared/tabs';
+import { mainIsMail } from '../../shared/tabs';
 import type { Account, UnreadCount, ViewKind } from '../../shared/types';
 import { allows, findAccount, isActTool, type ToolName } from './access';
 import type { Consent } from './consent';
@@ -72,7 +72,7 @@ const SEND_NAME = /^\s*(send|enviar|submit|post|publish|publicar)\b|\bsend (now|
 export function createControlService(host: ControlHost, consent: Consent) {
   const pendingConsent = new Map<string, Promise<boolean>>();
 
-  const tabName = (a: Account, kind: ViewKind): string => (hasTabs(a.service) && a.service !== 'custom' && kind === 'main' ? 'mail' : kind);
+  const tabName = (a: Account, kind: ViewKind): string => (mainIsMail(a.service) && kind === 'main' ? 'mail' : kind);
 
   function resolveKind(a: Account, tab: unknown): ViewKind | null {
     if (tab === undefined || tab === null || tab === '') return null;

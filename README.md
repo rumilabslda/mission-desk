@@ -21,7 +21,7 @@ Mission Desk updates itself: it looks for new versions on GitHub, downloads them
 
 ## What it does
 
-- **Apps side by side.** Google (Gmail, Calendar, Drive, Meet), Microsoft 365 (Outlook, Teams), Slack, WhatsApp, Telegram, LinkedIn, Discord, Zoom and any website. As many accounts as you like, each with its own login, cookies and storage.
+- **Apps side by side.** Google (Gmail, Calendar, Drive, Meet), Microsoft 365 (Outlook, Teams), Slack, WhatsApp, Telegram, LinkedIn, Discord, Zoom, Notion, Proton Mail, iCloud Mail, Fastmail and any website. As many accounts as you like, each with its own login, cookies and storage.
 - **Spaces.** Group apps by company or project, as folders or sections in the sidebar. A space can share one Google sign-in between its apps.
 - **Home.** What's next on your calendar with one click to join the call, your to-dos, and Messages: the latest chat or email of each conversation from every app.
 - **One calendar.** Every Google account's calendar in a single Day, Week or Month view, where you can create, move and answer events.
@@ -94,4 +94,4 @@ Copyright © 2026 **Rumi Labs, Lda.** Mission Desk is free and open source, rele
 
 ## Disclaimer
 
-Mission Desk is an independent project. It is not affiliated with or endorsed by Google, Microsoft, Slack, Meta/WhatsApp, Telegram, LinkedIn, Discord, Zoom, Anthropic, OpenAI or OpenRouter. Product names are used only to identify the services.
+Mission Desk is an independent project. It is not affiliated with or endorsed by Google, Microsoft, Slack, Meta/WhatsApp, Telegram, LinkedIn, Discord, Zoom, Notion, Proton, Apple, Fastmail, Anthropic, OpenAI or OpenRouter. Product names are used only to identify the services.

@@ -12,6 +12,7 @@ const CALL_HOSTS = new Set([
   'canary.discord.com',
   'web.telegram.org',
   'app.zoom.us', // meetings in Zoom's web client
+  'app.notion.com', // Notion's AI Meeting Notes (the microphone)
 ]);
 
 export function isPermissionAllowed(permission: string, requestingUrl: string): boolean {

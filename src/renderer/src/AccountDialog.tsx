@@ -6,7 +6,7 @@ import { cleanSiteUrl } from '../../shared/custom-site';
 
 export type DialogState = { mode: 'add' } | { mode: 'edit'; accountId: string };
 
-const SERVICES: ServiceId[] = ['google', 'microsoft', 'slack', 'whatsapp', 'telegram', 'linkedin', 'discord', 'zoom', 'custom'];
+const SERVICES: ServiceId[] = ['google', 'microsoft', 'slack', 'whatsapp', 'telegram', 'linkedin', 'discord', 'zoom', 'notion', 'proton', 'icloud', 'fastmail', 'custom'];
 const HINT: Record<ServiceId, string> = {
   google: 'Gmail, Calendar, Drive and Meet for one Google or Workspace account.',
   slack: 'One Slack workspace.',
@@ -16,7 +16,11 @@ const HINT: Record<ServiceId, string> = {
   linkedin: 'LinkedIn messages and feed for one LinkedIn account.',
   discord: 'Discord servers and messages for one Discord account.',
   zoom: 'Zoom Team Chat, meetings and calendar on the web, for one Zoom account.',
-  custom: 'Any web app (Notion, Jira, HubSpot…), signed in on its own. Pages it opens become tabs.',
+  proton: 'Proton Mail for one Proton account.',
+  icloud: 'iCloud Mail for one Apple Account.',
+  fastmail: 'Fastmail mail, calendar and contacts for one Fastmail account.',
+  notion: 'One Notion account, with all its workspaces. Pages it opens become tabs.',
+  custom: 'Any web app (Jira, HubSpot, Linear…), signed in on its own. Pages it opens become tabs.',
 };
 
 /** A name from a site address: "app.notion.so" → "Notion". */

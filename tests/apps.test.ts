@@ -6,7 +6,11 @@ import { parseUnread } from '../src/main/unread/parsers';
 import { linkedinUnread, telegramUnread, unreadSourceMatches } from '../src/shared/page-unread';
 import { chainStep, routeLink, routeRedirect, signInFor } from '../src/main/links/router';
 import { isPermissionAllowed } from '../src/main/views/permissions';
-import { hasTab, hasTabs } from '../src/shared/tabs';
+import { hasTab, hasTabs, mainIsMail } from '../src/shared/tabs';
+import { resolveOpenUrl } from '../src/main/claude/open-url';
+import { routePopup } from '../src/main/links/router';
+import { userAgentFor } from '../src/main/views/user-agent';
+import { SERVICES } from '../src/main/accounts/services';
 import { iconCandidates } from '../src/main/avatars/sources';
 import { ssoGroups } from '../src/shared/sso';
 import { formatNotification } from '../src/main/notifications/format';
@@ -215,5 +219,153 @@ describe('Zoom', () => {
     expect(parseUnread('zoom', '(99+) Zoom')).toBe('dot');
     expect(parseUnread('zoom', 'Zoom Workplace')).toBe(0);
     expect(parseUnread('zoom', 'Loading…')).toBeNull();
+  });
+});
+
+describe('mail apps: Proton Mail, iCloud Mail, Fastmail', () => {
+  const ELECTRON_UA = 'Mozilla/5.0 (Macintosh) AppleWebKit/537.36 Chrome/140.0 Electron/38.0 Safari/537.36';
+
+  test('accounts are accepted, open on their mail page, and present a plain Chrome', () => {
+    for (const service of ['proton', 'icloud', 'fastmail'] as const) {
+      expect(parseNewAccount({ service, name: 'Mail', color: '#111111' })).toEqual({ service, name: 'Mail', color: '#111111' });
+      expect(isHomeHost(service, new URL(SERVICES[service].startUrl).hostname)).toBe(true);
+      expect(userAgentFor(service, ELECTRON_UA)).not.toContain('Electron');
+      expect(hasTabs(service)).toBe(false);
+    }
+    expect(SERVICES.proton.startUrl).toBe('https://mail.proton.me/');
+    expect(SERVICES.icloud.startUrl).toBe('https://www.icloud.com/mail/');
+    expect(SERVICES.fastmail.startUrl).toBe('https://app.fastmail.com/');
+  });
+
+  test('their own pages and sign-in stay; everything else (links in emails) goes to the browser', () => {
+    // Proton signs in on account.proton.me, then goes back to mail.proton.me.
+    expect(routeLink({ service: 'proton', url: 'https://account.proton.me/mail', disposition: 'navigate' })).toEqual({ kind: 'stay' });
+    expect(routeLink({ service: 'proton', url: 'https://mail.proton.me/u/0/inbox', disposition: 'navigate' })).toEqual({ kind: 'stay' });
+    expect(routeLink({ service: 'fastmail', url: 'https://app.fastmail.com/mail/Inbox/', disposition: 'navigate' })).toEqual({ kind: 'stay' });
+    expect(routeLink({ service: 'icloud', url: 'https://www.icloud.com/mail/', disposition: 'navigate' })).toEqual({ kind: 'stay' });
+    for (const service of ['proton', 'icloud', 'fastmail'] as const) {
+      expect(routeLink({ service, url: 'https://example.com/newsletter', disposition: 'new-window' })).toEqual({ kind: 'external', url: 'https://example.com/newsletter' });
+      expect(routeLink({ service, url: 'https://example.com/x', disposition: 'navigate' })).toEqual({ kind: 'external', url: 'https://example.com/x' });
+    }
+    // Look-alike hosts are not theirs.
+    for (const [service, host] of [['proton', 'proton.me.evil.example'], ['proton', 'evilproton.me'], ['icloud', 'icloud.com.evil.example'], ['icloud', 'evil.icloud.com.example'], ['fastmail', 'fastmail.com.evil.example']] as const)
+      expect(isHomeHost(service, host)).toBe(false);
+    // Proton's other apps are Proton's.
+    expect(isHomeHost('proton', 'calendar.proton.me')).toBe(true);
+  });
+
+  test('no camera or microphone for mail', () => {
+    for (const url of ['https://mail.proton.me/', 'https://www.icloud.com/mail/', 'https://app.fastmail.com/']) {
+      expect(isPermissionAllowed('media', url)).toBe(false);
+      expect(isPermissionAllowed('notifications', url)).toBe(true);
+    }
+  });
+
+  test('the Inbox unread count from the title; other folders and messages keep the last count', () => {
+    // Proton Mail: "(N) Folder | address | Proton Mail".
+    expect(parseUnread('proton', '(3) Inbox | ann@proton.me | Proton Mail')).toBe(3);
+    expect(parseUnread('proton', '(1.204) Inbox | ann@proton.me | Proton Mail')).toBe(1204);
+    expect(parseUnread('proton', 'Inbox | ann@proton.me | Proton Mail')).toBe(0);
+    expect(parseUnread('proton', '(2) Caixa de entrada | ann@proton.me | Proton Mail')).toBe(2);
+    expect(parseUnread('proton', '(5) Sent | ann@proton.me | Proton Mail')).toBeNull();
+    expect(parseUnread('proton', 'Lunch on Friday? | ann@proton.me | Proton Mail')).toBeNull();
+    expect(parseUnread('proton', 'Proton Mail: Sign-in')).toBeNull();
+    expect(parseUnread('proton', 'Proton Mail')).toBeNull();
+    // Fastmail and iCloud Mail: the count in front, in brackets or after the folder.
+    expect(parseUnread('fastmail', '[4] Inbox | Fastmail')).toBe(4);
+    expect(parseUnread('fastmail', '(4) Inbox – ann@fastmail.com – Fastmail')).toBe(4);
+    expect(parseUnread('fastmail', 'Inbox | Fastmail')).toBe(0);
+    expect(parseUnread('fastmail', '(99+) Inbox | Fastmail')).toBe('dot');
+    expect(parseUnread('fastmail', 'Log in | Fastmail')).toBeNull();
+    expect(parseUnread('fastmail', '[2] Archive | Fastmail')).toBeNull();
+    expect(parseUnread('icloud', 'Inbox (7) – iCloud Mail')).toBe(7);
+    expect(parseUnread('icloud', 'iCloud Mail – Inbox')).toBe(0);
+    expect(parseUnread('icloud', 'iCloud Mail - Apple iCloud')).toBeNull();
+    // "Inbox Zero" or a subject merely containing the word is not the Inbox.
+    expect(parseUnread('proton', 'Inbox Zero tips | ann@proton.me | Proton Mail')).toBeNull();
+  });
+});
+
+describe('Notion', () => {
+  const LOGIN = 'https://app.notion.com/login';
+  const SAML = 'https://acme.okta.com/app/notion/exk1/sso/saml?SAMLRequest=abc&RelayState=v1.x&login_hint=ann%40acme.com';
+
+  test('an account is accepted; the app, its old address, Calendar and Mail are its own, published sites are not', () => {
+    expect(parseNewAccount({ service: 'notion', name: 'Notion', color: '#111111' })).toEqual({ service: 'notion', name: 'Notion', color: '#111111' });
+    expect(SERVICES.notion.startUrl).toBe('https://app.notion.com/');
+    for (const h of ['app.notion.com', 'www.notion.so', 'notion.so', 'www.notion.com', 'calendar.notion.so', 'mail.notion.so']) expect(isHomeHost('notion', h)).toBe(true);
+    for (const h of ['acme.notion.site', 'file.notion.so', 'notion.so.evil.example', 'evilnotion.so']) expect(isHomeHost('notion', h)).toBe(false);
+  });
+
+  test('like any website, the pages it opens become tabs; its Home is not called mail', () => {
+    expect(hasTabs('notion')).toBe(true);
+    expect(hasTab('notion', 'main')).toBe(true);
+    expect(mainIsMail('notion')).toBe(false);
+    expect(mainIsMail('google')).toBe(true);
+    expect(mainIsMail('custom')).toBe(false);
+    expect(routeLink({ service: 'notion', url: 'https://app.notion.com/acme/Roadmap-123', disposition: 'navigate' })).toEqual({ kind: 'stay' });
+    expect(routeLink({ service: 'notion', url: 'https://app.notion.com/acme/Roadmap-123', disposition: 'new-window' })).toEqual({ kind: 'extra-tab', url: 'https://app.notion.com/acme/Roadmap-123' });
+    expect(routeLink({ service: 'notion', url: 'https://example.com/doc', disposition: 'new-window' })).toEqual({ kind: 'external', url: 'https://example.com/doc' });
+    expect(routeLink({ service: 'notion', url: 'https://acme.notion.site/Public', disposition: 'new-window' })).toEqual({ kind: 'external', url: 'https://acme.notion.site/Public' });
+    // The assistant opens Notion pages in a tab of their own too.
+    expect(resolveOpenUrl('notion', 'https://app.notion.com/acme/Roadmap-123')).toEqual({ kind: 'extra', url: 'https://app.notion.com/acme/Roadmap-123' });
+  });
+
+  test('"Sign in with Google, Apple, Microsoft or ChatGPT" runs in a popup that keeps its opener', () => {
+    // Notion opens its own page in a sized popup, which then goes to Google.
+    const start = 'https://app.notion.com/verifyNoPopupBlockerHtmlAndRedirect?redirectUri=https%3A%2F%2Fapp.notion.com%2Fgooglepopupredirect';
+    expect(routeLink({ service: 'notion', url: start, disposition: 'new-window', popup: true })).toEqual({ kind: 'auth-popup' });
+    expect(routeLink({ service: 'notion', url: 'about:blank', disposition: 'new-window', popup: true })).toEqual({ kind: 'auth-popup' });
+    const google = 'https://accounts.google.com/o/oauth2/v2/auth?client_id=x&redirect_uri=https%3A%2F%2Fapp.notion.com%2Fgooglepopupredirect';
+    expect(routePopup('notion', google, start, false)).toBe('stay');
+    expect(signInFor('notion', google)).toBe(true);
+    for (const host of ['appleid.apple.com', 'login.microsoftonline.com', 'auth.openai.com'])
+      expect(routePopup('notion', `https://${host}/authorize`, start, false)).toBe('stay');
+    expect(routePopup('notion', 'https://evil.example/', start, false)).toBe('external');
+    // A Google sign-in for some other site never runs in the account.
+    expect(signInFor('notion', 'https://accounts.google.com/o/oauth2/auth?redirect_uri=https%3A%2F%2Fevil.example')).toBe(false);
+    expect(routeLink({ service: 'notion', url: 'https://accounts.google.com/o/oauth2/auth?redirect_uri=https%3A%2F%2Fevil.example', disposition: 'navigate' })).toEqual({
+      kind: 'external',
+      url: 'https://accounts.google.com/o/oauth2/auth?redirect_uri=https%3A%2F%2Fevil.example',
+    });
+  });
+
+  test("company SSO: the sign-in page's SAML request goes to the identity provider, and its pages stay until back", () => {
+    expect(routeLink({ service: 'notion', url: SAML, disposition: 'navigate', currentUrl: LOGIN })).toEqual({ kind: 'stay' });
+    expect(routeLink({ service: 'notion', url: SAML, disposition: 'navigate', currentUrl: 'https://www.notion.so/login?redirectURL=x' })).toEqual({ kind: 'stay' });
+    // The request marks the navigation as this account's sign-in: the provider's redirects are followed.
+    const chain = chainStep('notion', SAML, { signIn: false, trusted: false });
+    expect(chain.signIn).toBe(true);
+    expect(routeRedirect({ service: 'notion', url: 'https://acme.okta.com/signin/verify', chain })).toBe('allow');
+    // On the provider (the app then marks the view as signing in), its own steps stay, then back to Notion.
+    expect(routeLink({ service: 'notion', url: 'https://acme.okta.com/signin/verify/push', disposition: 'navigate', currentUrl: SAML, signingIn: true })).toEqual({ kind: 'stay' });
+    expect(routeLink({ service: 'notion', url: 'https://app.notion.com/sso/saml/callback', disposition: 'navigate', currentUrl: 'https://acme.okta.com/x', signingIn: true })).toEqual({ kind: 'stay' });
+  });
+
+  test('a SAML-looking link anywhere but the sign-in page goes to the browser', () => {
+    const lure = 'https://evil.example/login?SAMLRequest=x';
+    expect(routeLink({ service: 'notion', url: lure, disposition: 'navigate', currentUrl: 'https://app.notion.com/acme/Shared-page-1' })).toEqual({ kind: 'external', url: lure });
+    expect(routeLink({ service: 'notion', url: lure, disposition: 'navigate', currentUrl: 'https://evil.example/login' })).toEqual({ kind: 'external', url: lure });
+    expect(routeLink({ service: 'notion', url: lure, disposition: 'navigate' })).toEqual({ kind: 'external', url: lure });
+    expect(routeLink({ service: 'notion', url: lure, disposition: 'new-window', currentUrl: LOGIN })).toEqual({ kind: 'external', url: lure });
+    expect(routeLink({ service: 'notion', url: 'http://acme.okta.com/sso?SAMLRequest=x', disposition: 'navigate', currentUrl: LOGIN })).toEqual({ kind: 'external', url: 'http://acme.okta.com/sso?SAMLRequest=x' });
+    // A login page on a look-alike host doesn't count.
+    expect(routeLink({ service: 'notion', url: SAML, disposition: 'navigate', currentUrl: 'https://acme.notion.site/login' })).toEqual({ kind: 'external', url: SAML });
+    // A server redirect to it, without a sign-in, is not followed.
+    expect(routeRedirect({ service: 'notion', url: lure, chain: { signIn: false, trusted: false } })).toBe('external');
+    // Other services never treat a SAML request this way.
+    expect(chainStep('zoom', SAML, { signIn: false, trusted: false }).signIn).toBe(false);
+    expect(routeLink({ service: 'slack', url: SAML, disposition: 'navigate', currentUrl: 'https://app.slack.com/login' })).toEqual({ kind: 'external', url: SAML });
+  });
+
+  test('the microphone for AI Meeting Notes; unread Inbox notifications from a "(N)" title', () => {
+    expect(isPermissionAllowed('media', 'https://app.notion.com/acme/Meeting-1')).toBe(true);
+    expect(isPermissionAllowed('media', 'https://acme.notion.site/')).toBe(false);
+    expect(parseUnread('notion', '(2) Roadmap')).toBe(2);
+    expect(parseUnread('notion', '(99+) Roadmap')).toBe('dot');
+    expect(parseUnread('notion', 'Roadmap')).toBe(0);
+    expect(parseUnread('notion', 'Notion - Log in')).toBeNull();
+    expect(parseUnread('notion', 'Loading…')).toBeNull();
+    expect(parseUnread('notion', '')).toBeNull();
   });
 });

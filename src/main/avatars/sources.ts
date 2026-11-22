@@ -30,6 +30,10 @@ const IMAGE_RULES: Record<ServiceId, Rule[]> = {
   linkedin: [],
   discord: [],
   zoom: [],
+  proton: [],
+  icloud: [],
+  fastmail: [],
+  notion: [],
   custom: [], // a custom app's icon is its site's favicon (iconCandidates)
 };
 

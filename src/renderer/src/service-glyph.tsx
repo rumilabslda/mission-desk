@@ -10,6 +10,10 @@ export const SERVICE_LABEL: Record<ServiceId, string> = {
   linkedin: 'LinkedIn',
   discord: 'Discord',
   zoom: 'Zoom',
+  proton: 'Proton Mail',
+  icloud: 'iCloud Mail',
+  fastmail: 'Fastmail',
+  notion: 'Notion',
   custom: 'Any website',
 };
 

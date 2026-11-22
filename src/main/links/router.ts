@@ -66,7 +66,7 @@ const AUTH_HOSTS: Partial<Record<ServiceId, Set<string>>> = {
   slack: new Set(['accounts.google.com']), // "Sign in with Google"
   linkedin: new Set(['accounts.google.com', 'appleid.apple.com']),
   zoom: new Set(['accounts.google.com', 'appleid.apple.com', 'login.microsoftonline.com', 'login.live.com']), // "Sign in with…"
-
+  notion: new Set(['accounts.google.com', 'appleid.apple.com', 'login.microsoftonline.com', 'login.live.com', 'auth.openai.com']), // …and "with ChatGPT"
   // Any website: "Sign in with Google / Microsoft / Apple".
   custom: new Set(['accounts.google.com', 'login.microsoftonline.com', 'login.live.com', 'appleid.apple.com']),
 };
@@ -120,6 +120,21 @@ function isOwnSsoUrl(service: ServiceId, url: URL): boolean {
   return slack && (url.pathname.startsWith('/sso') || url.pathname.startsWith('/openid'));
 }
 
+/** Notion's sign-in page (app.notion.com/login, or its older address on notion.so). */
+function isNotionLogin(raw: string | undefined): boolean {
+  try {
+    const url = new URL(raw ?? '');
+    return url.protocol === 'https:' && isHomeHost('notion', url.hostname) && /^\/(login|signup)(\/|$)/.test(url.pathname);
+  } catch {
+    return false;
+  }
+}
+
+/** A SAML sign-in request to a company's identity provider (Notion sends it from its sign-in page). */
+function isSamlRequest(url: URL): boolean {
+  return url.protocol === 'https:' && url.searchParams.has('SAMLRequest');
+}
+
 /** A navigation and its server redirects: whether it signs in to this account, or is the app's own load. */
 export interface RedirectChain {
   /** It passed a sign-in page of this account (so its identity provider's hops are expected). */
@@ -136,7 +151,9 @@ export function chainStep(service: ServiceId, raw: string, chain: RedirectChain,
   } catch {
     return chain;
   }
-  const signIn = chain.signIn || signInFor(service, raw, homeHosts) === true || isOwnSsoUrl(service, url);
+  // Notion's SAML request only gets here from its sign-in page (routeLink lets nothing else through).
+  const saml = service === 'notion' && isSamlRequest(url);
+  const signIn = chain.signIn || signInFor(service, raw, homeHosts) === true || isOwnSsoUrl(service, url) || saml;
   return { signIn, trusted: chain.trusted };
 }
 
@@ -188,7 +205,7 @@ export function routePopup(service: ServiceId, url: string, currentUrl: string, 
 export function routeLink({ service, url: raw, disposition, currentUrl, signingIn = false, homeHosts = [], popup = false, busySubApps = [] }: LinkInput): LinkDecision {
   // MSAL (Outlook, Teams) and many sites open a blank popup, then send it to the sign-in page
   // (every navigation in it is checked: routePopup).
-  if ((service === 'microsoft' || service === 'custom') && raw === 'about:blank' && disposition === 'new-window') return { kind: 'auth-popup' };
+  if ((service === 'microsoft' || service === 'custom' || service === 'notion') && raw === 'about:blank' && disposition === 'new-window') return { kind: 'auth-popup' };
   let parsed: URL;
   try {
     parsed = new URL(raw);
@@ -226,6 +243,15 @@ export function routeLink({ service, url: raw, disposition, currentUrl, signingI
     if (disposition === 'navigate') return { kind: 'stay' };
     return popup ? { kind: 'auth-popup' } : { kind: 'extra-tab', url: href }; // a popup keeps its opener
   }
+  // Notion, like a custom app: pages it opens become tabs, and its sign-in popups ("Sign in
+  // with Google" starts on Notion's own page) keep their opener.
+  if (service === 'notion' && isSitePage('notion', url, [])) {
+    if (disposition === 'navigate') return { kind: 'stay' };
+    return popup ? { kind: 'auth-popup' } : { kind: 'extra-tab', url: href };
+  }
+  // Notion's company SSO: its sign-in page sends the SAML request straight to the identity provider.
+  if (service === 'notion' && disposition === 'navigate' && isSamlRequest(url) && isNotionLogin(currentUrl)) return { kind: 'stay' };
+
   // A custom app's sign-in on another domain (its return address is the site).
   if (service === 'custom' && signInFor('custom', href, homeHosts) === true) {
     return disposition === 'navigate' ? { kind: 'stay' } : { kind: 'auth-popup' };

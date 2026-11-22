@@ -67,7 +67,7 @@ import { cliLookup, codexCandidates, lookupResult } from './platform';
 import { meetingProvider, nativeJoinUrl } from '../shared/meetings';
 import { parseUnreadCount } from './ipc-validation';
 import { unreadSourceMatches } from '../shared/page-unread';
-import { hasTab, hasTabs, SERVICE_TABS } from '../shared/tabs';
+import { hasTab, hasTabs, mainIsMail, SERVICE_TABS } from '../shared/tabs';
 import { customHomeHosts, learnSite } from '../shared/custom-site';
 import { bridgeEnv, buildMcpServer, defaultSocketPath, startSocketServer } from './claude/server';
 import crypto from 'node:crypto';
@@ -688,7 +688,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
         account: a.name,
         service: a.service,
         ...(space ? { space } : {}),
-        tab: hasTabs(a.service) && a.service !== 'custom' ? (cur.kind === 'main' ? 'mail' : cur.kind) : cur.kind,
+        tab: mainIsMail(a.service) && cur.kind === 'main' ? 'mail' : cur.kind,
         title: wc?.getTitle() ?? '',
         url: wc?.getURL() ?? '',
         ...(selection.trim() ? { selected_text: `<untrusted_page_content>${selection}</untrusted_page_content>` } : {}),

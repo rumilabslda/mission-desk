@@ -71,6 +71,40 @@ export const SERVICES: Record<ServiceId, ServiceDefinition> = {
     // Zoom's own pages, company addresses (acme.zoom.us) and regional hosts (us02web.zoom.us).
     homeHosts: ['zoom.us', '.zoom.us', 'zoom.com', '.zoom.com'],
   },
+  proton: {
+    label: 'Proton Mail',
+    startUrl: 'https://mail.proton.me/',
+    // Mail, the sign-in (account.proton.me) and the other Proton apps it links to.
+    homeHosts: ['proton.me', '.proton.me'],
+  },
+  icloud: {
+    label: 'iCloud Mail',
+    // The Apple Account sign-in is a frame inside this page (idmsa.apple.com).
+    startUrl: 'https://www.icloud.com/mail/',
+    homeHosts: ['www.icloud.com', 'icloud.com'],
+  },
+  fastmail: {
+    label: 'Fastmail',
+    startUrl: 'https://app.fastmail.com/',
+    homeHosts: ['app.fastmail.com', 'www.fastmail.com', 'fastmail.com'],
+  },
+  notion: {
+    label: 'Notion',
+    startUrl: 'https://app.notion.com/',
+    // The app (app.notion.com, formerly www.notion.so), Notion Calendar and Notion Mail. Not
+    // '.notion.site' or file.notion.so: anyone can publish pages and files there.
+    homeHosts: [
+      'app.notion.com',
+      'www.notion.com',
+      'notion.com',
+      'www.notion.so',
+      'notion.so',
+      'calendar.notion.so',
+      'calendar.notion.com',
+      'mail.notion.so',
+      'mail.notion.com',
+    ],
+  },
   // Any website: its address and its pages are per account (Account.url, customHomeHosts).
   custom: {
     label: 'Website',

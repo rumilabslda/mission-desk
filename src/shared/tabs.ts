@@ -22,7 +22,14 @@ export const SERVICE_TABS: Partial<Record<ServiceId, TabDef[]>> = {
   ],
   // Any website: its home page (Account.url) and the pages it opens as tabs.
   custom: [{ kind: 'main', title: 'Home', url: '' }],
+  // Notion: its Home and the pages it opens as tabs, like any website.
+  notion: [{ kind: 'main', title: 'Home', url: 'https://app.notion.com/' }],
 };
+
+/** The main tab is called "mail" (Gmail, Outlook) only on Google and Microsoft 365 accounts. */
+export function mainIsMail(service: ServiceId): boolean {
+  return service === 'google' || service === 'microsoft';
+}
 
 export function hasTabs(service: ServiceId): boolean {
   return SERVICE_TABS[service] !== undefined;

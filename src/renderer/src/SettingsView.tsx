@@ -448,7 +448,7 @@ export function SettingsView({ snapshot: snap }: { snapshot: UiSnapshot }): Reac
               <p className="set-muted">{LICENSE_SUMMARY}</p>
             </div>
             <p className="set-muted">
-              Mission Desk is independent and not affiliated with Google, Microsoft, Slack, WhatsApp, Telegram, LinkedIn, Discord, Zoom, Anthropic, OpenAI or OpenRouter.
+              Mission Desk is independent and not affiliated with Google, Microsoft, Slack, WhatsApp, Telegram, LinkedIn, Discord, Zoom, Notion, Proton, Apple, Fastmail, Anthropic, OpenAI or OpenRouter.
             </p>
           </>
         )}
