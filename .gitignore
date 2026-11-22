@@ -3,3 +3,5 @@ out
 dist
 # Internal design notes, kept locally only
 docs/superpowers/
+build/bin/
+native/transcriber/.build/

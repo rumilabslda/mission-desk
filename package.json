@@ -13,8 +13,9 @@
     "build": "electron-vite build",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
-    "dist": "electron-vite build && electron-builder --mac dir -c.mac.identity=null",
-    "dist:mac": "electron-vite build && electron-builder --mac",
+    "build:transcriber": "sh scripts/build-transcriber.sh",
+    "dist": "npm run build:transcriber && electron-vite build && electron-builder --mac dir -c.mac.identity=null",
+    "dist:mac": "npm run build:transcriber && electron-vite build && electron-builder --mac",
     "dist:win": "electron-vite build && electron-builder --win",
     "dist:linux": "electron-vite build && electron-builder --linux",
     "release": "electron-vite build && electron-builder --publish always"

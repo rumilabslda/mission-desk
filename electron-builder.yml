@@ -26,9 +26,14 @@ mac:
   gatekeeperAssess: false
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
+  # The on-device transcription helper (scripts/build-transcriber.sh); signed with the app.
+  extraResources:
+    - from: build/bin/md-transcriber
+      to: md-transcriber
   extendInfo:
     NSCameraUsageDescription: Mission Desk uses the camera for video calls in Google Meet, Microsoft Teams, Slack and WhatsApp.
     NSMicrophoneUsageDescription: Mission Desk uses the microphone for calls in Google Meet, Microsoft Teams, Slack and WhatsApp.
+    NSSpeechRecognitionUsageDescription: Mission Desk transcribes the meetings you choose on this Mac, without sending the audio anywhere.
     NSBluetoothAlwaysUsageDescription: Mission Desk uses Bluetooth for security keys when you sign in.
 
 win:

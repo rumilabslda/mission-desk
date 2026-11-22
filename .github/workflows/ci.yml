@@ -24,3 +24,11 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+      - name: Transcription helper
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          xc="$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)"
+          if [ -n "$xc" ]; then sudo xcode-select -s "$xc"; fi
+          swift test --package-path native/transcriber
+          npm run build:transcriber
