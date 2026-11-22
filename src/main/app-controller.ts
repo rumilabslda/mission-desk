@@ -22,6 +22,8 @@ import { createCalendarService } from './calendar/service';
 import { createCalendarWriter } from './calendar/writer';
 import { createTodoStore } from './todos/store';
 import { createMemoryStore } from './assistant/memory';
+import { createSkillsStore } from './assistant/skills-store';
+import { expandSkillCommand, MAX_INSTRUCTIONS, parseSkillMd, SKILL_CATALOG, type SkillDraft, type SkillSource, skillFetchUrl } from '../shared/skills';
 import { messagesInScope, todosInScope, todoTagFor } from './assistant/scope-data';
 import { spawn } from 'node:child_process';
 import os from 'node:os';
@@ -142,6 +144,11 @@ export interface AppController {
   assistantMemoryAdd(scope: string, text: string): void;
   assistantMemoryUpdate(scope: string, id: string, text: string): void;
   assistantMemoryRemove(scope: string, id: string): void;
+  skillFetch(url: string): Promise<{ ok: true; url: string; draft: SkillDraft } | { ok: false; error: string }>;
+  skillAdd(draft: SkillDraft | null, source: SkillSource, scopes: string[]): void;
+  skillUpdate(id: string, patch: Partial<SkillDraft>): void;
+  skillRemove(id: string): void;
+  skillSetActive(id: string, scope: string, on: boolean): void;
   assistantStop(): void;
   assistantNewChat(): void;
   assistantSetModel(model: AssistantModel, effort: AssistantEffort): void;
@@ -462,6 +469,8 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
   const todos = createTodoStore(path.join(app.getPath('userData'), 'todos.json'));
   // The assistant's notes, kept apart per space (one space's assistant never sees another's).
   const memory = createMemoryStore(path.join(app.getPath('userData'), 'assistant', 'memory.json'));
+  // The skills library; each skill is on per scope, and a scope's assistant sees only its own.
+  const skills = createSkillsStore(path.join(app.getPath('userData'), 'assistant', 'skills.json'));
   const macWeekStart = ((): 0 | 1 => {
     try {
       return weekStartFrom(systemPreferences.getUserDefault('AppleFirstWeekday', 'dictionary'));
@@ -668,6 +677,18 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     if (scope === 'all') return `You work across all the user's spaces. Shared accounts: ${names.join(', ') || 'none yet'}.`;
     return `You are the assistant for the space "${name}" only. You can see only its accounts: ${names.join(', ') || 'none shared yet'}. Never refer to other spaces or clients.`;
   }
+  /**
+   * A scope's notes or skills changed: its idle sessions end quietly, so the next message starts
+   * again (same conversation) with the new instructions. A busy one gets them on its next start.
+   */
+  function refreshInstructions(scope?: string): void {
+    for (const [id, sess] of sessions) {
+      if ((scope === undefined || conversations.get(id)?.scope === scope) && !sess.busy()) {
+        sess.release();
+        sessions.delete(id);
+      }
+    }
+  }
   /** Ends idle Claude Code processes that are no longer on screen (each resumes its conversation later). */
   function releaseIdle(): void {
     const keep = onScreenConv();
@@ -797,6 +818,27 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
         if (done) push();
         return done;
       },
+      skills: () => skills.activeFor(scope),
+      async confirmSkill(draft: SkillDraft) {
+        const where = scopes().find((x) => x.key === scope)?.name ?? 'this space';
+        if (win.isMinimized()) win.restore();
+        win.show();
+        const body = draft.instructions.length > 1200 ? `${draft.instructions.slice(0, 1200)}…` : draft.instructions;
+        const r = await dialog.showMessageBox(win, {
+          type: 'question',
+          message: `Save the skill "${draft.name}" for ${where}?`,
+          detail: `${draft.mode === 'always' ? 'Always on' : 'Used when it fits'}: ${draft.description}\n\n${body}\n\nWritten by the assistant. It will be on only in ${where}; you can change or remove it in Settings → Skills.`,
+          buttons: ['Save', 'Cancel'],
+          defaultId: 1,
+          cancelId: 1,
+        });
+        return r.response === 0;
+      },
+      saveSkill(draft: SkillDraft) {
+        const r = skills.add(draft, { kind: 'custom' }, [scope]);
+        if (r && r !== 'full') push();
+        return r;
+      },
     };
   };
 
@@ -884,7 +926,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
   async function engineSession(conv: Conversation): Promise<AssistantSession> {
     const c = cfg(conv.scope);
     conversations.setEngine(conv.id, c.engine); // another assistant than before: its session isn't resumed
-    const systemPrompt = (): string => assistantPrompt(new Date(), app.getLocale(), scopeLine(conv.scope), memory.list(conv.scope));
+    const systemPrompt = (): string => assistantPrompt(new Date(), app.getLocale(), scopeLine(conv.scope), memory.list(conv.scope), skills.activeFor(conv.scope));
     if (c.engine === 'codex') {
       const srv = await serverFor(conv.scope);
       const cwd = path.join(app.getPath('userData'), 'assistant', 'codex'); // empty: no project files for Codex to read
@@ -1375,6 +1417,8 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
           ...(isEngine(store.state().assistant?.defaultEngine) ? { defaultEngine: store.state().assistant?.defaultEngine as AssistantEngine } : {}),
           configs: Object.fromEntries(scopes().map((x) => [x.key, cfg(x.key)])),
           memory: Object.fromEntries(scopes().map((x) => [x.key, memory.list(x.key)])),
+          skills: skills.all(),
+          skillsActive: skills.activeMap(),
           button: store.state().assistant?.button !== false,
           mode: assistantMode(),
           scope,
@@ -1412,6 +1456,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     // A deleted space's notes go with it.
     const spaceIds = new Set((store.state().spaces ?? []).map((sp) => sp.id));
     memory.prune((scope) => !scope.startsWith('space:') || spaceIds.has(scope.slice(6)));
+    skills.prune((scope) => !scope.startsWith('space:') || spaceIds.has(scope.slice(6)));
     const panelId = spacePanel?.spaceId();
     if (panelId && !store.state().spaces?.some((s) => s.id === panelId)) spacePanel?.close(); // the space is gone
     const snap = snapshot();
@@ -1909,7 +1954,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       releaseIdle();
       push();
       void sessionFor(conv)
-        .then((sess) => sess.send(expandCommand(text)))
+        .then((sess) => sess.send(expandSkillCommand(text, skills.activeFor(scope)) ?? expandCommand(text)))
         .catch((e: Error) => {
           const event = { type: 'error' as const, kind: 'failed' as const, message: e.message };
           conversations.applyEvent(conv.id, event);
@@ -1960,13 +2005,77 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     assistantMemoryAdd(scope, text) {
       if (!scopes().some((x) => x.key === scope)) return;
       const r = memory.add(scope, text);
-      if (r && r !== 'full') push();
+      if (r && r !== 'full') {
+        refreshInstructions(scope);
+        push();
+      }
     },
     assistantMemoryUpdate(scope, id, text) {
-      if (memory.update(scope, id, text)) push();
+      if (memory.update(scope, id, text)) {
+        refreshInstructions(scope);
+        push();
+      }
     },
     assistantMemoryRemove(scope, id) {
-      if (memory.remove(scope, id)) push();
+      if (memory.remove(scope, id)) {
+        refreshInstructions(scope);
+        push();
+      }
+    },
+
+    // Skills (Settings → Skills). A fetched SKILL.md only comes back as a draft: the user reads it
+    // and saves it themself. Nothing in a skill ever runs; it is text for the assistant.
+    async skillFetch(raw) {
+      const url = skillFetchUrl(raw);
+      if (!url) return { ok: false, error: 'Use an https link to a SKILL.md file (a GitHub link to the file or its folder works too).' };
+      try {
+        const res = await net.fetch(url, { headers: { Accept: 'text/markdown, text/plain;q=0.9, */*;q=0.1' }, signal: AbortSignal.timeout(10_000) });
+        if (!res.ok) return { ok: false, error: res.status === 404 ? 'No SKILL.md at that link.' : `The link answered ${res.status}.` };
+        if (res.url && !res.url.startsWith('https://')) return { ok: false, error: 'The link moved to an address that isn’t https.' };
+        if (/text\/html/i.test(res.headers.get('content-type') ?? '')) return { ok: false, error: 'That’s a web page, not a SKILL.md file. Link to the file itself.' };
+        if (Number(res.headers.get('content-length') ?? 0) > 64_000) return { ok: false, error: 'That file is too big for a skill.' };
+        const buf = await res.arrayBuffer();
+        if (buf.byteLength > 64_000) return { ok: false, error: 'That file is too big for a skill.' };
+        const text = new TextDecoder('utf-8').decode(buf);
+        if (text.includes(String.fromCharCode(0))) return { ok: false, error: 'That isn’t a text file.' };
+        const draft = parseSkillMd(text);
+        if (!draft.instructions) return { ok: false, error: 'That file is empty.' };
+        if (draft.instructions.length > MAX_INSTRUCTIONS) return { ok: false, error: 'That skill is longer than Mission Desk allows (20,000 characters).' };
+        return { ok: true, url, draft };
+      } catch {
+        return { ok: false, error: 'Couldn’t fetch that link. Check the address and your connection.' };
+      }
+    },
+    skillAdd(draft, source, scopeList) {
+      const valid = scopeList.filter((sc) => scopes().some((x) => x.key === sc));
+      // A catalogue skill always uses Mission Desk's own text, whatever the page sent.
+      const fromCatalog = source.kind === 'catalog' ? SKILL_CATALOG.find((c) => c.id === source.id) : undefined;
+      const text = fromCatalog ?? draft;
+      if (!text) return;
+      const r = skills.add(text, source, valid);
+      if (r && r !== 'full') {
+        for (const sc of valid) refreshInstructions(sc);
+        push();
+      }
+    },
+    skillUpdate(id, patch) {
+      if (skills.update(id, patch)) {
+        refreshInstructions();
+        push();
+      }
+    },
+    skillRemove(id) {
+      if (skills.remove(id)) {
+        refreshInstructions();
+        push();
+      }
+    },
+    skillSetActive(id, scope, on) {
+      if (!scopes().some((x) => x.key === scope)) return;
+      if (skills.setActive(id, scope, on)) {
+        refreshInstructions(scope);
+        push();
+      }
     },
 
     setAssistantMode(mode) {

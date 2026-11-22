@@ -144,6 +144,9 @@ function hostFor(scope: string, world: { memory: ReturnType<typeof createMemoryS
     confirmMemory: async (action, note) => (asked.push(`${action}: ${note}`), confirm),
     remember: (text) => world.memory.add(scope, text),
     forget: (id) => world.memory.remove(scope, id),
+    skills: () => [],
+    confirmSkill: async () => false,
+    saveSkill: () => null,
   };
 }
 const run = async (host: AssistantToolHost, name: string, args: Record<string, unknown> = {}) => {

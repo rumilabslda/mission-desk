@@ -8,9 +8,10 @@ describe('commands', () => {
     expect(s).toContain('30 min with ana@x.com this week on @Acme, with Meet');
     expect(s).toContain('find_free_time');
   });
-  test('plain text and unknown commands are sent as written', () => {
+  test('plain text is sent as written; an unknown /word goes as the user\'s text (never as a Claude Code command)', () => {
     expect(expandCommand('What is on today?')).toBe('What is on today?');
-    expect(expandCommand('/nope do it')).toBe('/nope do it');
+    expect(expandCommand('/nope do it')).toBe('The user wrote: /nope do it');
+    expect(expandCommand('  /acme-proposal hi')).toBe('The user wrote: /acme-proposal hi'); // another space's skill
   });
 });
 

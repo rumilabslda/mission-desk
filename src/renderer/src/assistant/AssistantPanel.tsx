@@ -247,10 +247,15 @@ export function AssistantPanel({
   }, [pendingAsk, working, send, onAskTaken]);
 
   // "/" and "@" menus
-  const slash = /^\/(\w*)$/.exec(input);
+  const slash = /^\/([\w-]*)$/.exec(input);
   const at = /(?:^|\s)@([\w.-]*)$/.exec(input);
+  // This space's skills that are on, after the built-in commands.
+  const onHere = new Set(a.skillsActive[a.scope] ?? []);
+  const skillCommands = a.skills.filter((s) => onHere.has(s.id)).map((s) => ({ name: s.command, hint: s.name }));
   const menu: { label: string; hint: string; apply(): void }[] = slash
-    ? COMMANDS.filter((c) => c.name.startsWith(slash[1].toLowerCase())).map((c) => ({ label: `/${c.name}`, hint: c.hint, apply: () => setInput(`/${c.name} `) }))
+    ? [...COMMANDS, ...skillCommands]
+        .filter((c) => c.name.startsWith(slash[1].toLowerCase()))
+        .map((c) => ({ label: `/${c.name}`, hint: c.hint, apply: () => setInput(`/${c.name} `) }))
     : at
       ? shared
           .filter((x) => x.name.toLowerCase().startsWith(at[1].toLowerCase()))

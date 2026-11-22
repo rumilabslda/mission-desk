@@ -29,13 +29,13 @@ export const COMMANDS: { name: string; hint: string; prompt: string }[] = [
     name: 'brief',
     hint: 'Your day across all accounts',
     prompt:
-      "Brief me on today across all my accounts. 1) Today's meetings from calendar_events (all shared accounts), in time order, flagging overlaps or back-to-back meetings between different clients. 2) unread_counts per account. 3) For the accounts with unread mail or messages, read the inbox / mentions (read_page) and list what actually needs my reply or action, per client, most urgent first. End with the 3 things I should do first.",
+      "Brief me on today across all my accounts. 1) Today's meetings from calendar_events (all shared accounts), in time order, flagging overlaps or back-to-back meetings between different clients. 2) recent_messages and unread_counts: what came in and from whom. 3) My open to-dos (todos). 4) Only where a message needs more context, read that thread (read_page). List what actually needs my reply or action, per client, most urgent first. End with the 3 things I should do first.",
   },
   {
     name: 'waiting',
     hint: 'Who is waiting on you',
     prompt:
-      "Find who is waiting on me: for each shared account, look at the inbox and recent conversations (read_page; for Gmail you can open https://mail.google.com/mail/u/0/#inbox) and list threads where the last message is from someone else and asks me something or expects an answer. Group by client/account, oldest first, with one line each saying what they need.",
+      "Find who is waiting on me: start with recent_messages, then check the inbox and recent conversations of the accounts with unread messages (read_page; for Gmail you can open https://mail.google.com/mail/u/0/#inbox). List threads where the last message is from someone else and asks me something or expects an answer. Group by client/account, oldest first, with one line each saying what they need.",
   },
   {
     name: 'prep',
@@ -72,7 +72,9 @@ export const COMMANDS: { name: string; hint: string; prompt: string }[] = [
 export function expandCommand(input: string): string {
   const m = /^\/(\w+)\b\s*([\s\S]*)$/.exec(input.trim());
   const cmd = m && COMMANDS.find((c) => c.name === m[1].toLowerCase());
-  if (!m || !cmd) return input;
+  // Any other "/word" is the user's text, not a command: Claude Code would take it as one of its own
+  // (and drop it when it doesn't know it), so it goes as a quoted message.
+  if (!m || !cmd) return input.trimStart().startsWith('/') ? `The user wrote: ${input.trim()}` : input;
   const extra = m[2].trim();
   return extra ? `${cmd.prompt} ${extra}` : cmd.prompt;
 }

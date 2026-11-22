@@ -711,6 +711,7 @@ html.space-panel-page, html.space-panel-page body { background: transparent; }
 .set-select { min-width: 200px; }
 .set-action { border: 1px solid var(--border); background: var(--surface); border-radius: 8px; padding: 6px 14px; font-weight: 600; }
 .set-action:hover { border-color: var(--accent); color: var(--accent); }
+.set-action:disabled { opacity: 0.5; cursor: default; border-color: var(--border); color: inherit; }
 .set-input:focus, .set-select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 .set-danger { margin-left: auto; border: 1px solid var(--border); background: none; border-radius: 7px; padding: 5px 10px; color: #d93025; font-size: 12.5px; }
 .set-danger:hover { background: color-mix(in srgb, #d93025 8%, transparent); }
@@ -1242,6 +1243,37 @@ html.assistant-fab-page body, html.assistant-page body { overflow: hidden; }
 .asg-row .set-input { width: 180px; }
 .as-engine { border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 6px; font: inherit; font-size: 12px; padding: 2px 8px; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 .asg-card .set-input[aria-invalid='true'] { border-color: var(--badge); }
+.sk-toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 14px; }
+.sk-catalog { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.sk-catalog .sk-card { margin: 0; }
+.sk-card { display: flex; flex-direction: column; gap: 8px; }
+.sk-card > button { align-self: flex-start; }
+.sk-card .set-muted { margin: 0; font-size: 13px; }
+.sk-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sk-head strong { font-size: 14.5px; }
+.sk-head code { font-size: 12px; color: var(--text-muted); }
+.sk-badge { font-size: 11.5px; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); font-weight: 600; }
+.sk-badge.sk-source { background: color-mix(in srgb, var(--text-muted) 14%, transparent); color: var(--text-muted); }
+.sk-scopes { display: flex; gap: 6px; flex-wrap: wrap; }
+.sk-scope { font: inherit; font-size: 12.5px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--bg); color: var(--text-muted); cursor: pointer; }
+.sk-scope.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--text); font-weight: 600; }
+.sk-editor { display: flex; flex-direction: column; gap: 12px; }
+.sk-editor label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; }
+.sk-editor .set-input { font-weight: 400; }
+.sk-instructions { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; line-height: 1.5; resize: vertical; min-height: 160px; }
+.sk-count { font-weight: 400; font-size: 11.5px; align-self: flex-end; }
+.sk-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.sk-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.sk-mode { display: flex; flex-direction: column; gap: 3px; text-align: left; font: inherit; padding: 9px 11px; border-radius: 9px; border: 1.5px solid var(--border); background: var(--bg); color: var(--text); cursor: pointer; }
+.sk-mode span { font-size: 12px; color: var(--text-muted); }
+.sk-mode.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 9%, transparent); }
+.sk-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.sk-actions.left { justify-content: flex-start; gap: 14px; }
+.sk-actions .set-link { margin: 0; }
+.set-link.danger { color: var(--badge); }
+.sk-warning { margin: 0; font-size: 13px; padding: 10px 12px; border-radius: 9px; background: color-mix(in srgb, #f59e0b 14%, transparent); }
+.sk-import { display: flex; flex-direction: column; gap: 10px; }
+.sk-import .set-muted { margin: 0; }
 .asg-memory { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--border); padding-top: 10px; }
 .asg-memory-head { display: flex; flex-direction: column; gap: 2px; font-size: 13.5px; font-weight: 600; }
 .asg-memory-head .set-muted { font-weight: 400; font-size: 12.5px; }

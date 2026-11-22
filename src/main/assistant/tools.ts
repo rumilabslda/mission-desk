@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { CalEvent, CalendarData, CalendarRange, EventDraft, Todo, WriteResult } from '../../shared/types';
 import type { MemoryNote } from './memory';
+import type { Skill, SkillDraft } from '../../shared/skills';
 import type { ExtraTool } from '../claude/server';
 
 // --- Free time ------------------------------------------------------------------
@@ -91,6 +92,12 @@ export interface AssistantToolHost {
   confirmMemory(action: 'remember' | 'forget', note: string): Promise<boolean>;
   remember(text: string): MemoryNote | 'full' | null;
   forget(id: string): boolean;
+  /** The skills on for this scope (never another scope's). */
+  skills(): Skill[];
+  /** Asks the user in Mission Desk before a skill the assistant wrote is saved. */
+  confirmSkill(draft: SkillDraft): Promise<boolean>;
+  /** Saves it, on for this scope only. */
+  saveSkill(draft: SkillDraft): Skill | 'full' | null;
 }
 
 const MAX_DAYS = 31;
@@ -288,6 +295,35 @@ export function assistantTools(host: AssistantToolHost): ExtraTool[] {
         if (!note) return fail('No note with that id in this space.');
         if (!(await host.confirmMemory('forget', note.text))) return text('The user declined; the note stays.');
         return host.forget(note.id) ? text('Forgotten.') : fail('Could not remove it.');
+      },
+    },
+    {
+      name: 'use_skill',
+      description: "Load one of the user's skills for this space (listed in your instructions) and follow it for the request at hand.",
+      input: { name: z.string() },
+      run: async (a) => {
+        const want = String(a.name).trim().toLowerCase().replace(/^\//, '');
+        const skill = host.skills().find((s) => s.name.toLowerCase() === want || s.command === want);
+        if (!skill) return fail(`No skill called "${String(a.name)}" is on in this space. On: ${host.skills().map((s) => s.name).join(', ') || 'none'}.`);
+        return text(`<skill name="${skill.name.replace(/"/g, "'")}">\n${skill.instructions}\n</skill>`);
+      },
+    },
+    {
+      name: 'save_skill',
+      description:
+        'Save a skill for this space: how the user wants a kind of task done, so you can follow it next time. "always" applies to everything you write (style, tone); "auto" is loaded when a request fits its description. Mission Desk shows it to the user to confirm.',
+      input: {
+        name: z.string().min(1).max(60),
+        description: z.string().min(1).max(300).describe('When to use it, e.g. "Use when the user asks for a proposal for Acme"'),
+        instructions: z.string().min(1).max(20000),
+        mode: z.enum(['always', 'auto']),
+      },
+      run: async (a) => {
+        const draft = { name: String(a.name), description: String(a.description), instructions: String(a.instructions), mode: a.mode === 'always' ? ('always' as const) : ('auto' as const) };
+        if (!(await host.confirmSkill(draft))) return text('The user declined; nothing was saved.');
+        const r = host.saveSkill(draft);
+        if (r === 'full') return fail('The skills library is full (100). Ask the user to remove some in Settings → Skills.');
+        return r ? text(`Saved as the skill "${r.name}" (/${r.command}), on for this space.`) : fail('Could not save it (a field is empty or too long).');
       },
     },
     {

@@ -1,6 +1,7 @@
 import { type BrowserWindow, ipcMain } from 'electron';
 import { isAssistantEffort, isAssistantModel } from '../shared/assistant';
 import { isScopeKey } from '../shared/assistant-scope';
+import { cleanDraft, isSkillMode, type SkillSource, skillFetchUrl } from '../shared/skills';
 import { isCodexModel, isEngine, isOpenRouterModel, type ScopeConfig } from '../shared/assistant-engines';
 import { IPC } from '../shared/ipc';
 import type { ViewKind } from '../shared/types';
@@ -191,6 +192,27 @@ export function registerIpc(win: BrowserWindow, controller: AppController): void
   on(IPC.assistantMemoryAdd, (scope, text) => isScopeKey(scope) && typeof text === 'string' && text.length <= 600 && controller.assistantMemoryAdd(scope, text));
   on(IPC.assistantMemoryUpdate, (scope, id, text) => isScopeKey(scope) && isString(id) && id.length <= 64 && typeof text === 'string' && text.length <= 600 && controller.assistantMemoryUpdate(scope, id, text));
   on(IPC.assistantMemoryRemove, (scope, id) => isScopeKey(scope) && isString(id) && id.length <= 64 && controller.assistantMemoryRemove(scope, id));
+  ipcMain.handle(IPC.skillFetch, (e, url: unknown) => (fromUi(e) && isString(url) && url.length <= 2048 ? controller.skillFetch(url) : { ok: false, error: 'Not allowed.' }));
+  on(IPC.skillAdd, (draft, source, scopes) => {
+    const d = cleanDraft(draft);
+    const s = source as SkillSource | undefined;
+    const src: SkillSource | null =
+      s?.kind === 'custom' ? { kind: 'custom' } : s?.kind === 'catalog' && isString(s.id) ? { kind: 'catalog', id: s.id } : s?.kind === 'import' && isString(s.url) && skillFetchUrl(s.url) ? { kind: 'import', url: s.url } : null;
+    const list = Array.isArray(scopes) ? scopes.filter(isScopeKey).slice(0, 50) : [];
+    if (src && (d || src.kind === 'catalog')) controller.skillAdd(d, src, list); // a catalogue skill's text comes from Mission Desk
+  });
+  on(IPC.skillUpdate, (id, patch) => {
+    if (!isString(id) || id.length > 64 || typeof patch !== 'object' || patch === null) return;
+    const p = patch as Record<string, unknown>;
+    controller.skillUpdate(id, {
+      ...(typeof p.name === 'string' ? { name: p.name } : {}),
+      ...(typeof p.description === 'string' ? { description: p.description } : {}),
+      ...(typeof p.instructions === 'string' ? { instructions: p.instructions } : {}),
+      ...(isSkillMode(p.mode) ? { mode: p.mode } : {}),
+    });
+  });
+  on(IPC.skillRemove, (id) => isString(id) && id.length <= 64 && controller.skillRemove(id));
+  on(IPC.skillSetActive, (id, scope, onOff) => isString(id) && id.length <= 64 && isScopeKey(scope) && typeof onOff === 'boolean' && controller.skillSetActive(id, scope, onOff));
   on(IPC.assistantStop, () => controller.assistantStop());
   on(IPC.assistantAsk, (text) => typeof text === 'string' && text.trim() && text.length <= 20_000 && controller.assistantAsk(text));
   on(IPC.setAssistantButton, (v) => typeof v === 'boolean' && controller.setAssistantButton(v));

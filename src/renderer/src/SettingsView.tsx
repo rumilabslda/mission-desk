@@ -3,10 +3,11 @@ import { ACCOUNT_COLORS, type AccountView, type AppInfo, type UiSnapshot } from 
 import type { Account, SidebarStyle, Space } from '../../shared/types';
 import { AccountAvatar } from './AccountAvatar';
 import { AssistantSettings, IntegrationsSettings } from './settings/AssistantSettings';
+import { SkillsSettings } from './settings/SkillsSettings';
 import { SERVICE_LABEL } from './service-glyph';
 import { COMPANY, COPYRIGHT, LICENSE_NAME, LICENSE_SUMMARY, SITE, WEBSITE } from '../../shared/about';
 
-type Section = 'general' | 'accounts' | 'spaces' | 'calendar' | 'assistant' | 'integrations' | 'data' | 'about';
+type Section = 'general' | 'accounts' | 'spaces' | 'calendar' | 'assistant' | 'skills' | 'integrations' | 'data' | 'about';
 
 const SECTIONS: { id: Section; label: string }[] = [
   { id: 'general', label: 'General' },
@@ -15,6 +16,7 @@ const SECTIONS: { id: Section; label: string }[] = [
   { id: 'calendar', label: 'Calendar' },
   { id: 'integrations', label: 'Integrations' },
   { id: 'assistant', label: 'Assistant' },
+  { id: 'skills', label: 'Skills' },
   { id: 'data', label: 'Data and privacy' },
   { id: 'about', label: 'About' },
 ];
@@ -369,6 +371,7 @@ export function SettingsView({ snapshot: snap }: { snapshot: UiSnapshot }): Reac
           </>
         )}
         {section === 'assistant' && <AssistantSettings snap={snap} />}
+        {section === 'skills' && <SkillsSettings snap={snap} />}
         {section === 'integrations' && <IntegrationsSettings />}
         {section === 'data' && (
           <>

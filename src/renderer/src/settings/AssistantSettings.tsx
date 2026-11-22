@@ -84,7 +84,7 @@ function MemoryList({ scope, notes, isAll }: { scope: string; notes: MemoryNote[
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && add()}
         />
-        <button disabled={!draft.trim() || notes.length >= 40} onClick={add}>
+        <button className="set-action" disabled={!draft.trim() || notes.length >= 40} onClick={add}>
           Add
         </button>
       </div>

@@ -1,4 +1,5 @@
 import type { AssistantEffort, AssistantEvent, AssistantModel, ClaudeStatus, MemoryNote } from './assistant';
+import type { Skill, SkillDraft, SkillSource } from './skills';
 import type { DialAction, FabToastShown, QuickRequest } from './quick';
 import type { ChatMessage, ConversationMeta } from './assistant-history';
 import type { AssistantMode } from './assistant-scope';
@@ -66,6 +67,9 @@ export interface UiSnapshot {
     configs: Record<string, ScopeConfig>;
     /** Each scope's notes, kept apart (Settings → Assistant shows them under their own space). */
     memory: Record<string, MemoryNote[]>;
+    /** The skills library, and which skills are on in each scope. */
+    skills: Skill[];
+    skillsActive: Record<string, string[]>;
   };
   /** The section Settings opens on, when it was opened for one. */
   settingsSection: string | null;
@@ -200,6 +204,12 @@ export interface UiApi {
   assistantMemoryAdd(scope: string, text: string): void;
   assistantMemoryUpdate(scope: string, id: string, text: string): void;
   assistantMemoryRemove(scope: string, id: string): void;
+  skillFetch(url: string): Promise<{ ok: true; url: string; draft: SkillDraft } | { ok: false; error: string }>;
+  /** `draft` is null for a catalogue skill (its text comes from Mission Desk). */
+  skillAdd(draft: SkillDraft | null, source: SkillSource, scopes: string[]): void;
+  skillUpdate(id: string, patch: Partial<SkillDraft>): void;
+  skillRemove(id: string): void;
+  skillSetActive(id: string, scope: string, on: boolean): void;
   assistantStop(): void;
   assistantNewChat(): void;
   assistantSetModel(model: AssistantModel, effort: AssistantEffort): void;
@@ -346,6 +356,11 @@ export const IPC = {
   assistantMemoryAdd: 'ui:assistant-memory-add',
   assistantMemoryUpdate: 'ui:assistant-memory-update',
   assistantMemoryRemove: 'ui:assistant-memory-remove',
+  skillFetch: 'ui:skill-fetch',
+  skillAdd: 'ui:skill-add',
+  skillUpdate: 'ui:skill-update',
+  skillRemove: 'ui:skill-remove',
+  skillSetActive: 'ui:skill-set-active',
   assistantSignIn: 'ui:assistant-sign-in',
   assistantSignInCancel: 'ui:assistant-sign-in-cancel',
   claudeIntegrationStatus: 'ui:claude-integration-status',
