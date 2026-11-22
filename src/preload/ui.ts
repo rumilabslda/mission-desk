@@ -118,6 +118,8 @@ const api: UiApi = {
   setSidebarStyle: (style) => ipcRenderer.send(IPC.setSidebarStyle, style),
   setWeekStart: (v) => ipcRenderer.send(IPC.setWeekStart, v),
   setLanguage: (v) => ipcRenderer.send(IPC.setLanguage, v),
+  setSpaceMeetings: (scope, s) => ipcRenderer.send(IPC.setSpaceMeetings, scope, s),
+  setMeetingGlobal: (patch) => ipcRenderer.send(IPC.setMeetingGlobal, patch),
   locale: (() => {
     try {
       return ipcRenderer.sendSync(IPC.getLocale) as UiApi['locale'];

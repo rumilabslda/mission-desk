@@ -13,6 +13,7 @@ import {
   ungroupSpace,
 } from '../../shared/spaces';
 import type { LanguageSetting } from '../../shared/i18n/locales';
+import type { MeetingGlobalSettings, SpaceMeetingSettings } from '../../shared/meeting';
 import { t } from '../../shared/i18n';
 import type { Account, AppState, GoogleSubApp, ServiceId, SidebarStyle, Space } from '../../shared/types';
 
@@ -47,6 +48,9 @@ export interface Store {
   setSidebarStyle(style: SidebarStyle): void;
   setWeekStart(v: 0 | 1 | 'auto'): void;
   setLanguage(v: LanguageSetting): void;
+  /** A scope's meeting settings ('space:<id>' or 'nospace'); an unknown space is ignored. */
+  setSpaceMeetings(scope: string, s: SpaceMeetingSettings): void;
+  setMeetingGlobal(patch: Partial<MeetingGlobalSettings>): void;
   setCalendarDefaultAccount(id: string): void;
   setAssistantPrefs(prefs: { model?: string; effort?: string; width?: number; height?: number; defaultEngine?: string; button?: boolean; fab?: { side: 'left' | 'right'; y: number }; mode?: 'space' | 'all'; scopes?: Record<string, { engine?: string; model?: string; effort?: string; openrouterModel?: string; codexModel?: string }> }): void;
   setOpenOnToday(on: boolean): void;
@@ -319,6 +323,22 @@ export function createStore(filePath: string): Store {
     setWeekStart(v) {
       const { weekStart: _drop, ...rest } = state;
       state = v === 'auto' ? rest : { ...rest, weekStart: v };
+      save();
+    },
+
+    setSpaceMeetings(scope, s) {
+      if (scope === 'nospace') {
+        state = { ...state, meetings: { ...(state.meetings ?? {}), nospace: s } };
+      } else {
+        const id = scope.startsWith('space:') ? scope.slice(6) : '';
+        if (!state.spaces?.some((sp) => sp.id === id)) return;
+        state = { ...state, spaces: state.spaces.map((sp) => (sp.id === id ? { ...sp, meetings: s } : sp)) };
+      }
+      save();
+    },
+
+    setMeetingGlobal(patch) {
+      state = { ...state, meetings: { ...(state.meetings ?? {}), ...patch } };
       save();
     },
 

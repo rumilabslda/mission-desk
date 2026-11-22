@@ -1,3 +1,4 @@
+import { isEngineId, isMeetingAction, isMeetingLocale, isMeetingMode, MAX_NOTICE, MEETING_ACTIONS, type MeetingGlobalSettings, RETENTION_DAYS, type SpaceMeetingSettings } from '../shared/meeting';
 import { appNames, type SetupApp, type SetupPlan } from '../shared/setup';
 import { isEngine } from '../shared/assistant-engines';
 import { cleanSiteUrl } from '../shared/custom-site';
@@ -92,6 +93,44 @@ export function parseAccountPatch(input: unknown): AccountPatch | null {
   }
   if ('iconSourceAccountId' in raw && raw.iconMode !== 'account') return null;
   return patch;
+}
+
+/** A space's meeting settings from the UI. */
+export function parseSpaceMeetingSettings(v: unknown): SpaceMeetingSettings | null {
+  if (typeof v !== 'object' || v === null) return null;
+  const o = v as Record<string, unknown>;
+  if (Object.keys(o).some((k) => !['mode', 'language', 'actions'].includes(k)) || !isMeetingMode(o.mode)) return null;
+  const out: SpaceMeetingSettings = { mode: o.mode };
+  if (o.language !== undefined) {
+    if (!isMeetingLocale(o.language)) return null;
+    out.language = o.language;
+  }
+  if (o.actions !== undefined) {
+    if (!Array.isArray(o.actions) || o.actions.length > MEETING_ACTIONS.length || !o.actions.every(isMeetingAction)) return null;
+    out.actions = [...new Set(o.actions)];
+  }
+  return out;
+}
+
+/** A change to the global meeting settings from the UI. */
+export function parseMeetingGlobal(v: unknown): Partial<MeetingGlobalSettings> | null {
+  if (typeof v !== 'object' || v === null) return null;
+  const o = v as Record<string, unknown>;
+  if (Object.keys(o).some((k) => !['engine', 'notice', 'retentionDays'].includes(k))) return null;
+  const out: Partial<MeetingGlobalSettings> = {};
+  if (o.engine !== undefined) {
+    if (!isEngineId(o.engine)) return null;
+    out.engine = o.engine;
+  }
+  if (o.notice !== undefined) {
+    if (typeof o.notice !== 'string' || o.notice.length > MAX_NOTICE || /[\r\n\u0000-\u001f]/.test(o.notice)) return null;
+    out.notice = o.notice.trim();
+  }
+  if (o.retentionDays !== undefined) {
+    if (!(RETENTION_DAYS as readonly unknown[]).includes(o.retentionDays)) return null;
+    out.retentionDays = o.retentionDays as MeetingGlobalSettings['retentionDays'];
+  }
+  return out;
 }
 
 export function parseWeekStart(v: unknown): 0 | 1 | 'auto' | null {

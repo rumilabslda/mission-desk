@@ -1,5 +1,6 @@
 import { app, type BrowserWindow, clipboard, dialog, ipcMain, Menu, net, Notification, safeStorage, shell, systemPreferences, type WebContents, webContents, type WebContentsView } from 'electron';
 import { createUpdater } from './updates/updater';
+import { type MeetingGlobalSettings, type SpaceMeetingSettings, spaceMeetingSettings } from '../shared/meeting';
 import { type LanguageSetting, type Locale, type MessageKey, resolveLocale, setLocale, t } from '../shared/i18n';
 import { updateMode } from '../shared/updates';
 import { addMessage, closeMessage, type Feed, messageViews, removeMessage, trimToUnread } from '../shared/messages';
@@ -188,6 +189,8 @@ export interface AppController {
   setSpaceGoogleAccount(id: string, accountId: string): void;
   ungroupSpace(id: string): void;
   setWeekStart(v: 0 | 1 | 'auto'): void;
+  setSpaceMeetings(scope: string, s: SpaceMeetingSettings): void;
+  setMeetingGlobal(patch: Partial<MeetingGlobalSettings>): void;
   /** Changes the interface language: the menus are rebuilt and every Mission Desk page reloads in it. */
   setLanguage(v: LanguageSetting): void;
   /** The interface language and the locale for dates (each page reads it when it loads). */
@@ -1454,6 +1457,16 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       todos: todos.list(),
       weekStartSetting: s.weekStart ?? 'auto',
       language: s.language ?? 'system',
+      meetings: {
+        list: [],
+        live: null,
+        settings: (({ nospace: _n, ...rest }) => rest)(s.meetings ?? {}),
+        spaces: Object.fromEntries([
+          ...(s.spaces ?? []).map((sp) => [`space:${sp.id}`, spaceMeetingSettings(sp)] as const),
+          ['nospace', spaceMeetingSettings({ meetings: s.meetings?.nospace })] as const,
+        ]),
+        engines: [],
+      },
       spaces: s.spaces ?? [],
       sidebarStyle: sidebarStyleOf(s.sidebarStyle),
       panelSpaceId: spacePanel?.spaceId() ?? null,
@@ -2376,6 +2389,16 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
 
     setWeekStart(v) {
       store.setWeekStart(v);
+      push();
+    },
+
+    setSpaceMeetings(scope, s) {
+      store.setSpaceMeetings(scope, s);
+      push();
+    },
+
+    setMeetingGlobal(patch) {
+      store.setMeetingGlobal(patch);
       push();
     },
 

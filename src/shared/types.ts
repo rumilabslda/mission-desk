@@ -53,6 +53,8 @@ export interface Space {
   shareGoogle?: boolean;
   /** The Google account whose sign-in the space shares (default: its first Google account). */
   googleAccountId?: string;
+  /** Meeting transcription in this space (unset: Ask). */
+  meetings?: import('./meeting').SpaceMeetingSettings;
 }
 
 export type SidebarStyle = 'folders' | 'panel' | 'sections';
@@ -74,6 +76,8 @@ export interface AppState {
   claudeEnabled?: boolean;
   /** First day of the week chosen in Settings (unset: from the Mac). */
   weekStart?: 0 | 1;
+  /** Meeting transcription: engine, notice, retention, and the apps outside spaces. */
+  meetings?: import('./meeting').MeetingGlobalSettings;
   /** The interface language chosen in Settings (unset: the Mac's). */
   language?: import('./i18n/locales').Locale;
   /** The first-run setup was finished or skipped. */
@@ -206,4 +210,8 @@ export interface Todo {
   day: string;
   /** The client it belongs to: a space, or a loose account. */
   tag?: { kind: 'space' | 'account'; id: string };
+  /** The meeting it came from. */
+  meetingId?: string;
+  /** Someone else owes this ("Waiting on"): who. */
+  waitingOn?: string;
 }

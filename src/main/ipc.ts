@@ -10,7 +10,7 @@ import type { ViewKind } from '../shared/types';
 import type { AppController } from './app-controller';
 import { cleanSpaceName } from '../shared/spaces';
 import { isDialAction } from '../shared/quick';
-import { parseTodoTag, isGoogleId, parseAccountPatch, parseEventDraft, parseReply, parseScope, parseSendUpdates, parseSidebarStyle, parseTimes, parseWeekStart, parseCalendarRange, parseDragRef, parseDropZone, parseNewAccount, parseSetupPlan } from './ipc-validation';
+import { parseMeetingGlobal, parseSpaceMeetingSettings, parseTodoTag, isGoogleId, parseAccountPatch, parseEventDraft, parseReply, parseScope, parseSendUpdates, parseSidebarStyle, parseTimes, parseWeekStart, parseCalendarRange, parseDragRef, parseDropZone, parseNewAccount, parseSetupPlan } from './ipc-validation';
 
 const isString = (v: unknown): v is string => typeof v === 'string';
 const isViewKind = (v: unknown): v is ViewKind =>
@@ -269,6 +269,14 @@ export function registerIpc(win: BrowserWindow, controller: AppController): void
     if (style) controller.setSidebarStyle(style);
   });
   on(IPC.setLanguage, (v) => isLanguageSetting(v) && controller.setLanguage(v));
+  on(IPC.setSpaceMeetings, (scope, v) => {
+    const s = parseSpaceMeetingSettings(v);
+    if (isScopeKey(scope) && scope !== 'all' && s) controller.setSpaceMeetings(scope, s);
+  });
+  on(IPC.setMeetingGlobal, (v) => {
+    const p = parseMeetingGlobal(v);
+    if (p) controller.setMeetingGlobal(p);
+  });
   on(IPC.setWeekStart, (v) => {
     const w = parseWeekStart(v);
     if (w !== null) controller.setWeekStart(w);
