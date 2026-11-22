@@ -146,6 +146,8 @@ function hostFor(scope: string, world: { memory: ReturnType<typeof createMemoryS
     forget: (id) => world.memory.remove(scope, id),
     skills: () => [],
     confirmSkill: async () => false,
+    meetings: () => [],
+    meeting: () => null,
     saveSkill: () => null,
   };
 }

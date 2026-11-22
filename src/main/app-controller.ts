@@ -6,6 +6,7 @@ import { createOrchestrator } from './meetings/orchestrator';
 import { createDetector } from './meetings/detector';
 import { type Ask, createOneShot } from './meetings/one-shot';
 import { createMeetingRunner } from './meetings/run';
+import { meetingsHost } from './meetings/assistant-host';
 import { createModelManager, type Manifest, type ModelId } from './meetings/models';
 import MODEL_MANIFEST from './meetings/model-manifest.json';
 import { createMeetingOverlay } from './views/meeting-overlay';
@@ -1016,6 +1017,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
         return true;
       },
       memory: () => memory.list(scope),
+      ...meetingsHost(meetingStore, scope),
       async confirmMemory(action: 'remember' | 'forget', note: string) {
         const where = scopes().find((x) => x.key === scope)?.name ?? t('main.assistant.thisSpace');
         if (win.isMinimized()) win.restore();

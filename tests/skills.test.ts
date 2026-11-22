@@ -208,7 +208,9 @@ describe('assistant tools: use_skill and save_skill', () => {
       forget: () => false,
       skills: () => active,
       confirmSkill: async () => (h.asked++, confirm),
-      saveSkill: (d: unknown) => (h.saved.push(d), { ...skill('Saved'), command: 'saved' }),
+      meetings: () => [],
+    meeting: () => null,
+    saveSkill: (d: unknown) => (h.saved.push(d), { ...skill('Saved'), command: 'saved' }),
     };
     return h;
   }
