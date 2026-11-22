@@ -79,6 +79,8 @@ The round **+** button floats over your apps. Click it for the quick actions: **
 - **Per space:** by default each space has its own assistant, which sees only that space's apps. "All spaces" sees everything you share, for briefs across your day. Or choose one assistant for everything.
 - **What it may read:** nothing until you allow it. Right-click an app → **Claude access** → *Read* or *Read & act*.
 - **Acting:** before it clicks or types in an app, Mission Desk asks "Allow Claude to act in *Acme* for 30 minutes?". While it may act, a banner says so, with **Stop** (⌘.). Creating calendar events always asks you first.
+- **What it knows:** Home's latest messages and your to-dos, only from its own space's shared apps, so "who's waiting on me?" is quick. It can add a to-do or mark one done when you ask.
+- **Memory:** each space keeps its own notes (who is who, projects, how you like to work), and the assistant reads them at the start of every chat. It asks before saving one; see, change or remove them in **Settings → Assistant**. A space's notes, messages and to-dos never reach another space's assistant, and "All spaces" has notes of its own.
 - Conversations are saved on your computer, per space. **New chat** starts a fresh one; the history list reopens or deletes old ones.
 - Quick commands in the chat: `/brief`, `/waiting`, `/prep`, `/schedule`, `/reply`, `/summarize`, `/catchup`.
 

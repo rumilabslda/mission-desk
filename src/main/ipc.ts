@@ -188,6 +188,9 @@ export function registerIpc(win: BrowserWindow, controller: AppController): void
     };
     if (Object.keys(clean).length) controller.setAssistantScopeConfig(scope, clean);
   });
+  on(IPC.assistantMemoryAdd, (scope, text) => isScopeKey(scope) && typeof text === 'string' && text.length <= 600 && controller.assistantMemoryAdd(scope, text));
+  on(IPC.assistantMemoryUpdate, (scope, id, text) => isScopeKey(scope) && isString(id) && id.length <= 64 && typeof text === 'string' && text.length <= 600 && controller.assistantMemoryUpdate(scope, id, text));
+  on(IPC.assistantMemoryRemove, (scope, id) => isScopeKey(scope) && isString(id) && id.length <= 64 && controller.assistantMemoryRemove(scope, id));
   on(IPC.assistantStop, () => controller.assistantStop());
   on(IPC.assistantAsk, (text) => typeof text === 'string' && text.trim() && text.length <= 20_000 && controller.assistantAsk(text));
   on(IPC.setAssistantButton, (v) => typeof v === 'boolean' && controller.setAssistantButton(v));

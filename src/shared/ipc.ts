@@ -1,4 +1,4 @@
-import type { AssistantEffort, AssistantEvent, AssistantModel, ClaudeStatus } from './assistant';
+import type { AssistantEffort, AssistantEvent, AssistantModel, ClaudeStatus, MemoryNote } from './assistant';
 import type { DialAction, FabToastShown, QuickRequest } from './quick';
 import type { ChatMessage, ConversationMeta } from './assistant-history';
 import type { AssistantMode } from './assistant-scope';
@@ -64,6 +64,8 @@ export interface UiSnapshot {
     /** The scope on screen's assistant, and every listed scope's (Settings → Assistant). */
     engine: AssistantEngine;
     configs: Record<string, ScopeConfig>;
+    /** Each scope's notes, kept apart (Settings → Assistant shows them under their own space). */
+    memory: Record<string, MemoryNote[]>;
   };
   /** The section Settings opens on, when it was opened for one. */
   settingsSection: string | null;
@@ -195,6 +197,9 @@ export interface UiApi {
   assistantSetScope(scope: string): void;
   setAssistantMode(mode: AssistantMode): void;
   setAssistantScopeConfig(scope: string, patch: Partial<ScopeConfig>): void;
+  assistantMemoryAdd(scope: string, text: string): void;
+  assistantMemoryUpdate(scope: string, id: string, text: string): void;
+  assistantMemoryRemove(scope: string, id: string): void;
   assistantStop(): void;
   assistantNewChat(): void;
   assistantSetModel(model: AssistantModel, effort: AssistantEffort): void;
@@ -338,6 +343,9 @@ export const IPC = {
   assistantSetScope: 'ui:assistant-set-scope',
   setAssistantMode: 'ui:set-assistant-mode',
   setAssistantScopeConfig: 'ui:set-assistant-scope-config',
+  assistantMemoryAdd: 'ui:assistant-memory-add',
+  assistantMemoryUpdate: 'ui:assistant-memory-update',
+  assistantMemoryRemove: 'ui:assistant-memory-remove',
   assistantSignIn: 'ui:assistant-sign-in',
   assistantSignInCancel: 'ui:assistant-sign-in-cancel',
   claudeIntegrationStatus: 'ui:claude-integration-status',

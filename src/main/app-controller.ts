@@ -21,6 +21,8 @@ import { isAllowedCalendarLink } from './calendar/normalize';
 import { createCalendarService } from './calendar/service';
 import { createCalendarWriter } from './calendar/writer';
 import { createTodoStore } from './todos/store';
+import { createMemoryStore } from './assistant/memory';
+import { messagesInScope, todosInScope, todoTagFor } from './assistant/scope-data';
 import { spawn } from 'node:child_process';
 import os from 'node:os';
 import { type AssistantEffort, type AssistantModel, expandCommand, isAssistantEffort, isAssistantModel } from '../shared/assistant';
@@ -137,6 +139,9 @@ export interface AppController {
   assistantSetScope(scope: string): void;
   setAssistantMode(mode: AssistantMode): void;
   setAssistantScopeConfig(scope: string, patch: Partial<ScopeConfig>): void;
+  assistantMemoryAdd(scope: string, text: string): void;
+  assistantMemoryUpdate(scope: string, id: string, text: string): void;
+  assistantMemoryRemove(scope: string, id: string): void;
   assistantStop(): void;
   assistantNewChat(): void;
   assistantSetModel(model: AssistantModel, effort: AssistantEffort): void;
@@ -435,6 +440,8 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
   }
   let todayOpen = false;
   const todos = createTodoStore(path.join(app.getPath('userData'), 'todos.json'));
+  // The assistant's notes, kept apart per space (one space's assistant never sees another's).
+  const memory = createMemoryStore(path.join(app.getPath('userData'), 'assistant', 'memory.json'));
   const macWeekStart = ((): 0 | 1 => {
     try {
       return weekStartFrom(systemPreferences.getUserDefault('AppleFirstWeekday', 'dictionary'));
@@ -719,6 +726,57 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
         if (!a || !ok(a)) return { ok: false, error: 'forbidden' } as WriteResult;
         return toolHost.createEvent(accountId, draft, notify);
       },
+      // Home's data and the notes, cut to this scope: a space's assistant sees only that space.
+      recentMessages() {
+        const spaceNames = new Map((store.state().spaces ?? []).map((sp) => [sp.id, sp.name]));
+        return messagesInScope(messages, store.state().accounts, scope).map(({ message: m, account: a }) => ({
+          account: a.name,
+          // Space names only for the assistant that already sees every space.
+          ...(scope === 'all' && a.spaceId && spaceNames.get(a.spaceId) ? { space: spaceNames.get(a.spaceId)! } : {}),
+          title: m.title,
+          body: m.body,
+          count: m.count,
+          at: m.at,
+        }));
+      },
+      todos: () => todosInScope(todos.list(), store.state().accounts, scope),
+      addTodo(text: string) {
+        const t = todos.add(text, todoTagFor(scope));
+        if (t) push();
+        return t;
+      },
+      completeTodo(id: string) {
+        const t = todosInScope(todos.list(), store.state().accounts, scope).find((x) => x.id === id && !x.done);
+        if (!t) return false;
+        todos.update(t.id, { done: true });
+        push();
+        return true;
+      },
+      memory: () => memory.list(scope),
+      async confirmMemory(action: 'remember' | 'forget', note: string) {
+        const where = scopes().find((x) => x.key === scope)?.name ?? 'this space';
+        if (win.isMinimized()) win.restore();
+        win.show();
+        const r = await dialog.showMessageBox(win, {
+          type: 'question',
+          message: action === 'remember' ? `Remember this for ${where}?` : `Forget this note in ${where}?`,
+          detail: `${note}\n\nRequested by the assistant. ${action === 'remember' ? `Only the assistant of ${where} will see it. ` : ''}You can see and change every note in Settings → Assistant.`,
+          buttons: [action === 'remember' ? 'Remember' : 'Forget', 'Cancel'],
+          defaultId: 1, // Enter cancels: saving needs a deliberate click
+          cancelId: 1,
+        });
+        return r.response === 0;
+      },
+      remember(text: string) {
+        const r = memory.add(scope, text);
+        if (r && r !== 'full') push();
+        return r;
+      },
+      forget(id: string) {
+        const done = memory.remove(scope, id);
+        if (done) push();
+        return done;
+      },
     };
   };
 
@@ -806,7 +864,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
   async function engineSession(conv: Conversation): Promise<AssistantSession> {
     const c = cfg(conv.scope);
     conversations.setEngine(conv.id, c.engine); // another assistant than before: its session isn't resumed
-    const systemPrompt = (): string => assistantPrompt(new Date(), app.getLocale(), scopeLine(conv.scope));
+    const systemPrompt = (): string => assistantPrompt(new Date(), app.getLocale(), scopeLine(conv.scope), memory.list(conv.scope));
     if (c.engine === 'codex') {
       const srv = await serverFor(conv.scope);
       const cwd = path.join(app.getPath('userData'), 'assistant', 'codex'); // empty: no project files for Codex to read
@@ -1296,6 +1354,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
           engine: cfg(scope).engine,
           ...(isEngine(store.state().assistant?.defaultEngine) ? { defaultEngine: store.state().assistant?.defaultEngine as AssistantEngine } : {}),
           configs: Object.fromEntries(scopes().map((x) => [x.key, cfg(x.key)])),
+          memory: Object.fromEntries(scopes().map((x) => [x.key, memory.list(x.key)])),
           button: store.state().assistant?.button !== false,
           mode: assistantMode(),
           scope,
@@ -1330,6 +1389,9 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
   function push(): void {
     pruneMessages();
     reconcileAssistantScopes();
+    // A deleted space's notes go with it.
+    const spaceIds = new Set((store.state().spaces ?? []).map((sp) => sp.id));
+    memory.prune((scope) => !scope.startsWith('space:') || spaceIds.has(scope.slice(6)));
     const panelId = spacePanel?.spaceId();
     if (panelId && !store.state().spaces?.some((s) => s.id === panelId)) spacePanel?.close(); // the space is gone
     const snap = snapshot();
@@ -1872,6 +1934,19 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       setScopeConfig(scope, patch);
       releaseIdle();
       push();
+    },
+
+    // The user's own changes to a scope's notes (Settings → Assistant); no confirmation needed.
+    assistantMemoryAdd(scope, text) {
+      if (!scopes().some((x) => x.key === scope)) return;
+      const r = memory.add(scope, text);
+      if (r && r !== 'full') push();
+    },
+    assistantMemoryUpdate(scope, id, text) {
+      if (memory.update(scope, id, text)) push();
+    },
+    assistantMemoryRemove(scope, id) {
+      if (memory.remove(scope, id)) push();
     },
 
     setAssistantMode(mode) {

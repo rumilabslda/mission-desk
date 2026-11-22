@@ -1242,6 +1242,15 @@ html.assistant-fab-page body, html.assistant-page body { overflow: hidden; }
 .asg-row .set-input { width: 180px; }
 .as-engine { border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 6px; font: inherit; font-size: 12px; padding: 2px 8px; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 .asg-card .set-input[aria-invalid='true'] { border-color: var(--badge); }
+.asg-memory { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--border); padding-top: 10px; }
+.asg-memory-head { display: flex; flex-direction: column; gap: 2px; font-size: 13.5px; font-weight: 600; }
+.asg-memory-head .set-muted { font-weight: 400; font-size: 12.5px; }
+.asg-memory ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.asg-memory li { display: flex; align-items: center; gap: 6px; }
+.asg-note { flex: 1; text-align: left; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 7px; padding: 6px 9px; font: inherit; font-size: 13px; cursor: text; }
+.asg-note:hover { border-color: var(--accent); }
+.asg-note-remove { border: 0; background: none; color: var(--text-muted); font-size: 16px; width: 26px; height: 26px; border-radius: 6px; cursor: pointer; }
+.asg-note-remove:hover { background: var(--hover, rgba(127, 127, 127, 0.15)); color: var(--text); }
 /* Resizing the floating chat: edges and corners in its transparent margin */
 .aw-resize { position: fixed; z-index: 5; }
 .aw-resize.l, .aw-resize.r { top: 14px; bottom: 14px; width: 9px; cursor: ew-resize; }
