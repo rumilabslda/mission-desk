@@ -11,6 +11,7 @@ const CALL_HOSTS = new Set([
   'ptb.discord.com',
   'canary.discord.com',
   'web.telegram.org',
+  'app.zoom.us', // meetings in Zoom's web client
 ]);
 
 export function isPermissionAllowed(permission: string, requestingUrl: string): boolean {

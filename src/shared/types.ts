@@ -1,5 +1,5 @@
 import type { JoinLink } from './meetings';
-export type ServiceId = 'google' | 'slack' | 'whatsapp' | 'microsoft' | 'telegram' | 'linkedin' | 'discord' | 'custom';
+export type ServiceId = 'google' | 'slack' | 'whatsapp' | 'microsoft' | 'telegram' | 'linkedin' | 'discord' | 'zoom' | 'custom';
 /** A tab of a tabbed account (Google, Microsoft 365). `mail` is the account's main view. */
 export type SubApp = 'mail' | 'calendar' | 'drive' | 'meet' | 'teams';
 /** @deprecated the old name of SubApp */

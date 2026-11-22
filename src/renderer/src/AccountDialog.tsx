@@ -6,7 +6,7 @@ import { cleanSiteUrl } from '../../shared/custom-site';
 
 export type DialogState = { mode: 'add' } | { mode: 'edit'; accountId: string };
 
-const SERVICES: ServiceId[] = ['google', 'microsoft', 'slack', 'whatsapp', 'telegram', 'linkedin', 'discord', 'custom'];
+const SERVICES: ServiceId[] = ['google', 'microsoft', 'slack', 'whatsapp', 'telegram', 'linkedin', 'discord', 'zoom', 'custom'];
 const HINT: Record<ServiceId, string> = {
   google: 'Gmail, Calendar, Drive and Meet for one Google or Workspace account.',
   slack: 'One Slack workspace.',
@@ -15,6 +15,7 @@ const HINT: Record<ServiceId, string> = {
   telegram: 'Telegram Web. You will scan a QR code with your phone.',
   linkedin: 'LinkedIn messages and feed for one LinkedIn account.',
   discord: 'Discord servers and messages for one Discord account.',
+  zoom: 'Zoom Team Chat, meetings and calendar on the web, for one Zoom account.',
   custom: 'Any web app (Notion, Jira, HubSpot…), signed in on its own. Pages it opens become tabs.',
 };
 

@@ -4,7 +4,7 @@ import { isHomeHost } from '../src/main/accounts/services';
 import { parseNewAccount } from '../src/main/ipc-validation';
 import { parseUnread } from '../src/main/unread/parsers';
 import { linkedinUnread, telegramUnread, unreadSourceMatches } from '../src/shared/page-unread';
-import { routeLink, signInFor } from '../src/main/links/router';
+import { chainStep, routeLink, routeRedirect, signInFor } from '../src/main/links/router';
 import { isPermissionAllowed } from '../src/main/views/permissions';
 import { hasTab, hasTabs } from '../src/shared/tabs';
 import { iconCandidates } from '../src/main/avatars/sources';
@@ -181,4 +181,39 @@ test('a page may only report the count of its own app', () => {
   expect(unreadSourceMatches('microsoft', 'teams', 'https://teams.microsoft.com/v2/')).toBe(true);
   expect(unreadSourceMatches('discord', 'main', 'https://discord.com/app')).toBe(false); // Discord uses its title
   expect(unreadSourceMatches('telegram', 'extra:1', 'https://web.telegram.org/a/')).toBe(false);
+});
+
+describe('Zoom', () => {
+  test('an account is accepted, and its pages, company addresses and regional hosts are its own', () => {
+    expect(parseNewAccount({ service: 'zoom', name: 'Zoom', color: '#111111' })).toEqual({ service: 'zoom', name: 'Zoom', color: '#111111' });
+    for (const h of ['zoom.us', 'app.zoom.us', 'acme.zoom.us', 'us02web.zoom.us']) expect(isHomeHost('zoom', h)).toBe(true);
+    expect(isHomeHost('zoom', 'zoom.us.evil.example')).toBe(false);
+    expect(routeLink({ service: 'zoom', url: 'https://app.zoom.us/wc/team-chat', disposition: 'navigate' })).toEqual({ kind: 'stay' });
+    expect(routeLink({ service: 'zoom', url: 'https://example.com/', disposition: 'new-window' })).toEqual({ kind: 'external', url: 'https://example.com/' });
+  });
+
+  test('meetings in its web client may use the camera and microphone', () => {
+    expect(isPermissionAllowed('media', 'https://app.zoom.us/wc/123/join')).toBe(true);
+    expect(isPermissionAllowed('media', 'https://zoom.us.evil.example/')).toBe(false);
+  });
+
+  test('"Sign in with Google, Microsoft or Apple" and company SSO stay in the account', () => {
+    const google = 'https://accounts.google.com/o/oauth2/auth?client_id=x&redirect_uri=https%3A%2F%2Fzoom.us%2Fgoogle%2Foauth';
+    expect(signInFor('zoom', google)).toBe(true);
+    expect(signInFor('zoom', 'https://accounts.google.com/o/oauth2/auth?redirect_uri=https%3A%2F%2Fevil.example')).toBe(false);
+    expect(routeLink({ service: 'zoom', url: 'https://appleid.apple.com/auth/authorize', disposition: 'new-window' })).toEqual({ kind: 'auth-popup' });
+    expect(routeRedirect({ service: 'zoom', url: google, chain: { signIn: false, trusted: false } })).toBe('allow');
+    // Company SSO: Zoom's SAML start, then the company's identity provider.
+    const chain = chainStep('zoom', 'https://acme.zoom.us/saml/login?from=signin', { signIn: false, trusted: false });
+    expect(chain.signIn).toBe(true);
+    expect(routeRedirect({ service: 'zoom', url: 'https://idp.acme.example/sso', chain })).toBe('allow');
+    expect(routeRedirect({ service: 'zoom', url: 'https://idp.acme.example/sso', chain: { signIn: false, trusted: false } })).toBe('external');
+  });
+
+  test('unread messages from a "(N)" title; other Zoom titles mean none', () => {
+    expect(parseUnread('zoom', '(3) Zoom Workplace')).toBe(3);
+    expect(parseUnread('zoom', '(99+) Zoom')).toBe('dot');
+    expect(parseUnread('zoom', 'Zoom Workplace')).toBe(0);
+    expect(parseUnread('zoom', 'Loading…')).toBeNull();
+  });
 });

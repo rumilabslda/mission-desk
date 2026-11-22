@@ -1,5 +1,4 @@
-// Service logos from svg-logos by Gil Barbara (https://github.com/gilbarbara/logos), CC0-1.0.
-// Used only to identify each service. Mission Desk is not affiliated with these companies.
+// Service logos, used only to identify each service. Mission Desk is not affiliated with these companies.
 // Embedded as data URIs so each SVG renders isolated (as an <img>).
 
 const svg = (w: number, h: number, body: string): string =>

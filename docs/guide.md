@@ -18,7 +18,7 @@ Mission Desk looks for new versions on GitHub a minute after it starts and every
 
 ## Apps
 
-- Add Google, Microsoft 365, Slack, WhatsApp, Telegram, LinkedIn, Discord or any website from the **+** button. Add the same service as many times as you like (two Google accounts, three Slack workspaces).
+- Add Google, Microsoft 365, Slack, WhatsApp, Telegram, LinkedIn, Discord, Zoom or any website from the **+** button. Zoom is its web version (Team Chat, meetings, calendar); a **Join** on a Zoom meeting still opens the Zoom app when it's installed, and otherwise your Zoom account here. Add the same service as many times as you like (two Google accounts, three Slack workspaces).
 - Every app is isolated: its own cookies, logins and storage.
 - Google apps get Gmail, Calendar, Drive and Meet tabs; Microsoft 365 gets Outlook and Teams. Document links open inside the same account.
 - Right-click an app to rename, recolour, mute, reload or remove it, or to choose what the assistant may do in it.

@@ -29,6 +29,7 @@ const IMAGE_RULES: Record<ServiceId, Rule[]> = {
   telegram: [],
   linkedin: [],
   discord: [],
+  zoom: [],
   custom: [], // a custom app's icon is its site's favicon (iconCandidates)
 };
 

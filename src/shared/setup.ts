@@ -28,6 +28,7 @@ export const SERVICE_NAMES: Record<ServiceId, string> = {
   telegram: 'Telegram',
   linkedin: 'LinkedIn',
   discord: 'Discord',
+  zoom: 'Zoom',
   custom: 'Website',
 };
 

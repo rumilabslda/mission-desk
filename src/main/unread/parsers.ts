@@ -42,6 +42,17 @@ function parseDiscord(title: string): UnreadCount | null {
   return null;
 }
 
+/**
+ * Zoom on the web: a "(N) " title prefix when Team Chat has unread messages, like most web apps.
+ * Unknown (null) on other titles, so a page that doesn't say keeps the last count.
+ */
+function parseZoom(title: string): UnreadCount | null {
+  if (/^\(\d+\+\)\s/.test(title)) return 'dot';
+  const count = /^\((\d{1,3}(?:[.,]\d{3})*)\)\s/.exec(title);
+  if (count) return toNumber(count[1]);
+  return /\bZoom\b/.test(title) ? 0 : null;
+}
+
 /** Any website: a "(N) " title prefix, the common convention; otherwise nothing. */
 function parseCustom(title: string): UnreadCount | null {
   if (/^\(\d+\+\)\s/.test(title)) return 'dot'; // "(99+) …"
@@ -62,6 +73,8 @@ export function parseUnread(service: ServiceId, title: string): UnreadCount | nu
       return parseMicrosoft(title);
     case 'discord':
       return parseDiscord(title);
+    case 'zoom':
+      return parseZoom(title);
     case 'custom':
       return parseCustom(title);
     case 'telegram':

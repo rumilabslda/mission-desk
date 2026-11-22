@@ -9,6 +9,7 @@ export const SERVICE_LABEL: Record<ServiceId, string> = {
   telegram: 'Telegram',
   linkedin: 'LinkedIn',
   discord: 'Discord',
+  zoom: 'Zoom',
   custom: 'Any website',
 };
 

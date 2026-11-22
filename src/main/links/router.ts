@@ -65,6 +65,8 @@ const AUTH_HOSTS: Partial<Record<ServiceId, Set<string>>> = {
   microsoft: new Set(['login.microsoftonline.com', 'login.live.com', 'login.microsoft.com']),
   slack: new Set(['accounts.google.com']), // "Sign in with Google"
   linkedin: new Set(['accounts.google.com', 'appleid.apple.com']),
+  zoom: new Set(['accounts.google.com', 'appleid.apple.com', 'login.microsoftonline.com', 'login.live.com']), // "Sign in with…"
+
   // Any website: "Sign in with Google / Microsoft / Apple".
   custom: new Set(['accounts.google.com', 'login.microsoftonline.com', 'login.live.com', 'appleid.apple.com']),
 };
@@ -107,8 +109,12 @@ export function signInFor(service: ServiceId, raw: string, homeHosts: string[] =
   return isSitePage(service, target, homeHosts) && !isAuthHost(service, target.hostname);
 }
 
-/** A sign-in started on the service's own SSO pages (Slack's SAML/OpenID start). */
+/** A sign-in started on the service's own SSO pages (Slack's SAML/OpenID start, Zoom's SSO). */
 function isOwnSsoUrl(service: ServiceId, url: URL): boolean {
+  if (service === 'zoom') {
+    const zoom = url.hostname === 'zoom.us' || url.hostname.endsWith('.zoom.us');
+    return zoom && (url.pathname.startsWith('/saml') || url.pathname.startsWith('/web/sso'));
+  }
   if (service !== 'slack') return false;
   const slack = url.hostname === 'slack.com' || url.hostname.endsWith('.slack.com');
   return slack && (url.pathname.startsWith('/sso') || url.pathname.startsWith('/openid'));

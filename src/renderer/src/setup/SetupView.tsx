@@ -36,6 +36,7 @@ const SERVICES: {
   { id: "telegram", name: "Telegram", what: "Your chats" },
   { id: "linkedin", name: "LinkedIn", what: "Messages, feed" },
   { id: "discord", name: "Discord", what: "Servers, DMs" },
+  { id: "zoom", name: "Zoom", what: "Team Chat, meetings" },
 ];
 const SUGGESTED = ["Personal", "Work", "Side project"];
 const MAX_SPACES = 20;

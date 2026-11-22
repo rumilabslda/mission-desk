@@ -5,7 +5,7 @@ import type { NewAccountInput } from '../shared/ipc';
 import { cleanSpaceName, type DragRef, type DropZone } from '../shared/spaces';
 import type { Account, CalendarRange, EventDraft, Reply, SendUpdates, ServiceId, SidebarStyle, WriteScope } from '../shared/types';
 
-const SERVICES: ServiceId[] = ['google', 'slack', 'whatsapp', 'microsoft', 'telegram', 'linkedin', 'discord', 'custom'];
+const SERVICES: ServiceId[] = ['google', 'slack', 'whatsapp', 'microsoft', 'telegram', 'linkedin', 'discord', 'zoom', 'custom'];
 const MAX_NAME = 60;
 
 function cleanName(v: unknown): string | null {

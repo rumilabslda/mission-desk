@@ -2147,6 +2147,15 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
         void shell.openExternal(native); // straight into the Zoom or Teams app
         return;
       }
+      if (provider === 'zoom') {
+        // No Zoom app on this computer: in a Zoom account added here (the one in this space first).
+        const zooms = store.state().accounts.filter((x) => x.service === 'zoom');
+        const z = zooms.find((x) => a?.spaceId && x.spaceId === a.spaceId) ?? zooms[0];
+        if (z) {
+          follow(z, routeLink({ service: 'zoom', url, disposition: 'new-window', busySubApps: busySubApps(z.id) }));
+          return;
+        }
+      }
       openExternal(url);
     },
 

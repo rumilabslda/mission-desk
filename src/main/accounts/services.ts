@@ -64,6 +64,13 @@ export const SERVICES: Record<ServiceId, ServiceDefinition> = {
     startUrl: 'https://discord.com/app',
     homeHosts: ['discord.com', 'ptb.discord.com', 'canary.discord.com', 'discord.gg'],
   },
+  zoom: {
+    label: 'Zoom',
+    // Zoom Workplace on the web: Team Chat, meetings, the Zoom calendar.
+    startUrl: 'https://app.zoom.us/wc/home',
+    // Zoom's own pages, company addresses (acme.zoom.us) and regional hosts (us02web.zoom.us).
+    homeHosts: ['zoom.us', '.zoom.us', 'zoom.com', '.zoom.com'],
+  },
   // Any website: its address and its pages are per account (Account.url, customHomeHosts).
   custom: {
     label: 'Website',
