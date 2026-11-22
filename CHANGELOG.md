@@ -2,6 +2,14 @@
 
 All notable changes to Mission Desk. Versions follow [Semantic Versioning](https://semver.org). Until 1.0.0 Mission Desk is an early preview: a new minor number (0.2.0) adds features and may change how things work, a patch (0.1.1) fixes bugs. 1.0.0 will be the first version ready for everyone.
 
+## 0.1.2 — 2026-11-22
+
+### Apps
+- **Zoom**: add a Zoom account (its web version: Team Chat, meetings, calendar), with its unread count, notifications, camera and microphone for calls, and "Sign in with Google, Microsoft or Apple" or your company's SSO. **Join** on a Zoom meeting opens the Zoom app when it's installed, and otherwise your Zoom account in Mission Desk.
+
+### Other
+- The svg-logos credit is gone from the README and Settings → About.
+
 ## 0.1.1 — 2026-11-21
 
 ### Quick actions
