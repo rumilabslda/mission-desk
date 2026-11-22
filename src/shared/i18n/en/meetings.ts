@@ -117,6 +117,8 @@ export const meetings = {
   'meetings.settings.retentionHint': 'Summaries, to-dos and drafts stay; only the full text goes.',
   'meetings.settings.never': 'Never',
   'meetings.settings.days': '{count} days',
+  'meetings.deleteWithSpace.title': 'Remove the space {space}?',
+  'meetings.deleteWithSpace.detail': { one: 'Its {count} transcribed meeting is deleted with it (transcript and summary). This can’t be undone.', other: 'Its {count} transcribed meetings are deleted with it (transcripts and summaries). This can’t be undone.' },
   'meetings.notice.default': 'Note: I’m transcribing this meeting for my own notes.',
   'meetings.notice.fellBack': '{reason} Using Apple’s transcription.',
   'meetings.notice.localeMissing': '{language} isn’t downloaded for Apple’s transcription yet.',

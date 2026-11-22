@@ -7,6 +7,7 @@ import { createDetector } from './meetings/detector';
 import { type Ask, createOneShot } from './meetings/one-shot';
 import { createMeetingRunner } from './meetings/run';
 import { meetingsHost } from './meetings/assistant-host';
+import { applyRetention, spacesLeftEmpty } from './meetings/lifecycle';
 import { createModelManager, type Manifest, type ModelId } from './meetings/models';
 import MODEL_MANIFEST from './meetings/model-manifest.json';
 import { createMeetingOverlay } from './views/meeting-overlay';
@@ -32,7 +33,7 @@ import { CLAUDE_BANNER_HEIGHT } from '../shared/layout';
 import { type Account, type Todo, type CalendarData, type CalendarRange, type EditableEvent, type EventDraft, type Reply, type SendUpdates, type WritableCalendar, type WriteError, type WriteResult, type WriteScope, type SubApp, type ViewKind, kindToSubApp, subAppToKind } from '../shared/types';
 import { effectiveWeekStart, weekStartFrom } from '../shared/week-start';
 import type { DialAction } from '../shared/quick';
-import { actionContext, type DragRef, type DropZone, googleAccountFor, moveWithinContainer } from '../shared/spaces';
+import { actionContext, applyDrop, assignSpace, type DragRef, type DropZone, googleAccountFor, moveWithinContainer, ungroupSpace } from '../shared/spaces';
 import type { SidebarStyle, UnreadCount } from '../shared/types';
 import { createCalendarFetcher } from './calendar/fetcher';
 import { CALENDAR_ORIGIN } from './calendar/google-api';
@@ -709,6 +710,32 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     if (!target || !view || !view.getVisible() || modalOpen) return meetingBar.place(null);
     const lines = !orchestrator.asking() && orchestrator.live()?.notice ? 2 : 1;
     meetingBar.place(meetingBarBounds(view.getBounds(), lines));
+  }
+  /**
+   * A space removed by a change (ungrouped, or its last app moved or removed) takes its meetings with
+   * it: asks first when it has any. True: go ahead.
+   */
+  function confirmMeetingsLoss(accountsAfter: { spaceId?: string }[]): boolean {
+    const lost = spacesLeftEmpty(store.state().spaces ?? [], accountsAfter)
+      .map((sp) => ({ sp, n: meetingStore.count(`space:${sp.id}`) }))
+      .filter((x) => x.n > 0);
+    if (!lost.length) return true;
+    const count = lost.reduce((n, x) => n + x.n, 0);
+    const r = dialog.showMessageBoxSync(win, {
+      type: 'warning',
+      message: t('meetings.deleteWithSpace.title', { space: lost.map((x) => x.sp.name).join(', ') }),
+      detail: t('meetings.deleteWithSpace.detail', { count }),
+      buttons: [t('common.delete'), t('common.cancel')],
+      defaultId: 1,
+      cancelId: 1,
+    });
+    return r === 0;
+  }
+  // Transcripts older than the chosen period go (summaries stay): at start, then daily.
+  const retention = (): void => void applyRetention(meetingStore, store.state().meetings?.retentionDays);
+  if (meetingsOn) {
+    retention();
+    setInterval(retention, 24 * 3_600_000).unref?.();
   }
   const detector = createDetector({
     onStart: (m) => void orchestrator.start(m),
@@ -1781,6 +1808,9 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     // A deleted space's notes go with it.
     const spaceIds = new Set((store.state().spaces ?? []).map((sp) => sp.id));
     memory.prune((scope) => !scope.startsWith('space:') || spaceIds.has(scope.slice(6)));
+    // …and its meetings (asked first, see confirmMeetingsLoss). Never when the settings failed to load:
+    // an unreadable accounts.json starts empty, and that must not wipe every space's meetings.
+    if (!store.loadWarning()) meetingStore.pruneScopes((scope) => !scope.startsWith('space:') || spaceIds.has(scope.slice(6)));
     skills.prune((scope) => !scope.startsWith('space:') || spaceIds.has(scope.slice(6)));
     const panelId = spacePanel?.spaceId();
     if (panelId && !store.state().spaces?.some((s) => s.id === panelId)) spacePanel?.close(); // the space is gone
@@ -1843,7 +1873,13 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     const { response } = await dialog.showMessageBox(win, {
       type: 'warning',
       message: t('main.account.removeTitle', { name: a.name }),
-      detail: t('main.account.removeDetail'),
+      detail: [
+        t('main.account.removeDetail'),
+        ...spacesLeftEmpty(store.state().spaces ?? [], store.state().accounts.filter((x) => x.id !== a.id))
+          .map((sp) => meetingStore.count(`space:${sp.id}`))
+          .filter((n) => n > 0)
+          .map((count) => t('meetings.deleteWithSpace.detail', { count })),
+      ].join('\n\n'),
       buttons: [t('common.remove'), t('common.cancel')],
       defaultId: 1,
       cancelId: 1,
@@ -2631,6 +2667,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
 
     moveToSpace(accountId, spaceId) {
       if (!account(accountId)) return;
+      if (!confirmMeetingsLoss(assignSpace(store.state().accounts, store.state().spaces ?? [], accountId, spaceId))) return;
       store.moveToSpace(accountId, spaceId);
       push();
     },
@@ -2651,6 +2688,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     },
 
     ungroupSpace(id) {
+      if (!confirmMeetingsLoss(ungroupSpace(store.state().accounts, id))) return;
       store.ungroup(id);
       push();
     },
@@ -2890,6 +2928,8 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     },
 
     dropInSidebar(drag, target, zone) {
+      const preview = applyDrop(store.state().accounts, store.state().spaces ?? [], drag, target, zone);
+      if (preview && 'accounts' in preview && !confirmMeetingsLoss(preview.accounts)) return null;
       const r = store.dropInSidebar(drag, target, zone);
       push();
       return r;
