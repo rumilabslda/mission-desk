@@ -1,0 +1,44 @@
+import type { MeetingProviderId } from './meeting';
+
+const TEAMS_HOSTS = new Set(['teams.microsoft.com', 'teams.live.com', 'teams.cloud.microsoft']);
+
+function decode(s: string): string {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return s;
+  }
+}
+
+/**
+ * The meeting a page URL is in, with a key that stays the same for the whole meeting
+ * (so a reload or rejoin continues it). Null for anything that isn't a meeting page.
+ * Teams keys come from the meeting's thread id when the URL has one; Teams' exact call
+ * routes are to be confirmed against real calls (plan Task 1).
+ */
+export function meetingKey(raw: string): { provider: MeetingProviderId; key: string } | null {
+  let u: URL;
+  try {
+    u = new URL(raw);
+  } catch {
+    return null;
+  }
+  if (u.protocol !== 'https:') return null;
+  const host = u.hostname;
+  if (host === 'meet.google.com') {
+    const m = /^\/([a-z]{3}-[a-z]{4}-[a-z]{3})\/?$/.exec(u.pathname);
+    return m ? { provider: 'meet', key: `meet:${m[1]}` } : null;
+  }
+  if (TEAMS_HOSTS.has(host)) {
+    const all = decode(u.pathname + u.search + u.hash);
+    const thread = /19:meeting_[^@/?#&\s]+@thread\.v2/.exec(all);
+    if (thread) return { provider: 'teams', key: `teams:${thread[0]}` };
+    if (/\/(pre-join-calling|meetup-join|light-meetings)\b|[?&]meetingjoin=true/.test(all)) return { provider: 'teams', key: `teams:${u.pathname}` };
+    return null;
+  }
+  if (host === 'zoom.us' || host.endsWith('.zoom.us')) {
+    const m = /^\/wc\/(?:join\/)?(\d{9,12})(?:\/|$)/.exec(u.pathname);
+    return m ? { provider: 'zoom', key: `zoom:${m[1]}` } : null;
+  }
+  return null;
+}
