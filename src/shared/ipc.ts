@@ -1,3 +1,4 @@
+import type { ClaudeAccount } from './claude-accounts';
 import type { EngineStatus, LiveMeeting, Meeting, MeetingAction, MeetingEndedInfo, MeetingGlobalSettings, MeetingListItem, SpaceMeetingSettings } from './meeting';
 import type { LanguageSetting, Locale } from './i18n/locales';
 import type { AssistantEffort, AssistantEvent, AssistantModel, ClaudeStatus, MemoryNote } from './assistant';
@@ -72,6 +73,8 @@ export interface UiSnapshot {
     /** The skills library, and which skills are on in each scope. */
     skills: Skill[];
     skillsActive: Record<string, string[]>;
+    /** The added Claude Code accounts (this Mac's own isn't listed). */
+    claudeAccounts: ClaudeAccount[];
   };
   /** The section Settings opens on, when it was opened for one. */
   settingsSection: string | null;
@@ -246,6 +249,11 @@ export interface UiApi {
   claudeIntegrationStatus(): Promise<ClaudeStatus>;
   codexStatus(): Promise<ClaudeStatus>;
   /** Runs `codex login` (it opens the browser); resolves when it ends, with the new status. */
+  claudeAccountsInfo(): Promise<{ mac: { loggedIn: boolean; email?: string; org?: string; plan?: string } | null; accounts: (ClaudeAccount & { loggedIn: boolean })[] }>;
+  claudeAccountAdd(name: string): Promise<{ ok: true; id: string } | { ok: false; error: string }>;
+  claudeAccountSignIn(id: string): Promise<{ ok: true } | { ok: false; error: string }>;
+  claudeAccountCancel(): void;
+  claudeAccountRemove(id: string): void;
   codexSignIn(): Promise<ClaudeStatus>;
   codexSignInCancel(): void;
   openRouterStatus(): Promise<{ connected: boolean }>;
@@ -481,6 +489,11 @@ export const IPC = {
   meetingCapabilities: 'ui:meeting-capabilities',
   appleLocaleRemove: 'ui:apple-locale-remove',
   setMeetingGlobal: 'ui:set-meeting-global',
+  claudeAccountsInfo: 'ui:claude-accounts-info',
+  claudeAccountAdd: 'ui:claude-account-add',
+  claudeAccountSignIn: 'ui:claude-account-sign-in',
+  claudeAccountCancel: 'ui:claude-account-cancel',
+  claudeAccountRemove: 'ui:claude-account-remove',
   getLocale: 'ui:get-locale',
   showDataFolder: 'ui:show-data-folder',
   showClaudeLog: 'ui:show-claude-log',

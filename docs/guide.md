@@ -116,3 +116,7 @@ Safety:
 - **Off by default, three times over:** the master switch, each app's access, and a live "Allow Claude to act in *X* for 30 minutes?" before any click or typing.
 - **Local only:** a private socket in Mission Desk's data folder (a private named pipe on Windows). There is no network port.
 - **Page content is marked untrusted** for Claude. `open_url` only opens pages of the app's own service. `claude-activity.log` records tool calls, never page text or typed text.
+
+### More than one Claude account
+
+If a client gives you a Claude account to use for their work, add it in **Settings → Assistant → Claude accounts** (**Add a Claude account**, give it a name, then sign in in the browser that opens). Each space's card then has a **Claude account** choice: this Mac's own Claude Code, or one you added. Everything that space's assistant does (chats, meeting follow-ups) uses that account. Each account keeps its own sign-in, settings and conversations, apart from the others; an added account doesn't load your personal CLAUDE.md, hooks or plugins. Removing an account signs it out on this Mac and deletes its conversations; spaces that used it stop until you choose another account (they never fall back to your personal one).

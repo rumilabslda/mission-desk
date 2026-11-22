@@ -147,4 +147,5 @@ export const assistant: Translation<typeof en> = {
   'assistant.openRouter.statusRetry': 'OpenRouter ha risposto {status}. Riprova.',
   'assistant.openRouter.unreachable': 'Impossibile raggiungere OpenRouter. Controlla la connessione.',
   'assistant.keychainUnavailable': 'Il Portachiavi di macOS non è disponibile, quindi la chiave non è stata salvata.',
+  "assistant.error.claudeAccountMissing": "L’account Claude di questo spazio è stato rimosso. Scegli il suo account Claude in Impostazioni → Assistente.",
 };

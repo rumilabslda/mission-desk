@@ -1,3 +1,4 @@
+import type { ClaudeAccount } from '../../../shared/claude-accounts';
 import { useEffect, useState } from 'react';
 import { ASSISTANT_EFFORTS, ASSISTANT_MODELS, type AssistantEffort, type AssistantModel, type ClaudeStatus } from '../../../shared/assistant';
 import { type AssistantEngine, ENGINES } from '../../../shared/assistant-engines';
@@ -102,8 +103,8 @@ function MemoryList({ scope, notes, isAll }: { scope: string; notes: MemoryNote[
 }
 
 function ScopeCard({ snap, scope, name, ready, orModels }: { snap: UiSnapshot; scope: string; name: string; ready: Ready; orModels: { id: string; name: string }[] }): React.JSX.Element {
-  const c = snap.assistant.configs[scope] ?? { engine: 'claude', model: 'default', effort: 'medium', openrouterModel: 'openrouter/auto', codexModel: '' };
-  const set = (patch: Partial<{ engine: AssistantEngine; model: AssistantModel; effort: AssistantEffort; openrouterModel: string; codexModel: string }>): void =>
+  const c = snap.assistant.configs[scope] ?? { engine: 'claude', model: 'default', effort: 'medium', openrouterModel: 'openrouter/auto', codexModel: '', claudeAccount: '' };
+  const set = (patch: Partial<{ engine: AssistantEngine; model: AssistantModel; effort: AssistantEffort; openrouterModel: string; codexModel: string; claudeAccount: string }>): void =>
     window.missiondesk.setAssistantScopeConfig(scope, patch);
   const [codexModel, setCodexModel] = useState(c.codexModel);
   useEffect(() => setCodexModel(c.codexModel), [c.codexModel]);
@@ -129,8 +130,23 @@ function ScopeCard({ snap, scope, name, ready, orModels }: { snap: UiSnapshot; s
           </button>
         </p>
       )}
+      {c.engine === 'claude' && c.claudeAccount && !snap.assistant.claudeAccounts.some((a) => a.id === c.claudeAccount) && <p className="asg-error">{t('settings.claudeAccounts.missing')}</p>}
       {c.engine !== 'off' && (
         <div className="asg-row">
+          {c.engine === 'claude' && (snap.assistant.claudeAccounts.length > 0 || c.claudeAccount) && (
+            <label>
+              {t('settings.claudeAccounts.choose')}
+              <select className="set-select" value={c.claudeAccount} onChange={(e) => set({ claudeAccount: e.target.value })}>
+                <option value="">{t('settings.claudeAccounts.mac')}</option>
+                {snap.assistant.claudeAccounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.email ? `${a.name} · ${a.email}` : a.name}
+                  </option>
+                ))}
+                {c.claudeAccount && !snap.assistant.claudeAccounts.some((a) => a.id === c.claudeAccount) && <option value={c.claudeAccount}>—</option>}
+              </select>
+            </label>
+          )}
           {c.engine === 'claude' && (
             <label>
               {t('settings.assistant.model')}
@@ -220,6 +236,94 @@ function ScopeCard({ snap, scope, name, ready, orModels }: { snap: UiSnapshot; s
 }
 
 /** Settings → Assistant: one per space or one for everything, and each space's assistant. */
+type AuthInfo = { loggedIn: boolean; email?: string; org?: string; plan?: string };
+
+/** This Mac's Claude Code account and the added ones (a client's…): sign in, sign in again, remove. */
+function ClaudeAccounts({ snap }: { snap: UiSnapshot }): React.JSX.Element {
+  const md = window.missiondesk;
+  const [info, setInfo] = useState<{ mac: AuthInfo | null; accounts: (ClaudeAccount & { loggedIn: boolean })[] } | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState<string | null>(null); // 'new' or an account id
+  const [error, setError] = useState<string | null>(null);
+  const refresh = (): void => void md.claudeAccountsInfo().then(setInfo);
+  useEffect(refresh, [snap.assistant.claudeAccounts.length]);
+  const who = (i: AuthInfo | null | undefined): string => (!i ? t('settings.claudeAccounts.checking') : i.loggedIn ? [i.email, i.org].filter(Boolean).join(' · ') : t('settings.claudeAccounts.signedOut'));
+  const finish = (r: { ok: boolean; error?: string }): void => {
+    setBusy(null);
+    if (r.ok) {
+      setAdding(false);
+      setName('');
+      setError(null);
+    } else setError(r.error ?? t('settings.claudeAccounts.signInFailed'));
+    refresh();
+  };
+  return (
+    <>
+      <h3>{t('settings.claudeAccounts.title')}</h3>
+      <p className="set-muted">{t('settings.claudeAccounts.intro')}</p>
+      <div className="set-card ca-list">
+        <div className="ca-row">
+          <strong>{t('settings.claudeAccounts.mac')}</strong>
+          <span className="set-muted">{who(info?.mac ?? (info ? null : undefined))}</span>
+        </div>
+        {snap.assistant.claudeAccounts.map((a) => {
+          const live = info?.accounts.find((x) => x.id === a.id);
+          return (
+            <div key={a.id} className="ca-row">
+              <strong>{a.name}</strong>
+              <span className="set-muted">{busy === a.id ? t('settings.claudeAccounts.signingIn') : who(live ?? (info ? { loggedIn: false } : undefined))}</span>
+              <span className="ca-actions">
+                {live && !live.loggedIn && busy !== a.id && (
+                  <button type="button" className="set-link" onClick={() => (setBusy(a.id), void md.claudeAccountSignIn(a.id).then(finish))}>
+                    {t('settings.claudeAccounts.signIn')}
+                  </button>
+                )}
+                {busy === a.id ? (
+                  <button type="button" className="set-link" onClick={() => md.claudeAccountCancel()}>
+                    {t('settings.claudeAccounts.cancel')}
+                  </button>
+                ) : (
+                  <button type="button" className="set-link danger" onClick={() => md.claudeAccountRemove(a.id)}>
+                    {t('settings.claudeAccounts.remove')}
+                  </button>
+                )}
+              </span>
+            </div>
+          );
+        })}
+        {adding ? (
+          <div className="ca-row ca-add">
+            <input className="set-input" autoFocus maxLength={40} placeholder={t('settings.claudeAccounts.namePlaceholder')} value={name} disabled={busy === 'new'} onChange={(e) => setName(e.target.value)} />
+            {busy === 'new' ? (
+              <>
+                <span className="set-muted">{t('settings.claudeAccounts.signingIn')}</span>
+                <button type="button" className="set-link" onClick={() => md.claudeAccountCancel()}>
+                  {t('settings.claudeAccounts.cancel')}
+                </button>
+              </>
+            ) : (
+              <>
+                <button type="button" className="set-action" disabled={!name.trim()} onClick={() => (setBusy('new'), setError(null), void md.claudeAccountAdd(name.trim()).then(finish))}>
+                  {t('settings.claudeAccounts.signIn')}
+                </button>
+                <button type="button" className="set-link" onClick={() => (setAdding(false), setError(null))}>
+                  {t('settings.claudeAccounts.cancel')}
+                </button>
+              </>
+            )}
+          </div>
+        ) : (
+          <button type="button" className="set-action ca-new" onClick={() => setAdding(true)}>
+            {t('settings.claudeAccounts.add')}
+          </button>
+        )}
+        {error && <p className="asg-error">{error}</p>}
+      </div>
+    </>
+  );
+}
+
 export function AssistantSettings({ snap }: { snap: UiSnapshot }): React.JSX.Element {
   const [ready, setReady] = useState<Ready>({});
   const [orModels, setOrModels] = useState<{ id: string; name: string }[]>([]);
@@ -253,6 +357,7 @@ export function AssistantSettings({ snap }: { snap: UiSnapshot }): React.JSX.Ele
           <small>{t('settings.assistant.buttonHint')}</small>
         </span>
       </label>
+      {uses('claude') && <ClaudeAccounts snap={snap} />}
       <h3>{snap.assistant.mode === 'space' ? t('settings.assistant.spacesHeading') : t('settings.assistant.everythingHeading')}</h3>
       <p className="set-muted">{t('settings.assistant.intro')}</p>
       {snap.assistant.scopes.map((s) => (

@@ -7,6 +7,7 @@ import { IPC } from '../shared/ipc';
 import { CAPTURE_IPC } from '../shared/capture-ipc';
 import { isLanguageSetting } from '../shared/i18n/locales';
 import { isMeetingAction, isMeetingLocale } from '../shared/meeting';
+import { isClaudeAccountRef } from '../shared/claude-accounts';
 import { t } from '../shared/i18n';
 import type { ViewKind } from '../shared/types';
 import type { AppController } from './app-controller';
@@ -208,6 +209,7 @@ export function registerIpc(win: BrowserWindow, controller: AppController): void
       ...(isAssistantEffort(p.effort) ? { effort: p.effort } : {}),
       ...(isOpenRouterModel(p.openrouterModel) ? { openrouterModel: p.openrouterModel } : {}),
       ...(isCodexModel(p.codexModel) ? { codexModel: p.codexModel } : {}),
+      ...(isClaudeAccountRef(p.claudeAccount) ? { claudeAccount: p.claudeAccount } : {}),
     };
     if (Object.keys(clean).length) controller.setAssistantScopeConfig(scope, clean);
   });
@@ -241,6 +243,12 @@ export function registerIpc(win: BrowserWindow, controller: AppController): void
   on(IPC.assistantSignInCancel, () => controller.assistantSignInCancel());
   ipcMain.handle(IPC.claudeIntegrationStatus, (e) => (fromUi(e) ? controller.claudeIntegrationStatus() : null));
   ipcMain.handle(IPC.codexStatus, (e) => (fromUi(e) ? controller.codexStatus() : null));
+  const isAccountId = (v: unknown): v is string => isClaudeAccountRef(v) && v !== '';
+  ipcMain.handle(IPC.claudeAccountsInfo, (e) => (fromUi(e) ? controller.claudeAccountsInfo() : null));
+  ipcMain.handle(IPC.claudeAccountAdd, (e, name: unknown) => (fromUi(e) && isString(name) && name.trim() && name.length <= 80 ? controller.claudeAccountAdd(name) : { ok: false, error: 'invalid' }));
+  ipcMain.handle(IPC.claudeAccountSignIn, (e, id: unknown) => (fromUi(e) && isAccountId(id) ? controller.claudeAccountSignIn(id) : { ok: false, error: 'invalid' }));
+  on(IPC.claudeAccountCancel, () => controller.claudeAccountCancel());
+  on(IPC.claudeAccountRemove, (id) => isAccountId(id) && controller.claudeAccountRemove(id));
   ipcMain.handle(IPC.codexSignIn, (e) => (fromUi(e) ? controller.codexSignIn() : null));
   on(IPC.codexSignInCancel, () => controller.codexSignInCancel());
   ipcMain.handle(IPC.openRouterStatus, (e) => (fromUi(e) ? controller.openRouterStatus() : null));

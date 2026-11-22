@@ -1,3 +1,4 @@
+import { isClaudeAccountRef } from './claude-accounts';
 import { type AssistantEffort, type AssistantModel, isAssistantEffort, isAssistantModel } from './assistant';
 
 /** What answers in a space's assistant. */
@@ -26,6 +27,8 @@ export interface ScopeConfig {
   openrouterModel: string;
   /** Codex's model ('' = Codex's default). */
   codexModel: string;
+  /** Which Claude Code account: '' = this Mac's own; else an added account's id. */
+  claudeAccount: string;
 }
 
 type Prefs =
@@ -34,7 +37,7 @@ type Prefs =
       effort?: string;
       /** The assistant spaces use unless they chose one (set by the first-run setup). */
       defaultEngine?: string;
-      scopes?: Record<string, { engine?: string; model?: string; effort?: string; openrouterModel?: string; codexModel?: string }>;
+      scopes?: Record<string, { engine?: string; model?: string; effort?: string; openrouterModel?: string; codexModel?: string; claudeAccount?: string }>;
     }
   | undefined;
 
@@ -46,5 +49,6 @@ export function scopeConfig(prefs: Prefs, scope: string): ScopeConfig {
   const engine = isEngine(own.engine) ? own.engine : isEngine(prefs?.defaultEngine) ? prefs.defaultEngine : 'claude';
   const openrouterModel = isOpenRouterModel(own.openrouterModel) ? own.openrouterModel : 'openrouter/auto';
   const codexModel = isCodexModel(own.codexModel) ? own.codexModel : '';
-  return { engine, model, effort, openrouterModel, codexModel };
+  const claudeAccount = isClaudeAccountRef(own.claudeAccount) ? own.claudeAccount : '';
+  return { engine, model, effort, openrouterModel, codexModel, claudeAccount };
 }

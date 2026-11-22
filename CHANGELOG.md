@@ -4,6 +4,9 @@ All notable changes to Mission Desk. Versions follow [Semantic Versioning](https
 
 ## Unreleased
 
+### Assistant
+- **More than one Claude account:** add a client's Claude account next to yours (Settings → Assistant → Claude accounts) and choose, per space, which one its assistant uses, meetings' follow-ups included. Each account keeps its own sign-in, settings and conversations, and an extra account doesn't load your personal CLAUDE.md, hooks or plugins. A space whose account was removed stops; it never switches to your personal account on its own.
+
 ### Meetings
 - **Transcription on your Mac** for the meetings you join in Google Meet, Microsoft Teams and Zoom inside Mission Desk. Each space chooses **Always**, **Ask** or **Off** (Settings → Meetings). A bar over the meeting shows it's transcribing, with Pause, Stop, the meeting's language and **Copy notice** to tell the participants. The audio is never stored or sent anywhere: only the text is kept, in the meeting's space.
 - **Three engines**, all on the Mac: Apple's (macOS 26, nothing to download), **Whisper large-v3 turbo** (the most accurate) and **Parakeet v3** (very fast), downloaded with one click in Settings → Meetings, checked file by file, and deleted when you ask.

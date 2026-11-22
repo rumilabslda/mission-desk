@@ -1,8 +1,8 @@
 import { ENGINES, isEngine, scopeConfig } from '../src/shared/assistant-engines';
 
 test('each space uses Claude by default, with the global model and effort', () => {
-  expect(scopeConfig({ model: 'opus', effort: 'high' }, 'space:A')).toEqual({ engine: 'claude', model: 'opus', effort: 'high', openrouterModel: 'openrouter/auto', codexModel: '' });
-  expect(scopeConfig(undefined, 'all')).toEqual({ engine: 'claude', model: 'default', effort: 'medium', openrouterModel: 'openrouter/auto', codexModel: '' });
+  expect(scopeConfig({ model: 'opus', effort: 'high' }, 'space:A')).toEqual({ engine: 'claude', model: 'opus', effort: 'high', openrouterModel: 'openrouter/auto', codexModel: '', claudeAccount: '' });
+  expect(scopeConfig(undefined, 'all')).toEqual({ engine: 'claude', model: 'default', effort: 'medium', openrouterModel: 'openrouter/auto', codexModel: '', claudeAccount: '' });
 });
 
 test("a space's own choice wins; bad stored values fall back", () => {
