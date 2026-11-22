@@ -27,6 +27,7 @@ Mission Desk updates itself: it looks for new versions on GitHub, downloads them
 - **One calendar.** Every Google account's calendar in a single Day, Week or Month view, where you can create, move and answer events.
 - **An assistant per space.** A floating chat that reads only the apps you share with it, on your own Claude Code, OpenAI Codex or OpenRouter account. It asks before it acts.
 - **Notifications and badges** per app and per space, with mute. Apps you don't use go to sleep to save memory.
+- **In your language.** English, Português (Portugal and Brasil), Español, Français, Deutsch, Italiano and Nederlands. It follows your Mac's language, or pick one in Settings → General.
 
 The [user guide](docs/guide.md) explains each feature in detail.
 

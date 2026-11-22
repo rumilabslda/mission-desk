@@ -8,6 +8,10 @@ The first time you open Mission Desk, a short setup asks three things: whether y
 
 You can skip the setup and add apps one by one with the **+** at the bottom of the sidebar, or run the setup again from **Settings → General**. Running it again only adds: a space with the same name as one you have gets the new apps.
 
+### Language
+
+Mission Desk's menus, buttons and messages come in English, Português (Portugal), Português (Brasil), Español, Français, Deutsch, Italiano and Nederlands. It follows your Mac's language (the first one in **System Settings → General → Language & Region** that Mission Desk has, otherwise English). To pick another, go to **Settings → General → Language**: Mission Desk switches at once. Dates and times follow the language, written the way your Mac's region writes them. Your apps (Gmail, Slack…) keep the language of their own account settings, and the assistant answers in the language you write to it in.
+
 ## Updates
 
 Mission Desk looks for new versions on GitHub a minute after it starts and every few hours. A new version downloads in the background; when it's ready, a notification says so and a dot appears on **Settings**. It installs when you restart Mission Desk (**Settings → About → Restart to update**), or the next time you quit.

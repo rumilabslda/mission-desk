@@ -2,10 +2,35 @@
 
 All notable changes to Mission Desk. Versions follow [Semantic Versioning](https://semver.org). Until 1.0.0 Mission Desk is an early preview: a new minor number (0.2.0) adds features and may change how things work, a patch (0.1.1) fixes bugs. 1.0.0 will be the first version ready for everyone.
 
-## 0.1.2 — 2026-11-22
+## 0.2.0 — 2026-11-22
+
+### Languages
+- Mission Desk now speaks **English, Português (Portugal), Português (Brasil), Español, Français, Deutsch, Italiano and Nederlands**: menus, dialogs, notifications, the setup, Settings, Home, the calendar and the assistant. It follows your Mac's language; pick another in **Settings → General → Language** and it switches at once, no restart.
+- Dates and times follow the language, with your Mac's region (English on a Mac set to Portugal keeps 24-hour times).
+- Your apps keep their own language, and the assistant still answers in the language you write in.
 
 ### Apps
+- **Notion**: one Notion account with all its workspaces. Pages it opens become tabs, "Sign in with Google, Apple, Microsoft or ChatGPT" and your company's SSO stay in the account, the microphone works for AI Meeting Notes, and unread Inbox notifications show on its badge.
+- **Proton Mail**, **iCloud Mail** and **Fastmail**: email beyond Google and Microsoft, each with the Inbox's unread count when its page shows it. Links in emails open in your browser.
 - **Zoom**: add a Zoom account (its web version: Team Chat, meetings, calendar), with its unread count, notifications, camera and microphone for calls, and "Sign in with Google, Microsoft or Apple" or your company's SSO. **Join** on a Zoom meeting opens the Zoom app when it's installed, and otherwise your Zoom account in Mission Desk.
+
+### Assistant
+- It now sees Home's latest messages and your to-dos (only from its own space's shared apps), so "who's waiting on me?" is answered at once; it can add a to-do or mark one done when you ask.
+- **Memory per space:** notes about the client, the people and how you like to work, read at the start of every chat. The assistant asks before saving one; see and edit them in Settings → Assistant. One space's notes, messages and to-dos never reach another space's assistant (and "All spaces" has its own notes).
+- **Skills:** instructions the assistant follows, either always (style and tone, like **Humanizer**) or when a request fits (a proposal, a follow-up, a meeting recap). Add them from Mission Desk's catalogue, import a SKILL.md from a link (GitHub links work), or write your own; the assistant can offer to save one too, and asks first. Each skill is on only in the spaces you choose. Type `/` in the chat to use one on purpose. Settings → Skills.
+- `/brief` and `/waiting` start from Home's messages and your to-dos, so they answer faster.
+
+### Fixes
+- An app no longer goes blank when one of its pages closes itself (as some sign-in pages do when they finish): the page comes back where it was, and a tab that closes itself closes like a browser tab.
+- With the assistant's model on **Default**, a model your Claude Code can't use now says so and how to fix it, instead of only "Something went wrong".
+- A chat message starting with `/` that isn't a command was dropped without an answer; it's now sent as you wrote it.
+
+### Security
+- The assistant opens only Gmail, Calendar, Drive, Meet, Chat and Docs pages in a Google account (not Forms, Sites or Translate, where text it was tricked into writing could leave the account), a link with parameters counts as acting (Read & act, and your OK), and a page it opened can never redirect to your browser.
+- "Never sends" is stricter: Send buttons in other languages, Schedule send, buttons with no name, and Space on a focused button are all refused.
+- A blank sign-in popup opens only from the app's own page, never from something embedded in it, and its title shows who opened it.
+- Notion's company SSO is followed only when it starts on Notion's sign-in page.
+- **Join** on a Zoom meeting never uses another space's Zoom account; without one in the same space it opens in your browser.
 
 ### Other
 - The svg-logos credit is gone from the README and Settings → About.
