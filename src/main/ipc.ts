@@ -4,6 +4,7 @@ import { isScopeKey } from '../shared/assistant-scope';
 import { cleanDraft, isSkillMode, type SkillSource, skillFetchUrl } from '../shared/skills';
 import { isCodexModel, isEngine, isOpenRouterModel, type ScopeConfig } from '../shared/assistant-engines';
 import { IPC } from '../shared/ipc';
+import { CAPTURE_IPC } from '../shared/capture-ipc';
 import { isLanguageSetting } from '../shared/i18n/locales';
 import { t } from '../shared/i18n';
 import type { ViewKind } from '../shared/types';
@@ -310,6 +311,9 @@ export function registerIpc(win: BrowserWindow, controller: AppController): void
   ipcMain.on(IPC.closeSpacePanel, (e) => {
     if (fromUi(e) || fromPanel(e)) controller.closeSpacePanel();
   });
+  // The hidden capture page's audio and state (checked against the page itself in the host).
+  ipcMain.on(CAPTURE_IPC.pcm, (e, ch: unknown, pcm: unknown) => controller.captureHost().receivePcm(e.sender, ch, pcm));
+  ipcMain.on(CAPTURE_IPC.state, (e, s: unknown) => controller.captureHost().receiveState(e.sender, s));
   ipcMain.on(IPC.setModalOpen, (e, open: unknown) => {
     if (fromUi(e) && typeof open === 'boolean') controller.setModalOpen(open);
   });

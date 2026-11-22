@@ -278,6 +278,11 @@ export interface UiApi {
   setWeekStart(v: 0 | 1 | 'auto'): void;
   setSpaceMeetings(scope: string, s: SpaceMeetingSettings): void;
   setMeetingGlobal(patch: Partial<MeetingGlobalSettings>): void;
+  /** The hidden capture page only: main asks it to record a meeting view (tab audio) and the microphone. */
+  onCaptureStart(cb: (o: { callSourceId: string | null }) => void): () => void;
+  onCaptureStop(cb: () => void): () => void;
+  capturePcm(ch: 'me' | 'call', pcm: Int16Array): void;
+  captureState(s: { me: boolean; call: boolean; error?: string }): void;
   /** Changes the interface language; every Mission Desk page reloads in it. */
   setLanguage(v: LanguageSetting): void;
   /** The interface language and the locale for dates, read once when the page loads. */

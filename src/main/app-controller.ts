@@ -1,4 +1,5 @@
-import { app, type BrowserWindow, clipboard, dialog, ipcMain, Menu, net, Notification, safeStorage, shell, systemPreferences, type WebContents, webContents, type WebContentsView } from 'electron';
+import { app, type BrowserWindow, clipboard, dialog, ipcMain, Menu, net, Notification, safeStorage, session, shell, systemPreferences, type WebContents, webContents, type WebContentsView } from 'electron';
+import { capturePage, type CaptureHost, type CaptureState, createCaptureHost } from './meetings/capture-host';
 import { createUpdater } from './updates/updater';
 import { type MeetingGlobalSettings, type SpaceMeetingSettings, spaceMeetingSettings } from '../shared/meeting';
 import { type LanguageSetting, type Locale, type MessageKey, resolveLocale, setLocale, t } from '../shared/i18n';
@@ -191,6 +192,10 @@ export interface AppController {
   setWeekStart(v: 0 | 1 | 'auto'): void;
   setSpaceMeetings(scope: string, s: SpaceMeetingSettings): void;
   setMeetingGlobal(patch: Partial<MeetingGlobalSettings>): void;
+  /** The meeting recorder (the hidden capture page and its audio). */
+  captureHost(): CaptureHost;
+  /** Listens to the recorder's audio frames and state. */
+  onCapture(pcm: (ch: 'me' | 'call', data: Int16Array) => void, state: (s: CaptureState) => void): () => void;
   /** Changes the interface language: the menus are rebuilt and every Mission Desk page reloads in it. */
   setLanguage(v: LanguageSetting): void;
   /** The interface language and the locale for dates (each page reads it when it loads). */
@@ -243,6 +248,16 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
   let localeNow = resolveLocale(store.state().language, app.getPreferredSystemLanguages());
   setLocale(localeNow.locale, localeNow.format);
   let rebuildMenu = (): void => {};
+  // Meeting recording: the hidden capture page. Only it may use the microphone among Mission Desk's own pages.
+  const capturePcmCbs = new Set<(ch: 'me' | 'call', data: Int16Array) => void>();
+  const captureStateCbs = new Set<(s: CaptureState) => void>();
+  const capture = createCaptureHost({
+    createPage: () => capturePage(uiPreloadPath),
+    onPcm: (ch, data) => capturePcmCbs.forEach((cb) => cb(ch, data)),
+    onState: (s) => captureStateCbs.forEach((cb) => cb(s)),
+  });
+  session.defaultSession.setPermissionRequestHandler((wc, permission, cb) => cb(permission !== 'media' || (!!wc && capture.isCapturePage(wc))));
+  session.defaultSession.setPermissionCheckHandler((wc, permission) => permission !== 'media' || (!!wc && capture.isCapturePage(wc)));
   const registry = createViewRegistry<WebContentsView>();
   /** Pages Claude asked to load: a redirect off the service is cancelled, never opened in the browser (it could carry data out). */
   const assistantLoads = new WeakMap<WebContents, string>();
@@ -2390,6 +2405,17 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     setWeekStart(v) {
       store.setWeekStart(v);
       push();
+    },
+
+    captureHost: () => capture,
+
+    onCapture(pcm, state) {
+      capturePcmCbs.add(pcm);
+      captureStateCbs.add(state);
+      return () => {
+        capturePcmCbs.delete(pcm);
+        captureStateCbs.delete(state);
+      };
     },
 
     setSpaceMeetings(scope, s) {

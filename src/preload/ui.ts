@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { IPC, type SpaceNameRequest, type UiApi, type UiSnapshot } from '../shared/ipc';
 import type { FabToastShown, QuickRequest } from '../shared/quick';
+import { CAPTURE_IPC } from '../shared/capture-ipc';
 
 function subscribe<T>(channel: string, cb: (value: T) => void): () => void {
   const listener = (_e: Electron.IpcRendererEvent, value: T): void => cb(value);
@@ -120,6 +121,10 @@ const api: UiApi = {
   setLanguage: (v) => ipcRenderer.send(IPC.setLanguage, v),
   setSpaceMeetings: (scope, s) => ipcRenderer.send(IPC.setSpaceMeetings, scope, s),
   setMeetingGlobal: (patch) => ipcRenderer.send(IPC.setMeetingGlobal, patch),
+  onCaptureStart: (cb) => subscribe<{ callSourceId: string | null }>(CAPTURE_IPC.start, cb),
+  onCaptureStop: (cb) => subscribe<void>(CAPTURE_IPC.stop, () => cb()),
+  capturePcm: (ch, pcm) => ipcRenderer.send(CAPTURE_IPC.pcm, ch, pcm),
+  captureState: (s) => ipcRenderer.send(CAPTURE_IPC.state, s),
   locale: (() => {
     try {
       return ipcRenderer.sendSync(IPC.getLocale) as UiApi['locale'];
