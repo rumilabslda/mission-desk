@@ -6,6 +6,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 import { pickGooglePhoto } from '../main/avatars/sources';
 import { shouldPatchPage } from '../shared/page-patches';
 import { readerFor } from '../shared/page-unread';
+import { probeFor } from '../shared/meeting-probes';
 import { type IdentityPayload, SERVICE_IPC, type NotifyPayload } from '../shared/service-ipc';
 
 // Sign-in pages are left exactly as the browser made them.
@@ -13,6 +14,19 @@ if (shouldPatchPage(location.hostname)) {
   installPagePatches();
   watchIdentity();
   watchPageUnread();
+}
+watchMeetingProbe();
+
+/** While Mission Desk transcribes this page's meeting: who's speaking and the mute state, once a second (read-only). */
+function watchMeetingProbe(): void {
+  let timer: ReturnType<typeof setInterval> | null = null;
+  ipcRenderer.on(SERVICE_IPC.meetingProbeControl, (_e, provider: unknown) => {
+    if (timer) clearInterval(timer);
+    timer = null;
+    if (provider !== 'meet' && provider !== 'teams' && provider !== 'zoom') return;
+    const probe = probeFor(provider);
+    timer = setInterval(() => ipcRenderer.send(SERVICE_IPC.meetingProbe, probe(document)), 1000);
+  });
 }
 
 /** Outlook, Teams, Telegram and LinkedIn don't put their unread count in the title: read it from the page (read-only). */

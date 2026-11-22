@@ -7,6 +7,10 @@ export const SERVICE_IPC = {
   identity: 'service:identity',
   /** Outlook's or Teams' unread count, read from the page (they don't show it in the title). */
   unread: 'service:unread',
+  /** Main → page: read who's speaking and the mute state every second (a provider), or stop (null). */
+  meetingProbeControl: 'service:meeting-probe-control',
+  /** Page → main: one reading ({ speaking, muted }). */
+  meetingProbe: 'service:meeting-probe',
 } as const;
 
 /** Image URLs a service page shows for its account (untrusted; checked in main). */
