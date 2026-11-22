@@ -19,6 +19,11 @@ export interface ViewManagerDeps {
   rightInset?(): number;
   /** A page of the account's own service: only those are reopened after hibernation or a crash. */
   isHomeUrl?(account: Account, url: string): boolean;
+  /**
+   * A page closed itself (window.close() on a sign-in's last page, for one): the view is gone from
+   * the registry; `onScreen` says it was the one showing. Not called when Mission Desk closed it.
+   */
+  onViewGone?(account: Account, kind: ViewKind, onScreen: boolean): void;
 }
 
 export interface ViewManager {
@@ -64,7 +69,13 @@ export function createViewManager(win: BrowserWindow, deps: ViewManagerDeps): Vi
 
   const manager: ViewManager = {
     ensure(account, kind, url) {
-      const existing = registry.get(account.id, kind);
+      let existing = registry.get(account.id, kind);
+      if (existing?.webContents.isDestroyed()) {
+        // Gone without Mission Desk closing it: never hand out a dead page.
+        registry.removeView(account.id, kind);
+        win.contentView.removeChildView(existing);
+        existing = undefined;
+      }
       if (existing) {
         if (url) void existing.webContents.loadURL(url);
         return existing;
@@ -87,6 +98,14 @@ export function createViewManager(win: BrowserWindow, deps: ViewManagerDeps): Vi
       };
       view.webContents.on('did-navigate', remember);
       view.webContents.on('did-navigate-in-page', remember);
+      view.webContents.once('destroyed', () => {
+        if (registry.get(account.id, kind) !== view) return; // Mission Desk closed it (hibernation, a closed tab…)
+        registry.removeView(account.id, kind);
+        if (!win.isDestroyed()) win.contentView.removeChildView(view);
+        const onScreen = active?.account.id === account.id && active.kind === kind;
+        if (onScreen) active = null;
+        deps.onViewGone?.(account, kind, onScreen);
+      });
       win.contentView.addChildView(view);
       deps.onViewCreated(account, kind, view);
       void view.webContents.loadURL(url ?? registry.lastUrl(account.id, kind) ?? defaultUrl(account, kind));

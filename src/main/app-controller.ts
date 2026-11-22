@@ -223,6 +223,8 @@ export interface ControllerDeps {
 
 export function createAppController({ win, store, preloadPath, uiPreloadPath }: ControllerDeps): AppController {
   const registry = createViewRegistry<WebContentsView>();
+  let quitting = false;
+  app.on('before-quit', () => (quitting = true));
   // "Folders with panel" overlay; created once the controller exists (it pushes snapshots).
   let spacePanel: ReturnType<typeof createSpacePanel> | undefined;
   let quick: QuickOverlay | undefined;
@@ -365,6 +367,24 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       assistantOverlay?.raise(); // the floating assistant stays above every page
     },
     onVisibilityChanged: (accountId, kind, visible) => scheduler.setVisible(key(accountId, kind), visible),
+    // A page closed itself: an extra tab closes like a browser tab; an app's own page comes back
+    // where it was (it would otherwise stay blank until a restart).
+    onViewGone: (a, kind, onScreen) => {
+      // Next tick: when the window itself is closing, its pages go first and nothing must reopen.
+      setImmediate(() => {
+        if (quitting || win.isDestroyed()) return;
+        scheduler.unregister(key(a.id, kind));
+        if (kind.startsWith('extra:')) {
+          controller.closeGoogleTab(a.id, kind as `extra:${number}`);
+          const current = account(a.id);
+          if (current && onScreen && !viewManager.current()) show(current, activeKind(current)); // back to the tab it came from
+          return;
+        }
+        const current = account(a.id);
+        if (current && onScreen && !viewManager.current()) viewManager.show(current, kind);
+        push();
+      });
+    },
     topInset: (accountId) => (claude.acting().includes(accountId) ? CLAUDE_BANNER_HEIGHT : 0),
   });
 
@@ -2428,6 +2448,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     },
 
     async shutdown() {
+      quitting = true; // pages closing now are not reopened
       signInChild?.kill(); // its local sign-in callback must not outlive the app
       codexSignInChild?.kill();
       googleSync.dispose();

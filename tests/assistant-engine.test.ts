@@ -1,4 +1,4 @@
-import { buildArgs, classifyError, cleanEnv, parseEvent } from '../src/main/assistant/claude-code';
+import { buildArgs, classifyError, cleanEnv, explainModelError, parseEvent } from '../src/main/assistant/claude-code';
 import { findClaude } from '../src/main/assistant/locate';
 
 const line = (o: unknown) => JSON.stringify(o);
@@ -89,4 +89,17 @@ test('a new text block starts a new paragraph (text before and after a tool stay
 test('cleanEnv also drops other credential and provider switches', () => {
   const env = cleanEnv({ PATH: '/bin', ANTHROPIC_AUTH_TOKEN: 'a', ANTHROPIC_BASE_URL: 'b', CLAUDE_CODE_USE_BEDROCK: '1', CLAUDE_CODE_USE_VERTEX: '1' });
   expect(env).toEqual({ PATH: '/bin' });
+});
+
+test("explainModelError: a default model Claude Code can't use says what to do; other errors stay as they are", () => {
+  const cli = "There's an issue with the selected model (auto/best-coding). It may not exist or you may not have access to it.";
+  const out = explainModelError(cli, 'default');
+  expect(out).toContain('Settings → Assistant');
+  expect(out).toContain('auto/best-coding');
+  expect(out).toContain('~/.claude/settings.json');
+  expect(classifyError(cli)).toBe('failed'); // not mistaken for a sign-in problem
+  // A model chosen in Mission Desk, or another error, is left alone.
+  expect(explainModelError(cli, 'sonnet')).toBe(cli);
+  expect(explainModelError('Network error: ECONNRESET', 'default')).toBe('Network error: ECONNRESET');
+  expect(explainModelError('Model not found: claude-x', 'default')).toContain('Settings → Assistant');
 });

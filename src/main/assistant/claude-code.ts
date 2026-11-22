@@ -102,6 +102,16 @@ export function parseEvent(line: string): AssistantEvent[] {
   }
 }
 
+/**
+ * "Default" runs Claude Code with its own model setting (~/.claude/settings.json). When that names a
+ * model this Claude Code can't use, say so and what to do, instead of only Claude Code's message.
+ */
+export function explainModelError(message: string, model: string): string {
+  if (model !== 'default') return message;
+  if (!/(selected model|model).{0,80}(not exist|not found|doesn't exist|does not exist|invalid|not available|access)/i.test(message)) return message;
+  return `Claude Code's own default model can't be used here (it said: "${message.trim()}"). Choose a model for this space, such as Sonnet or Opus, in the menu under the chat or in Settings → Assistant. Or fix the "model" in your Claude Code settings (~/.claude/settings.json).`;
+}
+
 /** Errors that mean "sign in to Claude Code again". */
 export function classifyError(text: string): 'signed-out' | 'failed' {
   return /authenticat|log ?in|logged in|oauth|api key|credential|unauthori[sz]ed|\/login/i.test(text) ? 'signed-out' : 'failed';

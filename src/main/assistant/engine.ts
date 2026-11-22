@@ -1,6 +1,6 @@
 import { StringDecoder } from 'node:string_decoder';
 import type { AssistantEffort, AssistantEvent } from '../../shared/assistant';
-import { buildArgs, classifyError, parseEvent } from './claude-code';
+import { buildArgs, classifyError, explainModelError, parseEvent } from './claude-code';
 
 /** What the session needs from a child process (node's ChildProcess fits). */
 export interface ChildLike {
@@ -117,7 +117,7 @@ export function createClaudeCodeSession(io: SessionIO, initial: { model: string;
           if (child === c) emit(e);
           if (e.type === 'done' && e.isError && child === c) {
             const message = e.text ?? 'Claude Code reported an error.';
-            emit({ type: 'error', kind: classifyError(message), message });
+            emit({ type: 'error', kind: classifyError(message), message: explainModelError(message, model) });
           }
         }
       }
@@ -138,7 +138,7 @@ export function createClaudeCodeSession(io: SessionIO, initial: { model: string;
       if (working) {
         working = false;
         const message = stderr.trim() || 'Claude Code stopped unexpectedly.';
-        emit({ type: 'error', kind: classifyError(message), message });
+        emit({ type: 'error', kind: classifyError(message), message: explainModelError(message, model) });
       }
     });
     return c;
