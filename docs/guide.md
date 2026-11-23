@@ -4,13 +4,13 @@ Shortcuts use ⌘ on macOS and Ctrl on Windows and Linux.
 
 ## Getting started
 
-The first time you open Mission Desk, a short setup asks three things: whether you'd like an assistant (and connects it), how you'd like to organise your work in spaces, and which apps go in each space. Then each app opens in turn so you can sign in. Each one stays signed in from then on.
+The first time you open Mission Desk, a short setup starts by showing the language it's in (your Mac's): change it there and everything switches before you go on. Then it asks three things: whether you'd like an assistant (and connects it), how you'd like to organise your work in spaces, and which apps go in each space. Then each app opens in turn so you can sign in. Each one stays signed in from then on.
 
 You can skip the setup and add apps one by one with the **+** at the bottom of the sidebar, or run the setup again from **Settings → General**. Running it again only adds: a space with the same name as one you have gets the new apps.
 
 ### Language
 
-Mission Desk's menus, buttons and messages come in English, Português (Portugal), Português (Brasil), Español, Français, Deutsch, Italiano and Nederlands. It follows your Mac's language (the first one in **System Settings → General → Language & Region** that Mission Desk has, otherwise English). To pick another, go to **Settings → General → Language**: Mission Desk switches at once. Dates and times follow the language, written the way your Mac's region writes them. Your apps (Gmail, Slack…) keep the language of their own account settings, and the assistant answers in the language you write to it in.
+Mission Desk's menus, buttons and messages come in English, Português (Portugal), Português (Brasil), Español, Français, Deutsch, Italiano and Nederlands. It follows your Mac's language (the first one in **System Settings → General → Language & Region** that Mission Desk has, otherwise English). To pick another, use the language on the setup's first screen, or later **Settings → General → Language**: Mission Desk switches at once. Dates and times follow the language, written the way your Mac's region writes them. Your apps (Gmail, Slack…) keep the language of their own account settings, and the assistant answers in the language you write to it in.
 
 ## Updates
 

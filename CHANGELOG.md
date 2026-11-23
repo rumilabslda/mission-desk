@@ -4,6 +4,9 @@ All notable changes to Mission Desk. Versions follow [Semantic Versioning](https
 
 ## Unreleased
 
+### Setup
+- **Language first:** the setup's first screen shows the language Mission Desk is in (your Mac's) and lets you change it before going on; everything switches at once.
+
 ### Settings
 - **Accounts is now Apps**, right after Spaces: General, Spaces, Apps, then the rest.
 - **Calendar is now part of Spaces:** each space's card says whether its Google accounts show in All calendars, and the Google accounts outside spaces have their own card at the end. The separate Calendar section is gone.

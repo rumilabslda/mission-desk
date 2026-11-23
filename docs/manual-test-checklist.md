@@ -2,6 +2,10 @@
 
 Run with your real accounts before adopting a new version. Tick each line.
 
+## First-run setup
+- [ ] With no accounts, the setup's first screen shows **Language** set to the Mac's. Pick another: the whole app switches and the setup opens again on that screen, in the new language.
+- [ ] Pick the Mac's language again: Settings → General → Language shows "Same as the Mac".
+
 ## Sign-in and isolation
 - [ ] Add two different Google accounts. Both sign in (with 2FA) without "This browser or app may not be secure".
 - [ ] Each Google account shows its own inbox. Switching never mixes them.
