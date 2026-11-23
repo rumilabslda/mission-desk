@@ -238,4 +238,8 @@ export const settings: Translation<typeof en> = {
   "settings.memory.no": "Non",
   "settings.memory.full": "La mémoire est pleine : supprimez une note pour en ajouter une autre.",
   "settings.memory.button": "Mémoire",
+  "settings.calendar.show": "Afficher dans Tous les calendriers",
+  "settings.calendar.showAccount": "Afficher {name} dans Tous les calendriers",
+  "settings.calendar.showHint": "Tous les calendriers (⌘0) affiche les agendas cochés dans le Google Agenda du compte.",
+  "settings.calendar.loose": "Apps hors espaces",
 };

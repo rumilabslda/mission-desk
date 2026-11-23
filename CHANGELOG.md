@@ -4,6 +4,9 @@ All notable changes to Mission Desk. Versions follow [Semantic Versioning](https
 
 ## Unreleased
 
+### Settings
+- **Calendar is now part of Spaces:** each space's card says whether its Google accounts show in All calendars, and the Google accounts outside spaces have their own card at the end. The separate Calendar section is gone.
+
 ### Assistant
 - **Memory window:** the 🧠 button in the assistant panel (and **Memory…** on a space's menu, and Settings → Assistant) opens that space's memory: search, edit in place, delete (it asks on the line) and add notes. One space at a time.
 - **More than one Claude account:** add a client's Claude account next to yours (Settings → Assistant → Claude accounts) and choose, per space, which one its assistant uses, meetings' follow-ups included. Each account keeps its own sign-in, settings and conversations, and an extra account doesn't load your personal CLAUDE.md, hooks or plugins. A space whose account was removed stops; it never switches to your personal account on its own.

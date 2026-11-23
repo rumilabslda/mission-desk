@@ -7,16 +7,16 @@ import { AccountAvatar } from './AccountAvatar';
 import { AssistantSettings, IntegrationsSettings } from './settings/AssistantSettings';
 import { SkillsSettings } from './settings/SkillsSettings';
 import { MeetingsSettings, meetingsAvailable } from './settings/MeetingsSettings';
+import { CalendarToggles, LooseCalendars } from './settings/CalendarToggles';
 import { SERVICE_LABEL } from './service-glyph';
 import { COMPANY, COPYRIGHT, LICENSE_NAME, SITE, WEBSITE } from '../../shared/about';
 
-type Section = 'general' | 'accounts' | 'spaces' | 'calendar' | 'assistant' | 'skills' | 'meetings' | 'integrations' | 'data' | 'about';
+type Section = 'general' | 'accounts' | 'spaces' | 'assistant' | 'skills' | 'meetings' | 'integrations' | 'data' | 'about';
 
 const SECTIONS: { id: Section; label: MessageKey }[] = [
   { id: 'general', label: 'settings.section.general' },
   { id: 'accounts', label: 'settings.section.accounts' },
   { id: 'spaces', label: 'settings.section.spaces' },
-  { id: 'calendar', label: 'settings.section.calendar' },
   { id: 'integrations', label: 'settings.section.integrations' },
   { id: 'assistant', label: 'settings.section.assistant' },
   { id: 'skills', label: 'settings.section.skills' },
@@ -249,6 +249,7 @@ function SpaceCard({ sp, snap }: { sp: Space; snap: UiSnapshot }): React.JSX.Ele
           hint={t('settings.space.shareGoogleHint')}
         />
       </div>
+      <CalendarToggles accounts={members} hidden={snap.calendarHidden} />
       {googles.length > 1 && (
         <div className="set-grid">
           <span className="set-label">{t('settings.space.googleFrom')}</span>
@@ -288,8 +289,6 @@ export function SettingsView({ snapshot: snap }: { snapshot: UiSnapshot }): Reac
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
-  const google = snap.accounts.filter((a) => a.service === 'google');
-  const hidden = new Set(snap.calendarHidden);
 
   return (
     <div className="settings">
@@ -375,18 +374,7 @@ export function SettingsView({ snapshot: snap }: { snapshot: UiSnapshot }): Reac
             {snap.spaces.map((sp) => (
               <SpaceCard key={sp.id} sp={sp} snap={snap} />
             ))}
-          </>
-        )}
-        {section === 'calendar' && (
-          <>
-            <h2>{t('settings.section.calendar')}</h2>
-            <p className="set-muted">{t('settings.calendar.intro')}</p>
-            {google.length === 0 && <p className="set-muted">{t('settings.calendar.empty')}</p>}
-            <div className="set-card">
-              {google.map((a) => (
-                <Toggle key={a.id} checked={!hidden.has(a.id)} onChange={(v) => window.missiondesk.setCalendarHidden(a.id, !v)} label={a.name} />
-              ))}
-            </div>
+            <LooseCalendars accounts={snap.accounts} hidden={snap.calendarHidden} />
           </>
         )}
         {section === 'assistant' && <AssistantSettings snap={snap} />}

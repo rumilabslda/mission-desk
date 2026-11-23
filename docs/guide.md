@@ -66,7 +66,7 @@ The house at the top of the sidebar (⌘T). Mission Desk opens on Home unless yo
 
 The calendar button at the top of the sidebar (⌘0) shows the events of all your Google accounts together and lets you work with them there. There is nothing to set up: it uses the sign-in each account already has in Mission Desk.
 
-- It shows the calendars you have ticked in each account's Google Calendar. Untick an account in the left panel to hide it from this view only.
+- It shows the calendars you have ticked in each account's Google Calendar. Untick an account in the left panel, or turn off **Show in All calendars** in its space's card (Settings → Spaces), to hide it from this view only.
 - Each account keeps its own colour. If two accounts share one, the calendar gives the second a different colour.
 - **Create:** click an empty time (or drag to choose the length), click an empty day in Month view, or use **+ Create**. Pick the account, add Google Meet, or open **More options** for the calendar, guests, location and description.
 - **Change:** drag an event to move it, drag its bottom edge to change its length (with **Undo**), or open it and edit or delete it. Repeating events ask *This event* or *All events*.

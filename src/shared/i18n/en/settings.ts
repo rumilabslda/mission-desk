@@ -73,6 +73,10 @@ export const settings = {
   // Calendar
   'settings.calendar.intro': "Accounts shown in All calendars (⌘0). It shows the calendars you have ticked in each account's Google Calendar.",
   'settings.calendar.empty': 'Add a Google account to see its calendar.',
+  'settings.calendar.show': 'Show in All calendars',
+  'settings.calendar.showAccount': 'Show {name} in All calendars',
+  'settings.calendar.showHint': "All calendars (⌘0) shows the calendars ticked in the account's Google Calendar.",
+  'settings.calendar.loose': 'Apps outside spaces',
 
   // Data and privacy
   'settings.data.intro': 'Mission Desk has no server and no tracking. It talks only to the services you add (and to Claude, if you connect it).',

@@ -238,4 +238,8 @@ export const settings: Translation<typeof en> = {
   "settings.memory.no": "Nein",
   "settings.memory.full": "Das Gedächtnis ist voll: Lösche eine Notiz, um eine neue hinzuzufügen.",
   "settings.memory.button": "Gedächtnis",
+  "settings.calendar.show": "In „Alle Kalender“ anzeigen",
+  "settings.calendar.showAccount": "{name} in „Alle Kalender“ anzeigen",
+  "settings.calendar.showHint": "Alle Kalender (⌘0) zeigt die Kalender, die im Google Kalender des Kontos ausgewählt sind.",
+  "settings.calendar.loose": "Apps ohne Bereich",
 };
