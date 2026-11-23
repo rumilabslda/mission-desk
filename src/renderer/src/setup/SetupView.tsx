@@ -8,15 +8,26 @@ import {
 } from "react";
 import type { ClaudeStatus } from "../../../shared/assistant";
 import type { AssistantEngine } from "../../../shared/assistant-engines";
+import {
+  BUILTIN,
+  CONNECTION_KINDS,
+  type ConnectionInfo,
+  type ConnectionKind,
+  type ConnectionState,
+} from "../../../shared/connections";
 import { cleanSiteUrl } from "../../../shared/custom-site";
 import {
   appNames,
+  assistantsInPlan,
+  hasMeetingApps,
   planOf,
   setupSteps,
   spaceColours,
   spaceNameProblem,
   type DraftApp,
+  type SetupAssistant,
   type SetupDraft,
+  type SetupPlan,
   type SetupStep,
 } from "../../../shared/setup";
 import type { ServiceId } from "../../../shared/types";
@@ -24,6 +35,12 @@ import { isLocale, LOCALE_NAMES, LOCALES } from "../../../shared/i18n/locales";
 import { locale, rich, t } from "../i18n";
 import { useModal } from "../modal";
 import { ServiceLogo } from "../service-glyph";
+import { meetingsAvailable } from "../settings/MeetingsSettings";
+import {
+  connectionLabel,
+  KIND_NAME,
+  NewConnectionWizard,
+} from "../settings/ConnectionsSettings";
 import "./setup.css";
 
 const SERVICES: {
@@ -59,11 +76,20 @@ const ENGINE_NAME: Record<AssistantEngine, string> = {
 };
 const STAGES = [
   t("setup.stage.welcome"),
-  t("setup.stage.assistant"),
   t("setup.stage.spaces"),
   t("setup.stage.apps"),
+  t("setup.stage.assistant"),
   t("setup.stage.ready"),
 ];
+const STAGE_OF: Record<SetupStep["kind"], number> = {
+  welcome: 0,
+  spaces: 1,
+  apps: 2,
+  assistant: 3,
+  ready: 4,
+};
+/** Meetings are transcribed on macOS only. */
+const isMac = meetingsAvailable(window.missiondesk?.platform ?? "darwin");
 
 let seq = 0;
 const newKey = (): string => `k${++seq}`;
@@ -95,6 +121,8 @@ function draftColours(
 
 const EMPTY_DRAFT: SetupDraft = {
   engine: "claude",
+  connection: "",
+  perSpace: false,
   reads: true,
   together: false,
   spaces: [],
@@ -123,6 +151,16 @@ export function SetupView({
   const [finishing, setFinishing] = useState(false);
   const [error, setError] = useState("");
   const steps = useMemo(() => setupSteps(draft), [draft]);
+  // The assistant connections (Settings → Integrations), looked up once and again after a change.
+  const [conns, setConns] = useState<ConnectionInfo[] | null>(null);
+  const refreshConns = useCallback(async (): Promise<ConnectionInfo[]> => {
+    const l = await window.missiondesk.connectionsInfo().catch(() => []);
+    setConns(l);
+    return l;
+  }, []);
+  useEffect(() => {
+    void refreshConns();
+  }, [refreshConns]);
   const step = steps[Math.min(index, steps.length - 1)];
   const headRef = useRef<HTMLHeadingElement>(null);
 
@@ -231,21 +269,12 @@ export function SetupView({
     return () => window.removeEventListener("keydown", onKey);
   });
 
-  const stage =
-    step.kind === "welcome"
-      ? 0
-      : step.kind === "assistant"
-        ? 1
-        : step.kind === "spaces"
-          ? 2
-          : step.kind === "apps"
-            ? 3
-            : 4;
+  const stage = STAGE_OF[step.kind];
   const appsSteps = steps.filter((s) => s.kind === "apps").length;
   const appsDone =
     step.kind === "apps"
-      ? steps.indexOf(step) - 3 + 1
-      : stage > 3
+      ? steps.indexOf(step) - steps.findIndex((s) => s.kind === "apps") + 1
+      : stage > STAGE_OF.apps
         ? appsSteps
         : 0;
 
@@ -256,7 +285,12 @@ export function SetupView({
       aria-modal="true"
       aria-labelledby="su-title"
     >
-      <DockPreview draft={draft} step={step} existing={existing} />
+      <DockPreview
+        draft={draft}
+        step={step}
+        existing={existing}
+        conns={conns}
+      />
       <section className="su-main">
         <header className="su-top">
           <ol
@@ -275,7 +309,9 @@ export function SetupView({
                 <span
                   className="su-bar"
                   style={
-                    i === 3 && stage === 3 && appsSteps > 1
+                    i === STAGE_OF.apps &&
+                    stage === STAGE_OF.apps &&
+                    appsSteps > 1
                       ? ({
                           "--fill": `${(appsDone / appsSteps) * 100}%`,
                         } as React.CSSProperties)
@@ -306,8 +342,11 @@ export function SetupView({
               {step.kind === "assistant" && (
                 <AssistantStep
                   headRef={headRef}
-                  engine={draft.engine}
-                  onPick={(engine) => update((d) => ({ ...d, engine }))}
+                  draft={draft}
+                  update={update}
+                  existing={existing}
+                  conns={conns}
+                  refresh={refreshConns}
                 />
               )}
               {step.kind === "spaces" && (
@@ -335,7 +374,7 @@ export function SetupView({
                   headRef={headRef}
                   existing={existing}
                   draft={draft}
-                  update={update}
+                  conns={conns}
                   appCount={appCount}
                   error={error}
                 />
@@ -438,6 +477,15 @@ function Welcome({
               <span>{t("setup.welcome.assistantText")}</span>
             </div>
           </li>
+          {isMac && (
+            <li>
+              <Glyph d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM6 11a6 6 0 0 0 12 0M12 17v4M9 21h6" />
+              <div>
+                <strong>{t("setup.welcome.meetingsTitle")}</strong>
+                <span>{t("setup.welcome.meetingsText")}</span>
+              </div>
+            </li>
+          )}
         </ul>
       )}
     </>
@@ -483,45 +531,149 @@ function Glyph({ d }: { d: string }): React.JSX.Element {
 
 /* ───────────── Assistant ───────────── */
 
-const ENGINE_CHOICES: { id: AssistantEngine; name: string; hint: string }[] = [
-  {
-    id: "claude",
-    name: "Claude",
-    hint: t("setup.assistant.claudeHint"),
-  },
-  {
-    id: "codex",
-    name: "OpenAI Codex",
-    hint: t("setup.assistant.codexHint"),
-  },
-  {
-    id: "openrouter",
-    name: "OpenRouter",
-    hint: t("setup.assistant.openrouterHint"),
-  },
-  {
-    id: "off",
+/** One choice on the assistant screen: a connection (or none), as Settings → Integrations names it. */
+type Choice = SetupAssistant & {
+  name: string;
+  hint: string;
+  state?: ConnectionState;
+};
+
+const BUILTIN_HINT: Record<ConnectionKind, string> = {
+  claude: t("setup.assistant.claudeHint"),
+  codex: t("setup.assistant.codexHint"),
+  openrouter: t("setup.assistant.openrouterHint"),
+};
+
+const choiceValue = (a: SetupAssistant): string =>
+  a.engine === "off" ? "off" : `${a.engine}|${a.connection}`;
+const sameChoice = (a: SetupAssistant, b: SetupAssistant): boolean =>
+  choiceValue(a) === choiceValue(b);
+
+/**
+ * Every type's own connection on this Mac first (always there: the setup can install or connect it),
+ * then the connections added in Settings, then none.
+ */
+function choicesOf(conns: ConnectionInfo[] | null): Choice[] {
+  const out: Choice[] = [];
+  for (const kind of CONNECTION_KINDS) {
+    const own = conns?.find((c) => c.id === BUILTIN[kind]);
+    out.push({
+      engine: kind,
+      connection: "",
+      name: connectionLabel(own ?? { kind, name: "", builtin: true }),
+      hint: BUILTIN_HINT[kind],
+      state: own?.state,
+    });
+    for (const c of conns?.filter((x) => x.kind === kind && !x.builtin) ??
+      []) {
+      const state =
+        c.state === "ready"
+          ? ""
+          : c.state === "signed-out"
+            ? kind === "openrouter"
+              ? t("settings.integrations.notConnected")
+              : t("settings.integrations.signedOut")
+            : t("settings.integrations.notInstalled");
+      out.push({
+        engine: kind,
+        connection: c.id,
+        name: connectionLabel(c),
+        hint: [t(KIND_NAME[kind]), c.email, state].filter(Boolean).join(" · "),
+        state: c.state,
+      });
+    }
+  }
+  out.push({
+    engine: "off",
+    connection: "",
     name: t("setup.assistant.offName"),
     hint: t("setup.assistant.offHint"),
-  },
-];
+  });
+  return out;
+}
+
+/** What an assistant is called on the summary ("Claude Acme"), or no assistant. */
+function assistantName(
+  a: SetupAssistant,
+  conns: ConnectionInfo[] | null,
+): string {
+  if (a.engine === "off") return t("setup.ready.noAssistant");
+  return (
+    choicesOf(conns).find((c) => sameChoice(c, a))?.name ??
+    t(KIND_NAME[a.engine])
+  );
+}
 
 function AssistantStep({
   headRef,
-  engine,
-  onPick,
+  draft,
+  update,
+  existing,
+  conns,
+  refresh,
 }: {
   headRef: HeadRef;
-  engine: AssistantEngine;
-  onPick(e: AssistantEngine): void;
+  draft: SetupDraft;
+  update: Update;
+  existing: Existing[];
+  conns: ConnectionInfo[] | null;
+  refresh(): Promise<ConnectionInfo[]>;
 }): React.JSX.Element {
+  const [adding, setAdding] = useState(false);
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
-  const at = ENGINE_CHOICES.findIndex((c) => c.id === engine);
+  const choices = choicesOf(conns);
+  const picked: SetupAssistant = {
+    engine: draft.engine,
+    connection: draft.connection,
+  };
+  const at = Math.max(
+    0,
+    choices.findIndex((c) => sameChoice(c, picked)),
+  );
+  const pick = (a: SetupAssistant): void =>
+    update((d) => ({ ...d, engine: a.engine, connection: a.connection }));
   const move = (delta: number): void => {
-    const i = (at + delta + ENGINE_CHOICES.length) % ENGINE_CHOICES.length;
-    onPick(ENGINE_CHOICES[i].id);
+    const i = (at + delta + choices.length) % choices.length;
+    pick(choices[i]);
     refs.current[i]?.focus();
   };
+  const current = choices[at];
+  const plan = planOf(draft);
+  // Spaces this run creates (one already there keeps the assistant it has).
+  const isExisting = (name: string): boolean =>
+    existing.some(
+      (e) => e.name.trim().toLowerCase() === name.trim().toLowerCase(),
+    );
+  const spaces = draft.together
+    ? []
+    : draft.spaces.filter((s) => s.apps.length > 0);
+  const newSpaces = spaces.filter((s) => !isExisting(s.name));
+  // Back to one new space (or none): the choice per space is gone from the screen, so it no longer applies.
+  const canPerSpace = newSpaces.length > 1;
+  useEffect(() => {
+    if (!canPerSpace && draft.perSpace)
+      update((d) => ({ ...d, perSpace: false }));
+  }, [canPerSpace, draft.perSpace, update]);
+  const setOwn =(key: string, value: string): void =>
+    update((d) => ({
+      ...d,
+      spaces: d.spaces.map((s) => {
+        if (s.key !== key) return s;
+        if (!value) return { ...s, assistant: undefined };
+        const c = choices.find((x) => choiceValue(x) === value);
+        return c
+          ? { ...s, assistant: { engine: c.engine, connection: c.connection } }
+          : s;
+      }),
+    }));
+
+  async function created(): Promise<void> {
+    const before = new Set((conns ?? []).map((c) => c.id));
+    const after = await refresh();
+    const added = after.find((c) => !before.has(c.id) && !c.builtin);
+    if (added) pick({ engine: added.kind, connection: added.id });
+  }
+
   return (
     <>
       <Title headRef={headRef}>{t("setup.assistant.title")}</Title>
@@ -531,34 +683,245 @@ function AssistantStep({
         role="radiogroup"
         aria-label={t("setup.assistant.groupLabel")}
       >
-        {ENGINE_CHOICES.map((c, i) => (
-          <button
-            key={c.id}
-            ref={(el) => {
-              refs.current[i] = el;
-            }}
-            role="radio"
-            aria-checked={engine === c.id}
-            tabIndex={engine === c.id ? 0 : -1}
-            className={`su-choice${engine === c.id ? " on" : ""}${c.id === "off" ? " quiet" : ""}`}
-            onClick={() => onPick(c.id)}
-            onKeyDown={(e) => {
-              if (e.key === "ArrowDown" || e.key === "ArrowRight")
-                (e.preventDefault(), move(1));
-              if (e.key === "ArrowUp" || e.key === "ArrowLeft")
-                (e.preventDefault(), move(-1));
-            }}
-          >
-            <span className="su-radio" aria-hidden="true" />
-            <span className="su-choice-text">
-              <strong>{c.name}</strong>
-              <span>{c.hint}</span>
-            </span>
-          </button>
-        ))}
+        {choices.map((c, i) => {
+          const on = i === at;
+          return (
+            <button
+              key={choiceValue(c)}
+              ref={(el) => {
+                refs.current[i] = el;
+              }}
+              role="radio"
+              aria-checked={on}
+              tabIndex={on ? 0 : -1}
+              className={`su-choice${on ? " on" : ""}${c.engine === "off" ? " quiet" : ""}`}
+              onClick={() => pick(c)}
+              onKeyDown={(e) => {
+                if (e.key === "ArrowDown" || e.key === "ArrowRight")
+                  (e.preventDefault(), move(1));
+                if (e.key === "ArrowUp" || e.key === "ArrowLeft")
+                  (e.preventDefault(), move(-1));
+              }}
+            >
+              <span className="su-radio" aria-hidden="true" />
+              <span className="su-choice-text">
+                <strong>{c.name}</strong>
+                <span>{c.hint}</span>
+              </span>
+            </button>
+          );
+        })}
       </div>
-      {engine !== "off" && <EngineConnect key={engine} engine={engine} />}
+      {current.engine !== "off" &&
+        (current.connection === "" ? (
+          <EngineConnect
+            key={current.engine}
+            engine={current.engine}
+            onChange={() => void refresh()}
+          />
+        ) : (
+          current.state !== "ready" && (
+            <AddedConnect
+              key={current.connection}
+              choice={current}
+              onDone={() => void refresh()}
+            />
+          )
+        ))}
+
+      {adding ? (
+        <div className="su-wizard">
+          <NewConnectionWizard
+            list={conns ?? []}
+            onRefresh={() => void refresh()}
+            onClose={(ok) => {
+              setAdding(false);
+              if (ok) void created();
+            }}
+          />
+        </div>
+      ) : (
+        <button className="su-link su-add" onClick={() => setAdding(true)}>
+          {t("setup.assistant.addAnother")}
+        </button>
+      )}
+
+      {newSpaces.length > 1 && (
+        <label className="su-together">
+          <input
+            type="checkbox"
+            checked={draft.perSpace}
+            onChange={(e) =>
+              update((d) => ({ ...d, perSpace: e.target.checked }))
+            }
+          />
+          <span>
+            <strong>{t("setup.assistant.perSpaceTitle")}</strong>
+            <span>{t("setup.assistant.perSpaceText")}</span>
+          </span>
+        </label>
+      )}
+      {draft.perSpace && newSpaces.length > 1 && (
+        <ul className="su-per-space">
+          {spaces.map((s) => (
+            <li key={s.key}>
+              <span className="su-sum-name">{s.name}</span>
+              {isExisting(s.name) ? (
+                <span className="su-fine su-tight">
+                  {t("setup.ready.keepsAssistant")}
+                </span>
+              ) : (
+                <select
+                  className="su-select"
+                  aria-label={t("setup.assistant.spaceLabel", {
+                    name: s.name,
+                  })}
+                  value={s.assistant ? choiceValue(s.assistant) : ""}
+                  onChange={(e) => setOwn(s.key, e.target.value)}
+                >
+                  <option value="">
+                    {t("setup.assistant.sameAsAbove", { name: current.name })}
+                  </option>
+                  {choices.map((c) => (
+                    <option key={choiceValue(c)} value={choiceValue(c)}>
+                      {c.engine === "off" ? t("setup.ready.noAssistant") : c.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {assistantsInPlan(plan) && (
+        <>
+          {isMac && hasMeetingApps(draft) && (
+            <p className="su-fine">{t("setup.assistant.meetings")}</p>
+          )}
+          <label className="su-together">
+            <input
+              type="checkbox"
+              checked={draft.reads}
+              onChange={(e) =>
+                update((d) => ({ ...d, reads: e.target.checked }))
+              }
+            />
+            <span>
+              <strong>{t("setup.assistant.readsTitle")}</strong>
+              <span>{t("setup.ready.readsText")}</span>
+            </span>
+          </label>
+        </>
+      )}
     </>
+  );
+}
+
+/** An added connection that isn't ready: sign in again (the browser), or a new OpenRouter key. */
+function AddedConnect({
+  choice,
+  onDone,
+}: {
+  choice: Choice;
+  onDone(): void;
+}): React.JSX.Element {
+  const md = window.missiondesk;
+  const [busy, setBusy] = useState(false);
+  const [key, setKey] = useState("");
+  const [error, setError] = useState("");
+  const live = useRef(true);
+  const busyRef = useRef(false);
+  busyRef.current = busy;
+  // Leaving the screen while the browser sign-in waits stops it.
+  useEffect(
+    () => () => {
+      live.current = false;
+      if (busyRef.current) md.connectionCancel();
+    },
+    [md],
+  );
+  async function signIn(k?: string): Promise<void> {
+    setBusy(true);
+    setError("");
+    const r = await md.connectionSignIn(choice.connection, k);
+    if (!live.current) return;
+    setBusy(false);
+    if (r.ok) onDone();
+    else setError(r.error);
+  }
+  if (choice.state === "not-installed")
+    return (
+      <div className="su-connect">
+        <p className="su-state">
+          {choice.engine === "claude"
+            ? t("setup.engine.installClaude")
+            : t("setup.engine.installCodex")}
+        </p>
+        <div className="su-cmd">
+          <code>{INSTALL[choice.engine]}</code>
+        </div>
+        <button className="su-link" onClick={onDone}>
+          {t("setup.engine.installedIt")}
+        </button>
+      </div>
+    );
+  return (
+    <div className="su-connect" aria-live="polite">
+      {choice.engine === "openrouter" ? (
+        <>
+          <label className="su-label" htmlFor="su-key">
+            {t("setup.engine.keyLabel")}
+          </label>
+          <div className="su-row">
+            <input
+              id="su-key"
+              className="su-input"
+              type="password"
+              placeholder="sk-or-v1-…"
+              value={key}
+              autoComplete="off"
+              spellCheck={false}
+              onChange={(e) => (setKey(e.target.value), setError(""))}
+              onKeyDown={(e) => {
+                if (
+                  e.key === "Enter" &&
+                  !e.nativeEvent.isComposing &&
+                  key.trim() &&
+                  !busy
+                )
+                  (e.preventDefault(), void signIn(key.trim()));
+              }}
+            />
+            <button
+              className="su-btn"
+              disabled={!key.trim() || busy}
+              onClick={() => void signIn(key.trim())}
+            >
+              {busy ? t("setup.engine.checkingKey") : t("setup.engine.connect")}
+            </button>
+          </div>
+        </>
+      ) : busy ? (
+        <p className="su-state">
+          <span className="su-spin" aria-hidden="true" />{" "}
+          {t("setup.engine.finishInBrowser")}{" "}
+          <button className="su-link" onClick={() => md.connectionCancel()}>
+            {t("common.cancel")}
+          </button>
+        </p>
+      ) : (
+        <div className="su-row spread">
+          <p className="su-state">
+            {t("setup.assistant.signInAgain", { name: choice.name })}
+          </p>
+          <button className="su-btn" onClick={() => void signIn()}>
+            {t("setup.engine.signIn")}
+          </button>
+        </div>
+      )}
+      {error && <p className="su-error">{error}</p>}
+    </div>
   );
 }
 
@@ -570,8 +933,11 @@ const INSTALL: Partial<Record<AssistantEngine, string>> = {
 /** Connect the chosen assistant right here (or later, in Settings → Integrations). */
 function EngineConnect({
   engine,
+  onChange,
 }: {
   engine: AssistantEngine;
+  /** Its state changed (signed in, key saved, installed): the choices' labels follow. */
+  onChange?(): void;
 }): React.JSX.Element {
   const [status, setStatus] = useState<ClaudeStatus | null>(null);
   const [waiting, setWaiting] = useState(false);
@@ -586,6 +952,9 @@ function EngineConnect({
     },
     [],
   );
+  // The latest callback, without making `check` change (and look again) on every render.
+  const changed = useRef(onChange);
+  changed.current = onChange;
 
   const check = useCallback(() => {
     setStatus(null);
@@ -601,7 +970,11 @@ function EngineConnect({
                 }) as ClaudeStatus,
             );
     void p
-      .then((s) => live.current && setStatus(s))
+      .then((s) => {
+        if (!live.current) return;
+        setStatus(s);
+        changed.current?.();
+      })
       .catch(() => live.current && setStatus({ state: "signed-out" }));
   }, [engine]);
   useEffect(check, [check]);
@@ -641,6 +1014,7 @@ function EngineConnect({
     if (!live.current) return;
     setWaiting(false);
     setStatus(st);
+    changed.current?.();
   }
 
   async function connect(): Promise<void> {
@@ -654,6 +1028,7 @@ function EngineConnect({
     if (r.connected) {
       setKey("");
       setStatus({ state: "ready" });
+      changed.current?.();
     } else setError(r.error ?? t("setup.engine.keyRefused"));
   }
 
@@ -1197,14 +1572,14 @@ function ReadyStep({
   headRef,
   existing,
   draft,
-  update,
+  conns,
   appCount,
   error,
 }: {
   headRef: HeadRef;
   existing: Existing[];
   draft: SetupDraft;
-  update: Update;
+  conns: ConnectionInfo[] | null;
   appCount: number;
   error: string;
 }): React.JSX.Element {
@@ -1213,11 +1588,23 @@ function ReadyStep({
     plan.spaces.map((s) => s.name),
     existing,
   );
-  const groups = draft.together
+  const groups: {
+    name: string;
+    apps: SetupPlan["apps"];
+    color: string;
+    assistant?: SetupAssistant;
+  }[] = draft.together
     ? [{ name: "", apps: plan.apps, color: "" }]
     : plan.spaces.map((s, i) => ({ ...s, color: cols[i] }));
   const first = groups.find((g) => g.apps.length)?.apps[0];
-  const name = ENGINE_NAME[draft.engine];
+  const isExisting = (name: string): boolean =>
+    !!name &&
+    existing.some((e) => e.name.trim().toLowerCase() === name.toLowerCase());
+  // Each place's assistant, as it will be (a space already there keeps its own).
+  const assistantOf = (g: (typeof groups)[number]): string =>
+    isExisting(g.name)
+      ? t("setup.ready.keepsAssistant")
+      : assistantName(g.assistant ?? plan, conns);
 
   if (appCount === 0)
     return (
@@ -1251,9 +1638,9 @@ function ReadyStep({
                 <span className="su-dot" style={{ background: g.color }} />
                 <span>
                   {g.name}
-                  {existing.some(
-                    (e) => e.name.trim().toLowerCase() === g.name.toLowerCase(),
-                  ) && <small>{t("setup.ready.alreadyThere")}</small>}
+                  {isExisting(g.name) && (
+                    <small>{t("setup.ready.alreadyThere")}</small>
+                  )}
                 </span>
               </span>
             )}
@@ -1265,23 +1652,14 @@ function ReadyStep({
                 </span>
               ))}
             </span>
+            <span className="su-sum-ai">
+              {(g.assistant ?? plan).engine !== "off" &&
+                !isExisting(g.name) && <span aria-hidden="true">✦ </span>}
+              {assistantOf(g)}
+            </span>
           </div>
         ))}
       </div>
-
-      {draft.engine !== "off" && (
-        <label className="su-together">
-          <input
-            type="checkbox"
-            checked={draft.reads}
-            onChange={(e) => update((d) => ({ ...d, reads: e.target.checked }))}
-          />
-          <span>
-            <strong>{t("setup.ready.readsTitle", { name })}</strong>
-            <span>{t("setup.ready.readsText")}</span>
-          </span>
-        </label>
-      )}
       {error && <p className="su-error">{error}</p>}
     </>
   );
@@ -1300,10 +1678,12 @@ function DockPreview({
   draft,
   step,
   existing,
+  conns,
 }: {
   draft: SetupDraft;
   step: SetupStep;
   existing: Existing[];
+  conns: ConnectionInfo[] | null;
 }): React.JSX.Element {
   const example = step.kind === "welcome";
   // On the last step, exactly what gets created (a space left empty is grey: it won't be).
@@ -1381,8 +1761,14 @@ function DockPreview({
             </p>
           )}
         </div>
-        {draft.engine !== "off" && !example && (
-          <div className="su-dock-fab" title={ENGINE_NAME[draft.engine]}>
+        {assistantsInPlan(planOf(draft)) && !example && (
+          <div
+            className="su-dock-fab"
+            title={assistantName(
+              { engine: draft.engine, connection: draft.connection },
+              conns,
+            )}
+          >
             ✦
           </div>
         )}

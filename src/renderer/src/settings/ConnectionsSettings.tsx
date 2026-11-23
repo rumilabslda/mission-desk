@@ -179,7 +179,7 @@ function ConnectionRow({ c, onChanged }: { c: ConnectionInfo; onChanged(): void 
 }
 
 /** + New connection: type → name → connect. Nothing is kept unless it connects. */
-function NewConnectionWizard({ list, onRefresh, onClose }: { list: ConnectionInfo[]; onRefresh(): void; onClose(created: boolean): void }): React.JSX.Element {
+export function NewConnectionWizard({ list, onRefresh, onClose }: { list: ConnectionInfo[]; onRefresh(): void; onClose(created: boolean): void }): React.JSX.Element {
   const md = window.missiondesk;
   const [kind, setKind] = useState<ConnectionKind | null>(null);
   const [name, setName] = useState('');

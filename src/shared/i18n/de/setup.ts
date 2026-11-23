@@ -56,6 +56,8 @@ export const setup: Translation<typeof en> = {
   'setup.welcome.homeText': 'Deine Meetings, Aufgaben und ungelesenen Nachrichten – und mit einem Klick in den Call.',
   'setup.welcome.assistantTitle': 'Ein Assistent, der in seinem Bereich bleibt',
   'setup.welcome.assistantText': 'Er liest nur die Apps, die du mit ihm teilst, und nur in diesem Bereich.',
+  'setup.welcome.meetingsTitle': 'Meetings auf Ihrem Mac transkribiert',
+  'setup.welcome.meetingsText': 'In Meet, Teams und Zoom, mit Zusammenfassung und Ihren Aufgaben am Ende. Der Ton verlässt Ihren Mac nie.',
 
   // Assistant
   'setup.assistant.title': 'Möchtest du einen Assistenten?',
@@ -67,6 +69,14 @@ export const setup: Translation<typeof en> = {
   'setup.assistant.openrouterHint': 'GPT, Gemini, Llama und mehr, mit deinem eigenen OpenRouter-Schlüssel.',
   'setup.assistant.offName': 'Jetzt nicht',
   'setup.assistant.offHint': 'Du kannst später in den Einstellungen einen hinzufügen.',
+  'setup.assistant.addAnother': '+ Weiteres Konto hinzufügen',
+  'setup.assistant.perSpaceTitle': 'Für jeden Bereich einen Assistenten wählen',
+  'setup.assistant.perSpaceText': 'Zum Beispiel ein anderes Claude-Konto für die Arbeit. Ein Bereich, den Sie so lassen, nutzt den oben.',
+  'setup.assistant.spaceLabel': 'Assistent von {name}',
+  'setup.assistant.sameAsAbove': 'Wie oben ({name})',
+  'setup.assistant.meetings': 'Ihre Apps haben Anrufe: Nach einem Meeting kann der Assistent des Bereichs die Zusammenfassung und Ihre Aufgaben schreiben.',
+  'setup.assistant.readsTitle': 'Den Assistenten diese Apps lesen lassen',
+  'setup.assistant.signInAgain': '{name} ist nicht angemeldet.',
 
   // Connecting the assistant
   'setup.engine.checking': '{name} wird geprüft …',
@@ -138,7 +148,8 @@ export const setup: Translation<typeof en> = {
   'setup.ready.ledeSpaces':
     'Mission Desk fügt deine {count} Apps in {spaces} Bereichen hinzu und öffnet zuerst {first}. Melde dich bei jeder einmal an; sie bleibt auf diesem Mac angemeldet.',
   'setup.ready.alreadyThere': 'Schon vorhanden: wird ergänzt',
-  'setup.ready.readsTitle': '{name} diese Apps lesen lassen',
+  'setup.ready.noAssistant': 'Kein Assistent',
+  'setup.ready.keepsAssistant': 'Behält seinen Assistenten',
   'setup.ready.readsText':
     'Damit er dir einen Überblick geben und herausfinden kann, wer auf dich wartet. Er kann darin weder tippen, klicken noch senden. Du kannst das in den Einstellungen für jede App ändern.',
 

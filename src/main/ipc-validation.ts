@@ -1,5 +1,6 @@
 import { isEngineId, isMeetingAction, isMeetingLocale, isMeetingMode, MAX_NOTICE, MEETING_ACTIONS, type MeetingGlobalSettings, RETENTION_DAYS, type SpaceMeetingSettings } from '../shared/meeting';
-import { appNames, type SetupApp, type SetupPlan } from '../shared/setup';
+import { appNames, type SetupApp, type SetupAssistant, type SetupPlan } from '../shared/setup';
+import { isBuiltinId, isConnectionRef } from '../shared/connections';
 import { isEngine } from '../shared/assistant-engines';
 import { cleanSiteUrl } from '../shared/custom-site';
 import type { NewAccountInput } from '../shared/ipc';
@@ -236,8 +237,18 @@ const MAX_SETUP_APPS = 240; // 20 spaces of 12: what the setup screens allow
 export function parseSetupPlan(v: unknown): SetupPlan | null {
   if (typeof v !== 'object' || v === null) return null;
   const p = v as Record<string, unknown>;
-  if (!isEngine(p.engine) || !Array.isArray(p.spaces) || !Array.isArray(p.apps)) return null;
+  if (!Array.isArray(p.spaces) || !Array.isArray(p.apps)) return null;
   if (p.spaces.length > MAX_SETUP_SPACES) return null;
+  // An assistant: a known type and a connection id ('' and a built-in's id both mean the type's built-in).
+  const assistant = (engine: unknown, connection: unknown): SetupAssistant | null => {
+    if (!isEngine(engine)) return null;
+    if (engine === 'off') return { engine, connection: '' }; // no assistant: no connection
+    if (!isConnectionRef(connection ?? '')) return null;
+    const ref = (connection ?? '') as string;
+    return { engine, connection: isBuiltinId(ref) ? '' : ref };
+  };
+  const main = assistant(p.engine, p.connection);
+  if (!main) return null;
   const apps = (list: unknown): SetupApp[] | null => {
     if (!Array.isArray(list) || list.length > 12) return null;
     const raw: { service: ServiceId; url?: string }[] = [];
@@ -259,10 +270,16 @@ export function parseSetupPlan(v: unknown): SetupPlan | null {
     const name = cleanSpaceName(x?.name);
     const list = apps(x?.apps);
     if (!name || !list) return null;
-    if (list.length) spaces.push({ name, apps: list }); // a space holds apps
+    let own: SetupAssistant | undefined;
+    if (x.assistant !== undefined) {
+      const a = x.assistant as Record<string, unknown> | null;
+      own = (typeof a === 'object' && a !== null && assistant(a.engine, a.connection)) || undefined;
+      if (!own) return null;
+    }
+    if (list.length) spaces.push({ name, apps: list, ...(own ? { assistant: own } : {}) }); // a space holds apps
   }
   const loose = apps(p.apps);
   if (!loose) return null;
   if (spaces.reduce((n, s) => n + s.apps.length, loose.length) > MAX_SETUP_APPS) return null;
-  return { engine: p.engine, assistantReads: p.assistantReads === true, spaces, apps: loose };
+  return { ...main, assistantReads: p.assistantReads === true, spaces, apps: loose };
 }

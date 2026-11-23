@@ -56,6 +56,8 @@ export const setup: Translation<typeof en> = {
   'setup.welcome.homeText': 'Vos réunions, vos tâches et vos messages non lus, et un clic pour rejoindre un appel.',
   'setup.welcome.assistantTitle': 'Un assistant qui reste dans son espace',
   'setup.welcome.assistantText': 'Il ne lit que les apps que vous partagez avec lui, et uniquement dans cet espace.',
+  'setup.welcome.meetingsTitle': 'Réunions transcrites sur votre Mac',
+  'setup.welcome.meetingsText': 'Dans Meet, Teams et Zoom, avec le résumé et vos tâches à la fin. L’audio ne quitte jamais votre Mac.',
 
   // Assistant
   'setup.assistant.title': 'Voulez-vous un assistant ?',
@@ -67,6 +69,14 @@ export const setup: Translation<typeof en> = {
   'setup.assistant.openrouterHint': 'GPT, Gemini, Llama et bien d’autres, avec votre propre clé OpenRouter.',
   'setup.assistant.offName': 'Pas maintenant',
   'setup.assistant.offHint': 'Vous pourrez en ajouter un plus tard dans Réglages.',
+  'setup.assistant.addAnother': '+ Ajouter un autre compte',
+  'setup.assistant.perSpaceTitle': 'Choisir un assistant pour chaque espace',
+  'setup.assistant.perSpaceText': 'Par exemple un autre compte Claude pour le travail. Un espace laissé tel quel utilise celui du dessus.',
+  'setup.assistant.spaceLabel': 'Assistant de {name}',
+  'setup.assistant.sameAsAbove': 'Comme au-dessus ({name})',
+  'setup.assistant.meetings': 'Vos apps ont des appels : à la fin d’une réunion, l’assistant de l’espace peut en écrire le résumé et vos tâches.',
+  'setup.assistant.readsTitle': 'Autoriser l’assistant à lire ces apps',
+  'setup.assistant.signInAgain': '{name} n’est pas connecté.',
 
   // Connecting the assistant
   'setup.engine.checking': 'Vérification de {name}…',
@@ -138,7 +148,8 @@ export const setup: Translation<typeof en> = {
   'setup.ready.ledeSpaces':
     'Mission Desk ajoute vos {count} apps dans {spaces} espaces et ouvre {first} en premier. Connectez-vous une fois à chacune ; la session reste ouverte sur ce Mac.',
   'setup.ready.alreadyThere': 'Existe déjà : sera complété',
-  'setup.ready.readsTitle': 'Autoriser {name} à lire ces apps',
+  'setup.ready.noAssistant': 'Sans assistant',
+  'setup.ready.keepsAssistant': 'Garde son assistant',
   'setup.ready.readsText':
     'Pour qu’il puisse vous faire le point et repérer qui attend une réponse de votre part. Il ne peut ni saisir, ni cliquer, ni envoyer quoi que ce soit dans ces apps. Vous pouvez modifier cela pour chaque app dans Réglages.',
 

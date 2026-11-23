@@ -5,6 +5,13 @@ Run with your real accounts before adopting a new version. Tick each line.
 ## First-run setup
 - [ ] With no accounts, the setup's first screen shows **Language** set to the Mac's. Pick another: the whole app switches and the setup opens again on that screen, in the new language.
 - [ ] Pick the Mac's language again: Settings → General → Language shows "Same as the Mac".
+- [ ] On a Mac, the first screen also lists **Meetings transcribed on your Mac**.
+- [ ] The steps go Welcome → Spaces → Apps → **Assistant** → Ready. The assistant screen lists Claude Code (this Mac), Codex (this Mac), OpenRouter, every connection added in Settings → Integrations, and **Not now**.
+- [ ] With two or more new spaces, **Choose an assistant for each space** shows one list per space ("Same as above", any connection, "No assistant"). Ready shows each space's assistant next to its apps.
+- [ ] **+ Add another account** opens the same wizard as Settings → Integrations; once connected, the new connection is selected.
+- [ ] After finishing, Settings → Assistant shows each space on the connection chosen; a space with "No assistant" is Off and its apps aren't shared with the assistant.
+- [ ] With an app with calls (Google, Microsoft 365, Zoom), the assistant screen says the space's assistant can sum up its meetings.
+- [ ] Run the setup again (Settings → General) and choose **Not now** with a new space: the spaces you already had keep their assistant.
 
 ## Sign-in and isolation
 - [ ] Add two different Google accounts. Both sign in (with 2FA) without "This browser or app may not be secure".
