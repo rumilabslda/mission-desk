@@ -108,6 +108,9 @@ export function expandCommand(input: string): string {
 /** Is the user's Claude Code ready for the assistant (setup steps)? */
 export type ClaudeStatus = { state: 'not-installed' } | { state: 'signed-out' | 'ready'; version?: string };
 
+/** How many notes one scope's memory holds. */
+export const MAX_MEMORY_NOTES = 40;
+
 /** A note the assistant keeps for one scope (a space, "No space" or "All spaces"), never shown to another. */
 export interface MemoryNote {
   id: string;

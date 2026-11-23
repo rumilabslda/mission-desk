@@ -175,4 +175,5 @@ export const main: Translation<typeof en> = {
   'main.about.credits': '{site}\n{license}. Gratis en open source.',
   'main.about.licenseSummary':
     'Gratis en open source. Iedereen, zowel mensen als bedrijven, mag het voor alles gebruiken, ook voor werk, en het aanpassen en delen. Wie Mission Desk of een aangepaste versie deelt, moet de broncode onder dezelfde licentie delen, zodat het nooit een gesloten product kan worden.',
+  "main.space.memory": "Geheugen…",
 };

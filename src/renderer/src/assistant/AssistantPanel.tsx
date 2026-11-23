@@ -310,6 +310,9 @@ export function AssistantPanel({
         ) : (
           <span className="as-scope-name">{t('assistant.title')}</span>
         )}
+        <button className="as-icon" title={t('assistant.panel.memory')} aria-label={t('assistant.panel.memory')} onClick={() => window.missiondesk.openMemory(a.scope)}>
+          🧠
+        </button>
         <button className={`as-icon${showHistory ? ' on' : ''}`} title={t('assistant.panel.history')} aria-label={t('assistant.panel.history')} onClick={() => setShowHistory((v) => !v)}>
           ⏱
         </button>

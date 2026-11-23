@@ -148,4 +148,5 @@ export const assistant: Translation<typeof en> = {
   'assistant.openRouter.unreachable': 'OpenRouter ist nicht erreichbar. Prüfe die Verbindung.',
   'assistant.keychainUnavailable': 'Der macOS-Schlüsselbund ist nicht verfügbar, daher wurde der Schlüssel nicht gesichert.',
   "assistant.error.claudeAccountMissing": "Das Claude-Konto dieses Bereichs wurde entfernt. Wähle sein Claude-Konto unter Einstellungen → Assistent.",
+  "assistant.panel.memory": "Gedächtnis: was der Assistent dieses Bereichs weiß",
 };

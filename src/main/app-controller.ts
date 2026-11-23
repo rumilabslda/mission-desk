@@ -210,6 +210,8 @@ export interface AppController {
   ungroupSpace(id: string): void;
   setWeekStart(v: 0 | 1 | 'auto'): void;
   setSpaceMeetings(scope: string, s: SpaceMeetingSettings): void;
+  /** Brings the main window up with that scope's memory. */
+  openMemory(scope: string): void;
   /** Who is signed in to this Mac's Claude Code and to each added account. */
   claudeAccountsInfo(): Promise<{ mac: { loggedIn: boolean; email?: string; org?: string; plan?: string } | null; accounts: (ClaudeAccount & { loggedIn: boolean })[] }>;
   /** Adds an account and runs its sign-in (the browser opens); a failed sign-in leaves nothing. */
@@ -3025,6 +3027,14 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
         });
     },
 
+    openMemory(scope) {
+      if (win.isDestroyed()) return;
+      if (win.isMinimized()) win.restore();
+      win.show();
+      win.focus();
+      win.webContents.send(IPC.memoryOpened, scope);
+    },
+
     setSpaceMeetings(scope, s) {
       store.setSpaceMeetings(scope, s);
       push();
@@ -3204,6 +3214,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       Menu.buildFromTemplate([
         { label: t('main.menu.copyMeetLink'), enabled: googleMembers.length > 0, click: () => void controller.copyMeetingLink({ spaceId: id }) },
         { type: 'separator' },
+        { label: t('main.space.memory'), click: () => controller.openMemory(`space:${id}`) },
         { label: t('main.space.rename'), click: () => win.webContents.send(IPC.spaceNameRequest, { mode: 'rename', spaceId: id, name: sp.name }) },
         {
           label: t('main.space.alwaysOpen'),

@@ -4,7 +4,6 @@ import { ASSISTANT_EFFORTS, ASSISTANT_MODELS, type AssistantEffort, type Assista
 import { type AssistantEngine, ENGINES } from '../../../shared/assistant-engines';
 import type { AccountView, UiSnapshot } from '../../../shared/ipc';
 import type { Account } from '../../../shared/types';
-import type { MemoryNote } from '../../../shared/assistant';
 import { ClaudeConnectPanel } from '../ConnectClaudeDialog';
 import { type MessageKey, rich, t } from '../i18n';
 
@@ -33,71 +32,13 @@ function accountsOf(snap: UiSnapshot, scope: string): AccountView[] {
 type Ready = Partial<Record<AssistantEngine, boolean>>;
 
 /** One scope's notes: only its own assistant sees them. Click a note to change it. */
-function MemoryList({ scope, notes, isAll }: { scope: string; notes: MemoryNote[]; isAll: boolean }): React.JSX.Element {
-  const [draft, setDraft] = useState('');
-  const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
-  const add = (): void => {
-    const text = draft.trim();
-    if (!text) return;
-    window.missiondesk.assistantMemoryAdd(scope, text);
-    setDraft('');
-  };
-  const saveEdit = (): void => {
-    if (!editing) return;
-    const text = editing.text.trim();
-    if (text) window.missiondesk.assistantMemoryUpdate(scope, editing.id, text);
-    setEditing(null);
-  };
+/** Opens the scope's memory (the same window as the assistant's 🧠 button). */
+function MemoryButton({ scope, count }: { scope: string; count: number }): React.JSX.Element {
   return (
     <div className="asg-memory">
-      <div className="asg-memory-head">
-        <span>{t('settings.memory.title')}</span>
-        <span className="set-muted">
-          {isAll ? t('settings.memory.allHint') : t('settings.memory.spaceHint')}
-        </span>
-      </div>
-      {notes.length > 0 && (
-        <ul>
-          {notes.map((n) => (
-            <li key={n.id}>
-              {editing?.id === n.id ? (
-                <input
-                  className="set-input"
-                  autoFocus
-                  maxLength={300}
-                  value={editing.text}
-                  onChange={(e) => setEditing({ id: n.id, text: e.target.value })}
-                  onBlur={saveEdit}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') saveEdit();
-                    if (e.key === 'Escape') setEditing(null);
-                  }}
-                />
-              ) : (
-                <button className="asg-note" title={t('settings.memory.change')} onClick={() => setEditing({ id: n.id, text: n.text })}>
-                  {n.text}
-                </button>
-              )}
-              <button className="asg-note-remove" aria-label={t('settings.memory.forgetLabel', { note: n.text })} title={t('settings.memory.forget')} onClick={() => window.missiondesk.assistantMemoryRemove(scope, n.id)}>
-                ×
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="asg-key">
-        <input
-          className="set-input"
-          placeholder={notes.length ? t('settings.memory.addPlaceholder') : t('settings.memory.addPlaceholderExample')}
-          maxLength={300}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && add()}
-        />
-        <button className="set-action" disabled={!draft.trim() || notes.length >= 40} onClick={add}>
-          {t('common.add')}
-        </button>
-      </div>
+      <button type="button" className="set-action" onClick={() => window.missiondesk.openMemory(scope)}>
+        🧠 {t('settings.memory.open', { count })}
+      </button>
     </div>
   );
 }
@@ -230,7 +171,7 @@ function ScopeCard({ snap, scope, name, ready, orModels }: { snap: UiSnapshot; s
             ))}
           </ul>
         ))}
-      {c.engine !== 'off' && <MemoryList scope={scope} notes={snap.assistant.memory[scope] ?? []} isAll={scope === 'all'} />}
+      {c.engine !== 'off' && <MemoryButton scope={scope} count={(snap.assistant.memory[scope] ?? []).length} />}
     </div>
   );
 }

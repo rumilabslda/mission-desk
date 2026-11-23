@@ -226,6 +226,9 @@ export interface UiApi {
   assistantSetScope(scope: string): void;
   setAssistantMode(mode: AssistantMode): void;
   setAssistantScopeConfig(scope: string, patch: Partial<ScopeConfig>): void;
+  /** Shows a scope's memory in the main window (from the panel, a space's menu or Settings). */
+  openMemory(scope: string): void;
+  onOpenMemory(cb: (scope: string) => void): () => void;
   assistantMemoryAdd(scope: string, text: string): void;
   assistantMemoryUpdate(scope: string, id: string, text: string): void;
   assistantMemoryRemove(scope: string, id: string): void;
@@ -425,6 +428,8 @@ export const IPC = {
   assistantOpenConversation: 'ui:assistant-open-conversation',
   assistantDeleteConversation: 'ui:assistant-delete-conversation',
   assistantSetScope: 'ui:assistant-set-scope',
+  openMemory: 'ui:open-memory',
+  memoryOpened: 'ui:memory-opened',
   setAssistantMode: 'ui:set-assistant-mode',
   setAssistantScopeConfig: 'ui:set-assistant-scope-config',
   assistantMemoryAdd: 'ui:assistant-memory-add',

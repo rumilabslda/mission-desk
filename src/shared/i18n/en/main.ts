@@ -175,4 +175,5 @@ export const main = {
   'main.about.credits': '{site}\n{license}. Free and open source.',
   'main.about.licenseSummary':
     'Free and open source. Anyone, people and companies alike, may use it for anything, including work, and change and share it. Whoever shares Mission Desk or a changed version must share its source code under the same license, so it can never become a closed product.',
+  'main.space.memory': 'Memory…',
 } satisfies Record<string, Msg>;

@@ -117,6 +117,10 @@ Safety:
 - **Local only:** a private socket in Mission Desk's data folder (a private named pipe on Windows). There is no network port.
 - **Page content is marked untrusted** for Claude. `open_url` only opens pages of the app's own service. `claude-activity.log` records tool calls, never page text or typed text.
 
+### Memory
+
+Each space's assistant has its own memory: short notes about the client, the people and how you like to work, read at the start of every chat. The assistant offers to save a note (you confirm), a meeting's follow-up can propose some, and you can write your own. Open a space's memory with the 🧠 button in the assistant panel, **Memory…** on the space's right-click menu, or Settings → Assistant: search, click a note to edit it, 🗑 to delete it, or add one at the bottom (40 per space). Only that space's assistant ever sees them.
+
 ### More than one Claude account
 
 If a client gives you a Claude account to use for their work, add it in **Settings → Assistant → Claude accounts** (**Add a Claude account**, give it a name, then sign in in the browser that opens). Each space's card then has a **Claude account** choice: this Mac's own Claude Code, or one you added. Everything that space's assistant does (chats, meeting follow-ups) uses that account. Each account keeps its own sign-in, settings and conversations, apart from the others; an added account doesn't load your personal CLAUDE.md, hooks or plugins. Removing an account signs it out on this Mac and deletes its conversations; spaces that used it stop until you choose another account (they never fall back to your personal one).

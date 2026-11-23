@@ -148,4 +148,5 @@ export const assistant: Translation<typeof en> = {
   'assistant.openRouter.unreachable': 'Não foi possível contactar o OpenRouter. Verifique a ligação.',
   'assistant.keychainUnavailable': 'O Porta-chaves do macOS não está disponível, por isso a chave não foi guardada.',
   "assistant.error.claudeAccountMissing": "A conta Claude deste espaço foi removida. Escolha a conta Claude dele em Definições → Assistente.",
+  "assistant.panel.memory": "Memória: o que o assistente deste espaço sabe",
 };

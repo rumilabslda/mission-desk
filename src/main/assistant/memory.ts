@@ -1,3 +1,4 @@
+import { MAX_MEMORY_NOTES } from '../../shared/assistant';
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -11,7 +12,7 @@ import { isScopeKey } from '../../shared/assistant-scope';
 import type { MemoryNote } from '../../shared/assistant';
 export type { MemoryNote };
 
-export const MAX_NOTES = 40;
+export const MAX_NOTES = MAX_MEMORY_NOTES;
 export const MAX_NOTE = 300;
 
 const isNote = (v: unknown): v is MemoryNote => {

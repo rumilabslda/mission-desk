@@ -175,4 +175,5 @@ export const main: Translation<typeof en> = {
   'main.about.credits': '{site}\n{license}. Kostenlos und Open Source.',
   'main.about.licenseSummary':
     'Kostenlos und Open Source. Alle, Privatpersonen wie Unternehmen, dürfen es für alles nutzen, auch für die Arbeit, und es verändern und weitergeben. Wer Mission Desk oder eine veränderte Version weitergibt, muss den Quellcode unter derselben Lizenz weitergeben, damit es nie zu einem geschlossenen Produkt werden kann.',
+  "main.space.memory": "Gedächtnis …",
 };
