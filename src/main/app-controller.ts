@@ -24,6 +24,8 @@ import { DEFAULT_ACTIONS, type EngineId, type EngineStatus, type Meeting, type M
 import { type LanguageSetting, type Locale, type MessageKey, resolveLocale, setLocale, t } from '../shared/i18n';
 import { updateMode } from '../shared/updates';
 import { addMessage, closeMessage, type Feed, messageViews, removeMessage, trimToUnread } from '../shared/messages';
+import { gmailOpenCode, mailKey, mailLines, mergeMail } from './mail/gmail-feed';
+import { createGmailMail } from './mail/gmail-mail';
 import { createOpenRouterSession } from './assistant/openrouter-session';
 import { type InProcessTools, inProcessTools } from './assistant/inprocess-tools';
 import { checkOpenRouterKey, type OpenRouterModel, toolModels } from './assistant/openrouter-account';
@@ -551,6 +553,33 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
   let messages: Feed = [];
   const lastUnread = new Map<string, UnreadCount>();
   const notified = new Set<string>();
+  // Each Google account's unread Inbox mail, read from Gmail's feed so Home shows every email even
+  // with Gmail's notifications off (memory only). Dismissed lines stay hidden until read or reopened.
+  const mailDismissed = new Set<string>();
+  const gmail = createGmailMail({
+    async fetch(accountId, url) {
+      const res = await accountSession(accountId, 'google').fetch(url, { credentials: 'include', cache: 'no-store', signal: AbortSignal.timeout(15_000) });
+      return { status: res.status, text: () => res.text() };
+    },
+    onChange: () => pushSoon(),
+    unread: (accountId) => unread.get(accountId),
+  });
+  const mailAccounts = () => store.state().accounts.filter((a) => a.service === 'google' && !a.muted);
+  function mailChanged(accountId: string): void {
+    if (unread.get(accountId) === 0) gmail.forget(accountId);
+    else void gmail.refresh(accountId);
+  }
+  // Read elsewhere with the count unchanged (one read, one new) is rare; a slow check covers it.
+  setInterval(() => {
+    for (const a of mailAccounts()) if (unread.get(a.id) !== 0) void gmail.refresh(a.id);
+  }, 3 * 60_000).unref();
+  /** Home's list: notifications, plus each Google account's unread mail. */
+  function homeFeed(): Feed {
+    const mail = mailAccounts().flatMap((a) => mailLines(a.id, gmail.entries(a.id), unread.get(a.id), mailDismissed));
+    const unreadNow = new Set(mailAccounts().flatMap((a) => gmail.entries(a.id).map((e) => mailKey(a.id, e.id))));
+    for (const k of mailDismissed) if (!unreadNow.has(k)) mailDismissed.delete(k); // read: no need to remember it
+    return mergeMail(messages, mail);
+  }
   // A burst of notifications (an app reconnecting) makes one update, not one each.
   let pushQueued = false;
   function pushSoon(): void {
@@ -1047,7 +1076,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       // Home's data and the notes, cut to this scope: a space's assistant sees only that space.
       recentMessages() {
         const spaceNames = new Map((store.state().spaces ?? []).map((sp) => [sp.id, sp.name]));
-        return messagesInScope(messages, store.state().accounts, scope).map(({ message: m, account: a }) => ({
+        return messagesInScope(homeFeed(), store.state().accounts, scope).map(({ message: m, account: a }) => ({
           account: a.name,
           // Space names only for the assistant that already sees every space.
           ...(scope === 'all' && a.spaceId && spaceNames.get(a.spaceId) ? { space: spaceNames.get(a.spaceId)! } : {}),
@@ -1755,7 +1784,10 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
           const email = emailFromGmailTitle(title);
           if (email) updateIdentity(a.id, { email });
         }
-        if (current && unread.update(a.id, title, current.service)) push();
+        if (current && unread.update(a.id, title, current.service)) {
+          if (current.service === 'google') mailChanged(a.id);
+          push();
+        }
       });
     }
     if (kind.startsWith('extra:')) {
@@ -1832,9 +1864,9 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       setupOpen,
       todayOpen,
       openOnToday: s.openOnToday !== false,
-      messages: messageViews(messages, s.homePreviews !== false),
+      messages: messageViews(homeFeed(), s.homePreviews !== false),
       messagePreviews: s.homePreviews !== false,
-      messageSources: [...notified],
+      messageSources: [...notified, ...mailAccounts().filter((a) => gmail.working(a.id)).map((a) => a.id)],
       update: { mode: updateMode(process.platform, process.env, app.isPackaged), auto: s.autoUpdate !== false, state: updates.state() },
       todos: todos.list(),
       weekStartSetting: s.weekStart ?? 'auto',
@@ -2009,6 +2041,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     avatars.remove(a.id);
     avatars.remove(`custom:${a.id}`);
     unread.remove(a.id);
+    gmail.drop(a.id);
     hibernated.delete(a.id);
     store.remove(a.id);
     await clearAccountData(a.id);
@@ -2623,8 +2656,18 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     },
 
     openMessage(key) {
-      const m = messages.find((x) => x.key === key);
+      const m = homeFeed().find((x) => x.key === key);
       if (!m || !account(m.accountId)) return;
+      if (m.mailId) {
+        // An email from the feed: Gmail opens on that conversation (its line goes once it's read).
+        mailDismissed.add(key);
+        openFromNotification(m.accountId, m.kind);
+        const code = gmailOpenCode(m.mailId);
+        const wc = registry.get(m.accountId, 'main')?.webContents;
+        if (code && wc && !wc.isDestroyed() && new URL(wc.getURL() || 'about:blank').host === 'mail.google.com') void wc.executeJavaScriptInIsolatedWorld(1002, [{ code }]).catch(() => undefined);
+        push();
+        return;
+      }
       messages = removeMessage(messages, key);
       notifications.dismiss(m.sender, m.id); // and from Notification Center
       openFromNotification(m.accountId, m.kind);
@@ -2635,11 +2678,13 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     },
 
     dismissMessage(key) {
+      if (homeFeed().some((m) => m.key === key && m.mailId)) mailDismissed.add(key);
       messages = removeMessage(messages, key);
       push();
     },
 
     clearMessages() {
+      for (const m of homeFeed()) if (m.mailId) mailDismissed.add(m.key);
       messages = [];
       push();
     },

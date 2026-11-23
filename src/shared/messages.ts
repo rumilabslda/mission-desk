@@ -8,8 +8,8 @@ import type { ViewKind } from './types';
 export const MAX_MESSAGES = 50;
 /** Per app, so one busy page can't push the others' lines out. */
 export const MAX_PER_ACCOUNT = 15;
-const MAX_TITLE = 200;
-const MAX_BODY = 300;
+export const MAX_TITLE = 200;
+export const MAX_BODY = 300;
 
 export interface Message {
   key: string;
@@ -25,6 +25,8 @@ export interface Message {
   at: number;
   /** Messages in this conversation since it was last read. */
   count: number;
+  /** An unread email read from Gmail's feed (not a notification): its message id, to open it. */
+  mailId?: string;
 }
 export type Feed = Message[];
 
@@ -40,7 +42,7 @@ export interface MessageView {
 
 // Cut first (a page may send megabytes), drop control and text-direction characters (a page must
 // not reorder what Home shows), then collapse spaces.
-const clean = (v: unknown, max: number): string =>
+export const clean = (v: unknown, max: number): string =>
   typeof v === 'string'
     ? v
         .slice(0, max * 2)
