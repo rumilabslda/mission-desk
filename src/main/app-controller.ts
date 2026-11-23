@@ -915,7 +915,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     const before = cfg(scope);
     store.setAssistantPrefs({ scopes: { ...prefs, [scope]: { ...(prefs[scope] ?? {}), ...patch } } });
     const after = cfg(scope);
-    const otherClaude = after.engine === 'claude' && after.claudeAccount !== before.claudeAccount;
+    const otherClaude = after.engine === 'claude' && after.connection !== before.connection;
     if (after.engine !== before.engine || otherClaude) currentConv.set(scope, null); // another assistant: a new conversation (contexts don't carry over)
     for (const [id, sess] of sessions) {
       if (conversations.get(id)?.scope !== scope) continue;
@@ -1364,7 +1364,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
   }
   // --- More than one Claude Code account: each extra one has its own folder (CLAUDE_CONFIG_DIR) ---
   const claudeAccounts = createClaudeAccounts(app.getPath('userData'));
-  const claudeTargetFor = (scope: string): ClaudeTarget => claudeTarget(cfg(scope).claudeAccount, claudeAccounts.list(), claudeAccounts.dirOf);
+  const claudeTargetFor = (scope: string): ClaudeTarget => claudeTarget(cfg(scope).connection, claudeAccounts.list(), claudeAccounts.dirOf);
   /** The environment for the scope's Claude Code; a removed account stops the space (never the personal account instead). */
   function claudeEnvFor(scope: string): Record<string, string> {
     const target = claudeTargetFor(scope);
@@ -3001,7 +3001,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     claudeAccountRemove(id) {
       const a = claudeAccounts.list().find((x) => x.id === id);
       if (!a) return;
-      const users = scopes().filter((s) => cfg(s.key).claudeAccount === id).length;
+      const users = scopes().filter((s) => cfg(s.key).connection === id).length;
       const r = dialog.showMessageBoxSync(win, {
         type: 'warning',
         message: t('settings.claudeAccounts.removeTitle', { name: a.name }),
@@ -3014,7 +3014,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       // Its sessions end; signing out removes its Keychain entry; then its folder goes.
       for (const [cid, sess] of sessions) {
         const sc = conversations.get(cid)?.scope;
-        if (sc && cfg(sc).claudeAccount === id) {
+        if (sc && cfg(sc).connection === id) {
           sess.close();
           sessions.delete(cid);
         }

@@ -44,8 +44,8 @@ function MemoryButton({ scope, count }: { scope: string; count: number }): React
 }
 
 function ScopeCard({ snap, scope, name, ready, orModels }: { snap: UiSnapshot; scope: string; name: string; ready: Ready; orModels: { id: string; name: string }[] }): React.JSX.Element {
-  const c = snap.assistant.configs[scope] ?? { engine: 'claude', model: 'default', effort: 'medium', openrouterModel: 'openrouter/auto', codexModel: '', claudeAccount: '' };
-  const set = (patch: Partial<{ engine: AssistantEngine; model: AssistantModel; effort: AssistantEffort; openrouterModel: string; codexModel: string; claudeAccount: string }>): void =>
+  const c = snap.assistant.configs[scope] ?? { engine: 'claude', model: 'default', effort: 'medium', openrouterModel: 'openrouter/auto', codexModel: '', connection: '' };
+  const set = (patch: Partial<{ engine: AssistantEngine; model: AssistantModel; effort: AssistantEffort; openrouterModel: string; codexModel: string; connection: string }>): void =>
     window.missiondesk.setAssistantScopeConfig(scope, patch);
   const [codexModel, setCodexModel] = useState(c.codexModel);
   useEffect(() => setCodexModel(c.codexModel), [c.codexModel]);
@@ -71,20 +71,20 @@ function ScopeCard({ snap, scope, name, ready, orModels }: { snap: UiSnapshot; s
           </button>
         </p>
       )}
-      {c.engine === 'claude' && c.claudeAccount && !snap.assistant.claudeAccounts.some((a) => a.id === c.claudeAccount) && <p className="asg-error">{t('settings.claudeAccounts.missing')}</p>}
+      {c.engine === 'claude' && c.connection && !snap.assistant.claudeAccounts.some((a) => a.id === c.connection) && <p className="asg-error">{t('settings.claudeAccounts.missing')}</p>}
       {c.engine !== 'off' && (
         <div className="asg-row">
-          {c.engine === 'claude' && (snap.assistant.claudeAccounts.length > 0 || c.claudeAccount) && (
+          {c.engine === 'claude' && (snap.assistant.claudeAccounts.length > 0 || c.connection) && (
             <label>
               {t('settings.claudeAccounts.choose')}
-              <select className="set-select" value={c.claudeAccount} onChange={(e) => set({ claudeAccount: e.target.value })}>
+              <select className="set-select" value={c.connection} onChange={(e) => set({ connection: e.target.value })}>
                 <option value="">{t('settings.claudeAccounts.mac')}</option>
                 {snap.assistant.claudeAccounts.map((a) => (
                   <option key={a.id} value={a.id}>
                     {a.email ? `${a.name} · ${a.email}` : a.name}
                   </option>
                 ))}
-                {c.claudeAccount && !snap.assistant.claudeAccounts.some((a) => a.id === c.claudeAccount) && <option value={c.claudeAccount}>—</option>}
+                {c.connection && !snap.assistant.claudeAccounts.some((a) => a.id === c.connection) && <option value={c.connection}>—</option>}
               </select>
             </label>
           )}

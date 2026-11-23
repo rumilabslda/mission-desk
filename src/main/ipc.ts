@@ -8,6 +8,7 @@ import { CAPTURE_IPC } from '../shared/capture-ipc';
 import { isLanguageSetting } from '../shared/i18n/locales';
 import { isMeetingAction, isMeetingLocale } from '../shared/meeting';
 import { isClaudeAccountRef } from '../shared/claude-accounts';
+import { isConnectionRef } from '../shared/connections';
 import { t } from '../shared/i18n';
 import type { ViewKind } from '../shared/types';
 import type { AppController } from './app-controller';
@@ -209,7 +210,7 @@ export function registerIpc(win: BrowserWindow, controller: AppController): void
       ...(isAssistantEffort(p.effort) ? { effort: p.effort } : {}),
       ...(isOpenRouterModel(p.openrouterModel) ? { openrouterModel: p.openrouterModel } : {}),
       ...(isCodexModel(p.codexModel) ? { codexModel: p.codexModel } : {}),
-      ...(isClaudeAccountRef(p.claudeAccount) ? { claudeAccount: p.claudeAccount } : {}),
+      ...(isConnectionRef(p.connection) ? { connection: p.connection } : {}),
     };
     if (Object.keys(clean).length) controller.setAssistantScopeConfig(scope, clean);
   });
