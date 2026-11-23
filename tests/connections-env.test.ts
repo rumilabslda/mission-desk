@@ -54,3 +54,37 @@ test('a space’s connection passes the IPC only when it is a real connection id
     ['space:a', { connection: '' }],
   ]);
 });
+
+test('connections are created and changed over IPC only with a real type, id and name', async () => {
+  const { registerIpc } = await import('../src/main/ipc');
+  const { IPC } = await import('../src/shared/ipc');
+  const got: unknown[] = [];
+  const main = { id: 'main' };
+  const controller = new Proxy(
+    {
+      assistantWebContents: () => [],
+      meetingBarWebContents: () => null,
+      spacePanelWebContents: () => null,
+      quickWebContents: () => null,
+      connectionCreate: (...a: unknown[]) => (got.push(['create', ...a]), { ok: true }),
+      connectionRename: (...a: unknown[]) => (got.push(['rename', ...a]), { ok: true }),
+      connectionRemove: (...a: unknown[]) => got.push(['remove', ...a]),
+    },
+    { get: (t, k) => (k in t ? t[k as keyof typeof t] : () => null) },
+  );
+  registerIpc({ webContents: main } as never, controller as never);
+  const call = (ch: string, ...a: unknown[]) => handlers.get(ch)!({ sender: main }, ...a);
+  expect(call(IPC.connectionCreate, 'gemini', 'X')).toEqual({ ok: false, error: 'invalid' });
+  expect(call(IPC.connectionCreate, 'openrouter', 'X', 'k'.repeat(500))).toEqual({ ok: false, error: 'invalid' });
+  call(IPC.connectionCreate, 'claude', 'Claude Acme');
+  expect(call(IPC.connectionRename, '../x', 'Y')).toEqual({ ok: false, error: 'invalid' });
+  call(IPC.connectionRename, 'mac-claude', 'Claude pessoal');
+  call(IPC.connectionRemove, '');
+  call(IPC.connectionRemove, 'abcdefabcdef');
+  expect(handlers.get(IPC.connectionCreate)!({ sender: { id: 'a web page' } }, 'claude', 'X')).toEqual({ ok: false, error: 'invalid' });
+  expect(got).toEqual([
+    ['create', 'claude', 'Claude Acme', undefined],
+    ['rename', 'mac-claude', 'Claude pessoal'],
+    ['remove', 'abcdefabcdef'],
+  ]);
+});

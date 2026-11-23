@@ -241,4 +241,13 @@ export const settings = {
   'settings.claudeAccounts.removeDetailUnused': 'It is signed out on this Mac and its conversations are deleted.',
   'settings.claudeAccounts.choose': 'Claude account',
   'settings.claudeAccounts.missing': 'The account this space used was removed: choose one.',
+  'settings.connections.removeTitle': 'Remove the connection “{name}”?',
+  'settings.connections.removeDetail': { one: 'Its sign-in or key and its conversations are deleted from this Mac. {count} space uses it: its assistant stops until you choose another connection.', other: 'Its sign-in or key and its conversations are deleted from this Mac. {count} spaces use it: their assistant stops until you choose another connection.' },
+  'settings.connections.removeDetailUnused': 'Its sign-in or key and its conversations are deleted from this Mac.',
+  'settings.connections.remove': 'Remove',
+  'settings.connections.errorName': 'Give the connection a name.',
+  'settings.connections.errorTaken': 'Another connection already has that name.',
+  'settings.connections.errorNotInstalled': 'It isn’t installed on this Mac yet. Install it, then try again.',
+  'settings.connections.errorSignIn': 'The sign-in didn’t finish. Try again.',
+  'settings.connections.errorKey': 'Paste the OpenRouter key.',
 } satisfies Record<string, Msg>;

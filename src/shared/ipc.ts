@@ -1,4 +1,4 @@
-import type { ClaudeAccount } from './claude-accounts';
+import type { Connection, ConnectionInfo, ConnectionKind } from './connections';
 import type { EngineStatus, LiveMeeting, Meeting, MeetingAction, MeetingEndedInfo, MeetingGlobalSettings, MeetingListItem, SpaceMeetingSettings } from './meeting';
 import type { LanguageSetting, Locale } from './i18n/locales';
 import type { AssistantEffort, AssistantEvent, AssistantModel, ClaudeStatus, MemoryNote } from './assistant';
@@ -74,7 +74,8 @@ export interface UiSnapshot {
     skills: Skill[];
     skillsActive: Record<string, string[]>;
     /** The added Claude Code accounts (this Mac's own isn't listed). */
-    claudeAccounts: ClaudeAccount[];
+    /** The added connections, and the built-ins the user renamed (Settings → Integrations). */
+    connections: Connection[];
   };
   /** The section Settings opens on, when it was opened for one. */
   settingsSection: string | null;
@@ -252,11 +253,17 @@ export interface UiApi {
   claudeIntegrationStatus(): Promise<ClaudeStatus>;
   codexStatus(): Promise<ClaudeStatus>;
   /** Runs `codex login` (it opens the browser); resolves when it ends, with the new status. */
-  claudeAccountsInfo(): Promise<{ mac: { loggedIn: boolean; email?: string; org?: string; plan?: string } | null; accounts: (ClaudeAccount & { loggedIn: boolean })[] }>;
-  claudeAccountAdd(name: string): Promise<{ ok: true; id: string } | { ok: false; error: string }>;
-  claudeAccountSignIn(id: string): Promise<{ ok: true } | { ok: false; error: string }>;
-  claudeAccountCancel(): void;
-  claudeAccountRemove(id: string): void;
+  /** Every assistant connection that exists, with whether it's ready. */
+  connectionsInfo(): Promise<ConnectionInfo[]>;
+  /** Adds a connection and connects it (browser sign-in, or the OpenRouter key); nothing is kept if that fails. */
+  connectionCreate(kind: ConnectionKind, name: string, key?: string): Promise<{ ok: true; id: string } | { ok: false; error: string }>;
+  /** Signs a connection in again, or replaces its OpenRouter key. */
+  connectionSignIn(id: string, key?: string): Promise<{ ok: true } | { ok: false; error: string }>;
+  /** Stops a browser sign-in that is waiting. */
+  connectionCancel(): void;
+  connectionRename(id: string, name: string): Promise<{ ok: true } | { ok: false; error: string }>;
+  /** Asks first, then signs the connection out and deletes its folder or key. */
+  connectionRemove(id: string): void;
   codexSignIn(): Promise<ClaudeStatus>;
   codexSignInCancel(): void;
   openRouterStatus(): Promise<{ connected: boolean }>;
@@ -494,11 +501,12 @@ export const IPC = {
   meetingCapabilities: 'ui:meeting-capabilities',
   appleLocaleRemove: 'ui:apple-locale-remove',
   setMeetingGlobal: 'ui:set-meeting-global',
-  claudeAccountsInfo: 'ui:claude-accounts-info',
-  claudeAccountAdd: 'ui:claude-account-add',
-  claudeAccountSignIn: 'ui:claude-account-sign-in',
-  claudeAccountCancel: 'ui:claude-account-cancel',
-  claudeAccountRemove: 'ui:claude-account-remove',
+  connectionsInfo: 'ui:connections-info',
+  connectionCreate: 'ui:connection-create',
+  connectionSignIn: 'ui:connection-sign-in',
+  connectionCancel: 'ui:connection-cancel',
+  connectionRename: 'ui:connection-rename',
+  connectionRemove: 'ui:connection-remove',
   getLocale: 'ui:get-locale',
   showDataFolder: 'ui:show-data-folder',
   showClaudeLog: 'ui:show-claude-log',

@@ -20,6 +20,10 @@ export interface Connection {
   plan?: string;
 }
 
+/** A connection as Settings shows it: whether it's ready to use (signed in, key saved, program installed). */
+export type ConnectionState = 'ready' | 'signed-out' | 'not-installed';
+export type ConnectionInfo = Connection & { state: ConnectionState };
+
 export const BUILTIN: Record<ConnectionKind, string> = { claude: 'mac-claude', codex: 'mac-codex', openrouter: 'openrouter' };
 const BUILTIN_IDS = new Set(Object.values(BUILTIN));
 export const ADDED_ID = /^[a-z0-9]{12}$/;

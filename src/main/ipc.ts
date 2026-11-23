@@ -7,8 +7,7 @@ import { IPC } from '../shared/ipc';
 import { CAPTURE_IPC } from '../shared/capture-ipc';
 import { isLanguageSetting } from '../shared/i18n/locales';
 import { isMeetingAction, isMeetingLocale } from '../shared/meeting';
-import { isClaudeAccountRef } from '../shared/claude-accounts';
-import { isConnectionRef } from '../shared/connections';
+import { isConnectionKind, isConnectionRef } from '../shared/connections';
 import { t } from '../shared/i18n';
 import type { ViewKind } from '../shared/types';
 import type { AppController } from './app-controller';
@@ -245,12 +244,18 @@ export function registerIpc(win: BrowserWindow, controller: AppController): void
   on(IPC.assistantSignInCancel, () => controller.assistantSignInCancel());
   ipcMain.handle(IPC.claudeIntegrationStatus, (e) => (fromUi(e) ? controller.claudeIntegrationStatus() : null));
   ipcMain.handle(IPC.codexStatus, (e) => (fromUi(e) ? controller.codexStatus() : null));
-  const isAccountId = (v: unknown): v is string => isClaudeAccountRef(v) && v !== '';
-  ipcMain.handle(IPC.claudeAccountsInfo, (e) => (fromUi(e) ? controller.claudeAccountsInfo() : null));
-  ipcMain.handle(IPC.claudeAccountAdd, (e, name: unknown) => (fromUi(e) && isString(name) && name.trim() && name.length <= 80 ? controller.claudeAccountAdd(name) : { ok: false, error: 'invalid' }));
-  ipcMain.handle(IPC.claudeAccountSignIn, (e, id: unknown) => (fromUi(e) && isAccountId(id) ? controller.claudeAccountSignIn(id) : { ok: false, error: 'invalid' }));
-  on(IPC.claudeAccountCancel, () => controller.claudeAccountCancel());
-  on(IPC.claudeAccountRemove, (id) => isAccountId(id) && controller.claudeAccountRemove(id));
+  const isConnectionId = (v: unknown): v is string => isConnectionRef(v) && v !== '';
+  const isConnectionName = (v: unknown): v is string => isString(v) && v.length <= 80;
+  const isKeyArg = (v: unknown): v is string | undefined => v === undefined || (isString(v) && v.length <= 400);
+  const invalid = { ok: false, error: 'invalid' } as const;
+  ipcMain.handle(IPC.connectionsInfo, (e) => (fromUi(e) ? controller.connectionsInfo() : []));
+  ipcMain.handle(IPC.connectionCreate, (e, kind: unknown, name: unknown, key: unknown) =>
+    fromUi(e) && isConnectionKind(kind) && isConnectionName(name) && isKeyArg(key) ? controller.connectionCreate(kind, name, key) : invalid,
+  );
+  ipcMain.handle(IPC.connectionSignIn, (e, id: unknown, key: unknown) => (fromUi(e) && isConnectionId(id) && isKeyArg(key) ? controller.connectionSignIn(id, key) : invalid));
+  on(IPC.connectionCancel, () => controller.connectionCancel());
+  ipcMain.handle(IPC.connectionRename, (e, id: unknown, name: unknown) => (fromUi(e) && isConnectionId(id) && isConnectionName(name) ? controller.connectionRename(id, name) : invalid));
+  on(IPC.connectionRemove, (id) => isConnectionId(id) && controller.connectionRemove(id));
   ipcMain.handle(IPC.codexSignIn, (e) => (fromUi(e) ? controller.codexSignIn() : null));
   on(IPC.codexSignInCancel, () => controller.codexSignInCancel());
   ipcMain.handle(IPC.openRouterStatus, (e) => (fromUi(e) ? controller.openRouterStatus() : null));
