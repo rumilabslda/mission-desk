@@ -369,7 +369,7 @@ export function SettingsView({ snapshot: snap }: { snapshot: UiSnapshot }): Reac
         {section === 'assistant' && <AssistantSettings snap={snap} />}
         {section === 'skills' && <SkillsSettings snap={snap} />}
         {section === 'meetings' && <MeetingsSettings snap={snap} />}
-        {section === 'integrations' && <IntegrationsSettings />}
+        {section === 'integrations' && <IntegrationsSettings snap={snap} />}
         {section === 'data' && (
           <>
             <h2>{t('settings.section.data')}</h2>

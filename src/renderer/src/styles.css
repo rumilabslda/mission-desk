@@ -1471,14 +1471,19 @@ html.meeting-bar-page #root { height: 100vh; }
 .mt-engine-actions, .mt-engine-langs { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
 .mt-lang { font-size: 13px; }
 
-/* ── Settings → Assistant: Claude accounts ───────────────────────────────────────────── */
-.ca-list { display: flex; flex-direction: column; gap: 8px; }
+/* ── Settings → Integrations: assistant connections ───────────────────────────────── */
+.ca-list { display: flex; flex-direction: column; gap: 10px; }
 .ca-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.ca-row > strong { min-width: 140px; }
+.ca-row > strong, .ca-row > .cn-rename { min-width: 160px; }
+.ca-row > .cn-rename { flex: 0 1 220px; }
 .ca-row > .set-muted { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ca-actions { display: inline-flex; gap: 10px; }
-.ca-add .set-input { flex: 1; min-width: 160px; }
-.ca-new { align-self: flex-start; }
+.cn-item { display: flex; flex-direction: column; gap: 6px; }
+.cn-kind { font-size: 11.5px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--border); color: var(--text-muted); }
+.cn-kinds { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.cn-kinds .set-style { cursor: pointer; }
+.cn-kinds .set-style:hover { border-color: var(--accent); }
+@media (max-width: 640px) { .cn-kinds { grid-template-columns: 1fr; } }
 
 /* ── The memory window ───────────────────────────────────────────────────────────────── */
 .mem-dialog { width: 560px; max-width: calc(100vw - 48px); }

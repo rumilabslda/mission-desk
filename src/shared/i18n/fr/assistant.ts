@@ -147,6 +147,6 @@ export const assistant: Translation<typeof en> = {
   'assistant.openRouter.statusRetry': 'OpenRouter a répondu {status}. Réessayez.',
   'assistant.openRouter.unreachable': 'Impossible de joindre OpenRouter. Vérifiez la connexion.',
   'assistant.keychainUnavailable': 'Le trousseau macOS n’est pas disponible ; la clé n’a donc pas été enregistrée.',
-  "assistant.error.claudeAccountMissing": "Le compte Claude de cet espace a été supprimé. Choisissez son compte Claude dans Réglages → Assistant.",
+  "assistant.error.connectionMissing": "La connexion de l’assistant de cet espace a été supprimée : choisissez-en une dans Réglages → Assistant.",
   "assistant.panel.memory": "Mémoire : ce que sait l’assistant de cet espace",
 };

@@ -1,11 +1,12 @@
-import type { ClaudeAccount } from '../../../shared/claude-accounts';
 import { useEffect, useState } from 'react';
-import { ASSISTANT_EFFORTS, ASSISTANT_MODELS, type AssistantEffort, type AssistantModel, type ClaudeStatus } from '../../../shared/assistant';
-import { type AssistantEngine, ENGINES } from '../../../shared/assistant-engines';
+import { ASSISTANT_EFFORTS, ASSISTANT_MODELS, type AssistantEffort, type AssistantModel } from '../../../shared/assistant';
+import type { AssistantEngine } from '../../../shared/assistant-engines';
 import type { AccountView, UiSnapshot } from '../../../shared/ipc';
 import type { Account } from '../../../shared/types';
 import { ClaudeConnectPanel } from '../ConnectClaudeDialog';
-import { type MessageKey, rich, t } from '../i18n';
+import { type MessageKey, t } from '../i18n';
+import { BUILTIN, CONNECTION_KINDS, type Connection, type ConnectionInfo, type ConnectionKind } from '../../../shared/connections';
+import { connectionLabel, ConnectionsSettings, KIND_NAME } from './ConnectionsSettings';
 
 const ACCESS: { value: NonNullable<Account['claudeAccess']>; label: MessageKey }[] = [
   { value: 'off', label: 'common.off' },
@@ -29,7 +30,6 @@ function accountsOf(snap: UiSnapshot, scope: string): AccountView[] {
   return [];
 }
 
-type Ready = Partial<Record<AssistantEngine, boolean>>;
 
 /** One scope's notes: only its own assistant sees them. Click a note to change it. */
 /** Opens the scope's memory (the same window as the assistant's 🧠 button). */
@@ -43,51 +43,60 @@ function MemoryButton({ scope, count }: { scope: string; count: number }): React
   );
 }
 
-function ScopeCard({ snap, scope, name, ready, orModels }: { snap: UiSnapshot; scope: string; name: string; ready: Ready; orModels: { id: string; name: string }[] }): React.JSX.Element {
-  const c = snap.assistant.configs[scope] ?? { engine: 'claude', model: 'default', effort: 'medium', openrouterModel: 'openrouter/auto', codexModel: '', claudeAccount: '' };
-  const set = (patch: Partial<{ engine: AssistantEngine; model: AssistantModel; effort: AssistantEffort; openrouterModel: string; codexModel: string; claudeAccount: string }>): void =>
+function ScopeCard({ snap, scope, name, conns, orModels }: { snap: UiSnapshot; scope: string; name: string; conns: ConnectionInfo[] | null; orModels: { id: string; name: string }[] }): React.JSX.Element {
+  const c = snap.assistant.configs[scope] ?? { engine: 'claude', model: 'default', effort: 'medium', openrouterModel: 'openrouter/auto', codexModel: '', connection: '' };
+  const set = (patch: Partial<{ engine: AssistantEngine; model: AssistantModel; effort: AssistantEffort; openrouterModel: string; codexModel: string; connection: string }>): void =>
     window.missiondesk.setAssistantScopeConfig(scope, patch);
   const [codexModel, setCodexModel] = useState(c.codexModel);
   useEffect(() => setCodexModel(c.codexModel), [c.codexModel]);
   const accounts = accountsOf(snap, scope);
+  // The space's connection: '' is its type's built-in. One that no longer exists is missing: never another.
+  const currentId = c.engine === 'off' ? '' : c.connection || BUILTIN[c.engine];
+  const builtinNow = c.engine !== 'off' && currentId === BUILTIN[c.engine];
+  const stored = snap.assistant.connections.find((x) => x.id === currentId && x.kind === c.engine && !x.builtin);
+  const missing = c.engine !== 'off' && !builtinNow && !stored;
+  const current = c.engine === 'off' ? undefined : conns?.find((x) => x.id === currentId && x.kind === c.engine);
+  const groups = CONNECTION_KINDS.map((kind) => {
+    const items: (Pick<Connection, 'id' | 'kind' | 'name' | 'builtin' | 'email'> & { gone?: boolean })[] = (conns ?? []).filter((x) => x.kind === kind);
+    if (c.engine === kind && !items.some((x) => x.id === currentId)) {
+      // The space's own choice always shows, even before the list loads or when it's gone.
+      items.unshift(builtinNow ? { id: currentId, kind, name: '', builtin: true } : stored ? { ...stored } : { id: currentId, kind, name: '—', gone: true });
+    }
+    return { kind, items };
+  }).filter((g) => g.items.length > 0);
+  const choose = (v: string): void => {
+    if (v === 'off') return set({ engine: 'off' });
+    const [kind, id] = v.split('|') as [ConnectionKind, string];
+    set({ engine: kind, connection: id === BUILTIN[kind] ? '' : id });
+  };
   return (
     <div className="set-card asg-card">
       <div className="asg-head">
         <strong>{name}</strong>
-        <select className="set-select" value={c.engine} onChange={(e) => set({ engine: e.target.value as AssistantEngine })} title={t('settings.assistant.engineTitle')}>
-          {ENGINES.map((en) => (
-            <option key={en.id} value={en.id}>
-              {en.name}
-            </option>
+        <select className="set-select" value={c.engine === 'off' ? 'off' : `${c.engine}|${currentId}`} onChange={(e) => choose(e.target.value)} title={t('settings.assistant.engineTitle')}>
+          {groups.map((g) => (
+            <optgroup key={g.kind} label={t(KIND_NAME[g.kind])}>
+              {g.items.map((x) => (
+                <option key={x.id} value={`${x.kind}|${x.id}`}>
+                  {x.gone ? '—' : connectionLabel(x) + (x.email ? ` · ${x.email}` : '')}
+                </option>
+              ))}
+            </optgroup>
           ))}
           <option value="off">{t('common.off')}</option>
         </select>
       </div>
-      {c.engine !== 'off' && ready[c.engine] === false && (
+      {missing && <p className="asg-error">{t('settings.connections.missing')}</p>}
+      {c.engine !== 'off' && !missing && conns !== null && current?.state !== 'ready' && (
         <p className="asg-error">
-          {t('settings.assistant.notConnected', { name: ENGINES.find((x) => x.id === c.engine)?.name ?? c.engine })}{' '}
+          {t('settings.assistant.notConnected', { name: current ? connectionLabel(current) : builtinNow ? connectionLabel({ kind: c.engine, name: '', builtin: true }) : (stored?.name ?? '') })}{' '}
           <button className="set-link" onClick={() => window.missiondesk.openSettings('integrations')}>
             {t('settings.assistant.connectInIntegrations')}
           </button>
         </p>
       )}
-      {c.engine === 'claude' && c.claudeAccount && !snap.assistant.claudeAccounts.some((a) => a.id === c.claudeAccount) && <p className="asg-error">{t('settings.claudeAccounts.missing')}</p>}
       {c.engine !== 'off' && (
         <div className="asg-row">
-          {c.engine === 'claude' && (snap.assistant.claudeAccounts.length > 0 || c.claudeAccount) && (
-            <label>
-              {t('settings.claudeAccounts.choose')}
-              <select className="set-select" value={c.claudeAccount} onChange={(e) => set({ claudeAccount: e.target.value })}>
-                <option value="">{t('settings.claudeAccounts.mac')}</option>
-                {snap.assistant.claudeAccounts.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.email ? `${a.name} · ${a.email}` : a.name}
-                  </option>
-                ))}
-                {c.claudeAccount && !snap.assistant.claudeAccounts.some((a) => a.id === c.claudeAccount) && <option value={c.claudeAccount}>—</option>}
-              </select>
-            </label>
-          )}
           {c.engine === 'claude' && (
             <label>
               {t('settings.assistant.model')}
@@ -177,103 +186,18 @@ function ScopeCard({ snap, scope, name, ready, orModels }: { snap: UiSnapshot; s
 }
 
 /** Settings → Assistant: one per space or one for everything, and each space's assistant. */
-type AuthInfo = { loggedIn: boolean; email?: string; org?: string; plan?: string };
-
-/** This Mac's Claude Code account and the added ones (a client's…): sign in, sign in again, remove. */
-function ClaudeAccounts({ snap }: { snap: UiSnapshot }): React.JSX.Element {
-  const md = window.missiondesk;
-  const [info, setInfo] = useState<{ mac: AuthInfo | null; accounts: (ClaudeAccount & { loggedIn: boolean })[] } | null>(null);
-  const [adding, setAdding] = useState(false);
-  const [name, setName] = useState('');
-  const [busy, setBusy] = useState<string | null>(null); // 'new' or an account id
-  const [error, setError] = useState<string | null>(null);
-  const refresh = (): void => void md.claudeAccountsInfo().then(setInfo);
-  useEffect(refresh, [snap.assistant.claudeAccounts.length]);
-  const who = (i: AuthInfo | null | undefined): string => (!i ? t('settings.claudeAccounts.checking') : i.loggedIn ? [i.email, i.org].filter(Boolean).join(' · ') : t('settings.claudeAccounts.signedOut'));
-  const finish = (r: { ok: boolean; error?: string }): void => {
-    setBusy(null);
-    if (r.ok) {
-      setAdding(false);
-      setName('');
-      setError(null);
-    } else setError(r.error ?? t('settings.claudeAccounts.signInFailed'));
-    refresh();
-  };
-  return (
-    <>
-      <h3>{t('settings.claudeAccounts.title')}</h3>
-      <p className="set-muted">{t('settings.claudeAccounts.intro')}</p>
-      <div className="set-card ca-list">
-        <div className="ca-row">
-          <strong>{t('settings.claudeAccounts.mac')}</strong>
-          <span className="set-muted">{who(info?.mac ?? (info ? null : undefined))}</span>
-        </div>
-        {snap.assistant.claudeAccounts.map((a) => {
-          const live = info?.accounts.find((x) => x.id === a.id);
-          return (
-            <div key={a.id} className="ca-row">
-              <strong>{a.name}</strong>
-              <span className="set-muted">{busy === a.id ? t('settings.claudeAccounts.signingIn') : who(live ?? (info ? { loggedIn: false } : undefined))}</span>
-              <span className="ca-actions">
-                {live && !live.loggedIn && busy !== a.id && (
-                  <button type="button" className="set-link" onClick={() => (setBusy(a.id), void md.claudeAccountSignIn(a.id).then(finish))}>
-                    {t('settings.claudeAccounts.signIn')}
-                  </button>
-                )}
-                {busy === a.id ? (
-                  <button type="button" className="set-link" onClick={() => md.claudeAccountCancel()}>
-                    {t('settings.claudeAccounts.cancel')}
-                  </button>
-                ) : (
-                  <button type="button" className="set-link danger" onClick={() => md.claudeAccountRemove(a.id)}>
-                    {t('settings.claudeAccounts.remove')}
-                  </button>
-                )}
-              </span>
-            </div>
-          );
-        })}
-        {adding ? (
-          <div className="ca-row ca-add">
-            <input className="set-input" autoFocus maxLength={40} placeholder={t('settings.claudeAccounts.namePlaceholder')} value={name} disabled={busy === 'new'} onChange={(e) => setName(e.target.value)} />
-            {busy === 'new' ? (
-              <>
-                <span className="set-muted">{t('settings.claudeAccounts.signingIn')}</span>
-                <button type="button" className="set-link" onClick={() => md.claudeAccountCancel()}>
-                  {t('settings.claudeAccounts.cancel')}
-                </button>
-              </>
-            ) : (
-              <>
-                <button type="button" className="set-action" disabled={!name.trim()} onClick={() => (setBusy('new'), setError(null), void md.claudeAccountAdd(name.trim()).then(finish))}>
-                  {t('settings.claudeAccounts.signIn')}
-                </button>
-                <button type="button" className="set-link" onClick={() => (setAdding(false), setError(null))}>
-                  {t('settings.claudeAccounts.cancel')}
-                </button>
-              </>
-            )}
-          </div>
-        ) : (
-          <button type="button" className="set-action ca-new" onClick={() => setAdding(true)}>
-            {t('settings.claudeAccounts.add')}
-          </button>
-        )}
-        {error && <p className="asg-error">{error}</p>}
-      </div>
-    </>
-  );
-}
-
 export function AssistantSettings({ snap }: { snap: UiSnapshot }): React.JSX.Element {
-  const [ready, setReady] = useState<Ready>({});
+  const [conns, setConns] = useState<ConnectionInfo[] | null>(null);
   const [orModels, setOrModels] = useState<{ id: string; name: string }[]>([]);
   const uses = (e: AssistantEngine): boolean => Object.values(snap.assistant.configs).some((c) => c.engine === e);
+  const storedKey = JSON.stringify(snap.assistant.connections);
   useEffect(() => {
-    void window.missiondesk.claudeIntegrationStatus().then((s) => setReady((r) => ({ ...r, claude: s.state === 'ready' })));
-    void window.missiondesk.openRouterStatus().then((s) => setReady((r) => ({ ...r, openrouter: s.connected })));
-    void window.missiondesk.codexStatus().then((s) => setReady((r) => ({ ...r, codex: s.state === 'ready' })));
-  }, []);
+    let live = true;
+    void window.missiondesk.connectionsInfo().then((l) => live && setConns(l));
+    return () => {
+      live = false;
+    };
+  }, [storedKey]);
   const needModels = uses('openrouter');
   useEffect(() => {
     if (needModels && orModels.length === 0) void window.missiondesk.openRouterModels().then(setOrModels);
@@ -298,203 +222,29 @@ export function AssistantSettings({ snap }: { snap: UiSnapshot }): React.JSX.Ele
           <small>{t('settings.assistant.buttonHint')}</small>
         </span>
       </label>
-      {uses('claude') && <ClaudeAccounts snap={snap} />}
       <h3>{snap.assistant.mode === 'space' ? t('settings.assistant.spacesHeading') : t('settings.assistant.everythingHeading')}</h3>
       <p className="set-muted">{t('settings.assistant.intro')}</p>
       {snap.assistant.scopes.map((s) => (
-        <ScopeCard key={s.key} snap={snap} scope={s.key} name={s.name} ready={ready} orModels={orModels} />
+        <ScopeCard key={s.key} snap={snap} scope={s.key} name={s.name} conns={conns} orModels={orModels} />
       ))}
     </>
   );
 }
 
-const INSTALL_CLAUDE = 'curl -fsSL https://claude.ai/install.sh | bash';
-const INSTALL_CODEX = 'npm install -g @openai/codex';
-
-function statusText(st: ClaudeStatus | null, app: string): string {
-  if (st === null) return t('settings.integrations.checking');
-  if (st.state === 'ready')
-    return 'version' in st && st.version ? t('settings.integrations.connectedVersion', { app, version: st.version }) : t('settings.integrations.connected');
-  return st.state === 'signed-out' ? t('settings.integrations.signedOut') : t('settings.integrations.notInstalled');
-}
-
-/** A CLI the user signs in to in the browser (Claude Code, Codex): status, install, sign in. */
-function CliIntegration({
-  title,
-  app,
-  blurb,
-  install,
-  getStatus,
-  signIn,
-  cancel,
-  children,
-}: {
-  title: string;
-  app: string;
-  blurb: string;
-  install: string;
-  getStatus(): Promise<ClaudeStatus>;
-  signIn(): Promise<ClaudeStatus>;
-  cancel(): void;
-  children?: React.ReactNode;
-}): React.JSX.Element {
-  const [status, setStatus] = useState<ClaudeStatus | null>(null);
-  const [waiting, setWaiting] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const check = (): void => {
-    setStatus(null);
-    void getStatus().then(setStatus);
-  };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(check, []);
-  return (
-    <div className="set-card asg-card">
-      <div className="asg-head">
-        <strong>{title}</strong>
-        <span className={`asg-state ${status?.state ?? ''}`}>{statusText(status, app)}</span>
-      </div>
-      <p className="set-muted">{blurb}</p>
-      {status?.state === 'signed-out' &&
-        (waiting ? (
-          <p className="set-muted">
-            {t('settings.integrations.waiting')}{' '}
-            <button className="set-link" onClick={cancel}>
-              {t('common.cancel')}
-            </button>
-          </p>
-        ) : (
-          <div>
-            <button
-              className="primary"
-              onClick={() => {
-                setWaiting(true);
-                void signIn().then((st) => {
-                  setStatus(st);
-                  setWaiting(false);
-                });
-              }}
-            >
-              {t('settings.integrations.signIn')}
-            </button>
-          </div>
-        ))}
-      {status?.state === 'not-installed' && (
-        <div className="asg-install">
-          <p className="set-muted">{t('settings.integrations.installHint')}</p>
-          <div className="ast-cmd">
-            <code>{install}</code>
-            <button onClick={() => void navigator.clipboard.writeText(install).then(() => setCopied(true))}>{copied ? t('settings.integrations.copied') : t('settings.integrations.copy')}</button>
-          </div>
-          <button className="set-link" onClick={check}>
-            {t('settings.integrations.installed')}
-          </button>
-        </div>
-      )}
-      {children}
-    </div>
-  );
-}
-
-function OpenRouterIntegration(): React.JSX.Element {
-  const [connected, setConnected] = useState<boolean | null>(null);
-  const [key, setKey] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  useEffect(() => {
-    void window.missiondesk.openRouterStatus().then((s) => setConnected(s.connected));
-  }, []);
-  async function connect(): Promise<void> {
-    setBusy(true);
-    setError('');
-    const r = await window.missiondesk.openRouterConnect(key);
-    setBusy(false);
-    setConnected(r.connected);
-    if (r.error) setError(r.error);
-    else setKey('');
-  }
-  return (
-    <div className="set-card asg-card">
-      <div className="asg-head">
-        <strong>OpenRouter</strong>
-        <span className={`asg-state ${connected ? 'ready' : connected === false ? 'signed-out' : ''}`}>{connected === null ? t('settings.integrations.checking') : connected ? t('settings.integrations.connected') : t('settings.integrations.notConnected')}</span>
-      </div>
-      <p className="set-muted">{t('settings.integrations.openrouterBlurb')}</p>
-      {connected ? (
-        <div>
-          <button className="set-link" onClick={() => (window.missiondesk.openRouterDisconnect(), setConnected(false))}>
-            {t('settings.integrations.disconnect')}
-          </button>
-        </div>
-      ) : (
-        <>
-          <div className="asg-key">
-            <input
-              type="password"
-              className="set-input"
-              placeholder="sk-or-v1-…"
-              value={key}
-              autoComplete="off"
-              spellCheck={false}
-              onChange={(e) => setKey(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && key.trim() && !busy && void connect()}
-            />
-            <button className="primary" disabled={!key.trim() || busy} onClick={() => void connect()}>
-              {busy ? t('settings.integrations.checking') : t('settings.integrations.connect')}
-            </button>
-          </div>
-          {error && <p className="asg-error">{error}</p>}
-          <p className="set-muted">
-            {rich('settings.integrations.createKey', {
-              link: (s) => (
-                <a
-                  href="https://openrouter.ai/keys"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    window.missiondesk.openExternal('https://openrouter.ai/keys');
-                  }}
-                >
-                  {s}
-                </a>
-              ),
-            })}
-          </p>
-        </>
-      )}
-    </div>
-  );
-}
-
 /** Settings → Integrations: the assistants Mission Desk can use, and Claude in other apps. */
-export function IntegrationsSettings(): React.JSX.Element {
+export function IntegrationsSettings({ snap }: { snap: UiSnapshot }): React.JSX.Element {
   return (
     <>
       <h2>{t('settings.section.integrations')}</h2>
       <p className="set-muted">{t('settings.integrations.intro')}</p>
-      <CliIntegration
-        title="Claude"
-        app="Claude Code"
-        blurb={t('settings.integrations.claudeBlurb')}
-        install={INSTALL_CLAUDE}
-        getStatus={() => window.missiondesk.claudeIntegrationStatus()}
-        signIn={() => window.missiondesk.assistantSignIn()}
-        cancel={() => window.missiondesk.assistantSignInCancel()}
-      >
-        <h3>{t('settings.integrations.claudeOtherApps')}</h3>
+      <ConnectionsSettings connections={snap.assistant.connections} />
+      <h3>{t('settings.integrations.claudeOtherApps')}</h3>
+      <div className="set-card asg-card">
         <ClaudeConnectPanel />
         <button className="set-link" onClick={() => window.missiondesk.showClaudeLog()}>
           {t('settings.integrations.claudeLog')}
         </button>
-      </CliIntegration>
-      <CliIntegration
-        title="OpenAI Codex"
-        app="Codex"
-        blurb={t('settings.integrations.codexBlurb')}
-        install={INSTALL_CODEX}
-        getStatus={() => window.missiondesk.codexStatus()}
-        signIn={() => window.missiondesk.codexSignIn()}
-        cancel={() => window.missiondesk.codexSignInCancel()}
-      />
-      <OpenRouterIntegration />
+      </div>
     </>
   );
 }

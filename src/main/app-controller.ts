@@ -18,8 +18,10 @@ import { PROVIDER_NAME } from '../shared/meetings';
 import { PROBE_RELIABLE } from '../shared/meeting-probes';
 import { cleanName } from '../shared/meeting-speakers';
 import { createUpdater } from './updates/updater';
-import { createClaudeAccounts } from './assistant/claude-accounts';
-import { type ClaudeAccount, claudeEnv, claudeTarget, type ClaudeTarget, parseAuthInfo } from '../shared/claude-accounts';
+import { createConnections } from './assistant/connections';
+import { openRouterKeyName, sessionEnvFor } from './assistant/connection-env';
+import { createConnectionFlows } from './assistant/connection-flows';
+import { connectionEnv, type ConnectionInfo, type ConnectionKind, connectionTarget, type ConnectionTarget, isBuiltinId, parseAuthInfo } from '../shared/connections';
 import { DEFAULT_ACTIONS, type EngineId, type EngineStatus, type Meeting, type MeetingAction, type MeetingEndedInfo, meetingLocale, type MeetingGlobalSettings, type SpaceMeetingSettings, spaceMeetingSettings } from '../shared/meeting';
 import { type LanguageSetting, type Locale, type MessageKey, resolveLocale, setLocale, t } from '../shared/i18n';
 import { updateMode } from '../shared/updates';
@@ -214,14 +216,12 @@ export interface AppController {
   setSpaceMeetings(scope: string, s: SpaceMeetingSettings): void;
   /** Brings the main window up with that scope's memory. */
   openMemory(scope: string): void;
-  /** Who is signed in to this Mac's Claude Code and to each added account. */
-  claudeAccountsInfo(): Promise<{ mac: { loggedIn: boolean; email?: string; org?: string; plan?: string } | null; accounts: (ClaudeAccount & { loggedIn: boolean })[] }>;
-  /** Adds an account and runs its sign-in (the browser opens); a failed sign-in leaves nothing. */
-  claudeAccountAdd(name: string): Promise<{ ok: true; id: string } | { ok: false; error: string }>;
-  claudeAccountSignIn(id: string): Promise<{ ok: true } | { ok: false; error: string }>;
-  claudeAccountCancel(): void;
-  /** Asks first; signs the account out and deletes its folder. Spaces using it stop until they choose another. */
-  claudeAccountRemove(id: string): void;
+  connectionsInfo(): Promise<ConnectionInfo[]>;
+  connectionCreate(kind: ConnectionKind, name: string, key?: string): Promise<{ ok: true; id: string } | { ok: false; error: string }>;
+  connectionSignIn(id: string, key?: string): Promise<{ ok: true } | { ok: false; error: string }>;
+  connectionCancel(): void;
+  connectionRename(id: string, name: string): Promise<{ ok: true } | { ok: false; error: string }>;
+  connectionRemove(id: string): void;
   setMeetingGlobal(patch: Partial<MeetingGlobalSettings>): void;
   /** The transcription bar: the Ask answer, pause, resume, stop and the meeting's language. */
   meetingAnswer(yes: boolean, never: boolean): void;
@@ -944,12 +944,12 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     const before = cfg(scope);
     store.setAssistantPrefs({ scopes: { ...prefs, [scope]: { ...(prefs[scope] ?? {}), ...patch } } });
     const after = cfg(scope);
-    const otherClaude = after.engine === 'claude' && after.claudeAccount !== before.claudeAccount;
-    if (after.engine !== before.engine || otherClaude) currentConv.set(scope, null); // another assistant: a new conversation (contexts don't carry over)
+    const switched = engineKey(after) !== engineKey(before);
+    if (switched) currentConv.set(scope, null); // another assistant or connection: a new conversation (contexts don't carry over)
     for (const [id, sess] of sessions) {
       if (conversations.get(id)?.scope !== scope) continue;
-      if (after.engine !== before.engine || otherClaude) {
-        sess.close(); // turned off, or another Claude account: nothing keeps running for this space
+      if (switched) {
+        sess.close(); // turned off, or another connection: nothing keeps running for this space
         sessions.delete(id);
       } else if (after.model !== before.model || after.effort !== before.effort || after.openrouterModel !== before.openrouterModel || after.codexModel !== before.codexModel) {
         sess.setModel(after.engine === 'openrouter' ? after.openrouterModel : after.engine === 'codex' ? after.codexModel : after.model, after.effort);
@@ -1232,7 +1232,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
 
   async function engineSession(conv: Conversation): Promise<AssistantSession> {
     const c = cfg(conv.scope);
-    conversations.setEngine(conv.id, c.engine); // another assistant than before: its session isn't resumed
+    conversations.setEngine(conv.id, engineKey(c)); // another assistant or connection than before: its session isn't resumed
     const systemPrompt = (): string => assistantPrompt(new Date(), app.getLocale(), scopeLine(conv.scope), memory.list(conv.scope), skills.activeFor(conv.scope));
     if (c.engine === 'codex') {
       const srv = await serverFor(conv.scope);
@@ -1243,7 +1243,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
         {
           spawn: (cmd, args, opts) => spawn(cmd, args, { ...opts, stdio: ['pipe', 'pipe', 'pipe'] }),
           codexPath: lookUpCodex,
-          env: codexEnv(),
+          env: envFor(conv.scope, 'codex'),
           cwd,
           mcp: () => ({ command: app.getPath('exe'), args: [bridge], env: { ELECTRON_RUN_AS_NODE: '1', MISSIONDESK_SOCKET: srv.sock, MISSIONDESK_TOKEN: srv.token } }),
           instructions: systemPrompt,
@@ -1253,7 +1253,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     }
     if (c.engine === 'openrouter') {
       return createOpenRouterSession(
-        { fetch: (u, init) => net.fetch(String(u), init), apiKey: async () => secrets.get('openrouter'), tools: () => inProcessToolsFor(conv.scope), systemPrompt, history: conv.messages },
+        { fetch: (u, init) => net.fetch(String(u), init), apiKey: async () => keyFor(conv.scope), tools: () => inProcessToolsFor(conv.scope), systemPrompt, history: conv.messages },
         { model: c.openrouterModel, effort: c.effort },
       );
     }
@@ -1265,7 +1265,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       {
         spawn: (cmd, args, opts) => spawn(cmd, args, { ...opts, stdio: ['pipe', 'pipe', 'pipe'] }),
         claudePath: lookUpClaude,
-        env: claudeEnvFor(conv.scope),
+        env: envFor(conv.scope, 'claude'),
         cwd,
         mcpConfig: () =>
           JSON.stringify({
@@ -1288,7 +1288,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       fs.mkdirSync(cwd, { recursive: true });
       return Promise.resolve(
         createCodexSession(
-          { spawn: (cmd, args, opts) => spawn(cmd, args, { ...opts, stdio: ['pipe', 'pipe', 'pipe'] }), codexPath: lookUpCodex, env: codexEnv(), cwd, mcp: () => null, instructions: system },
+          { spawn: (cmd, args, opts) => spawn(cmd, args, { ...opts, stdio: ['pipe', 'pipe', 'pipe'] }), codexPath: lookUpCodex, env: envFor(scope, 'codex'), cwd, mcp: () => null, instructions: system },
           { model: c.codexModel, effort: c.effort },
         ),
       );
@@ -1298,7 +1298,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
         createOpenRouterSession(
           {
             fetch: (u, init) => net.fetch(String(u), init),
-            apiKey: async () => secrets.get('openrouter'),
+            apiKey: async () => keyFor(scope),
             tools: async () => ({ defs: [], call: async () => ({ text: 'No tools.', isError: true }) }),
             systemPrompt: system,
             history: [],
@@ -1311,18 +1311,23 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     fs.mkdirSync(cwd, { recursive: true });
     return Promise.resolve(
       createClaudeCodeSession(
-        { spawn: (cmd, args, opts) => spawn(cmd, args, { ...opts, stdio: ['pipe', 'pipe', 'pipe'] }), claudePath: lookUpClaude, env: claudeEnvFor(scope), cwd, mcpConfig: () => '{"mcpServers":{}}', systemPrompt: system, ephemeral: true },
+        { spawn: (cmd, args, opts) => spawn(cmd, args, { ...opts, stdio: ['pipe', 'pipe', 'pipe'] }), claudePath: lookUpClaude, env: envFor(scope, 'claude'), cwd, mcpConfig: () => '{"mcpServers":{}}', systemPrompt: system, ephemeral: true },
         { model: c.model, effort: c.effort },
       ),
     );
   }
   /** One tool-less request on the scope's assistant; null when the scope's assistant is off. */
   const askFor = (scope: string): Ask | null =>
-    cfg(scope).engine === 'off' ? null : createOneShot((system) => toollessSession(scope, system), cfg(scope).engine === 'codex' ? deleteCodexRollout : undefined);
-  /** Codex keeps every run in ~/.codex/sessions: a meeting's follow-up mustn't outlive the meeting there. */
-  function deleteCodexRollout(threadId: string | null): void {
+    cfg(scope).engine === 'off' ? null : createOneShot((system) => toollessSession(scope, system), cfg(scope).engine === 'codex' ? (id) => deleteCodexRollout(id, codexHomeFor(scope)) : undefined);
+  /** The Codex folder a scope's Codex runs in: an added connection's own, or this Mac's. */
+  function codexHomeFor(scope: string): string {
+    const target = targetFor(scope);
+    return target.kind === 'codex' && 'dir' in target ? target.dir : process.env.CODEX_HOME || path.join(app.getPath('home'), '.codex');
+  }
+  /** Codex keeps every run in <CODEX_HOME>/sessions: a meeting's follow-up mustn't outlive the meeting there. */
+  function deleteCodexRollout(threadId: string | null, home: string): void {
     if (!threadId || !/^[\w-]{8,80}$/.test(threadId)) return;
-    const root = path.join(process.env.CODEX_HOME || path.join(app.getPath('home'), '.codex'), 'sessions');
+    const root = path.join(home, 'sessions');
     const walk = (dir: string, depth: number): void => {
       let entries: fs.Dirent[];
       try {
@@ -1391,20 +1396,43 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     claudePath = null; // look again: it may have been installed meanwhile
     return checkClaude({ find: lookUpClaude, run: runClaude });
   }
-  // --- More than one Claude Code account: each extra one has its own folder (CLAUDE_CONFIG_DIR) ---
-  const claudeAccounts = createClaudeAccounts(app.getPath('userData'));
-  const claudeTargetFor = (scope: string): ClaudeTarget => claudeTarget(cfg(scope).claudeAccount, claudeAccounts.list(), claudeAccounts.dirOf);
-  /** The environment for the scope's Claude Code; a removed account stops the space (never the personal account instead). */
-  function claudeEnvFor(scope: string): Record<string, string> {
-    const target = claudeTargetFor(scope);
-    if (target.kind === 'missing') throw new Error(t('assistant.error.claudeAccountMissing'));
-    return claudeEnv(cleanEnv(process.env), target);
+  // --- Assistant connections: each added Claude Code or Codex one has its own folder (CLAUDE_CONFIG_DIR /
+  // CODEX_HOME), each added OpenRouter one its own key. A space runs on its own, never on another. ---
+  const connections = createConnections(app.getPath('userData'));
+  const targetFor = (scope: string): ConnectionTarget => {
+    const c = cfg(scope);
+    return c.engine === 'off' ? { kind: 'missing' } : connectionTarget(c.engine, c.connection, connections.list(), connections.dirOf);
+  };
+  /** What a conversation's session belongs to: its engine, and the connection when it's an added one. */
+  const engineKey = (c: ScopeConfig): string => (c.engine === 'off' || c.connection === '' || isBuiltinId(c.connection) ? c.engine : `${c.engine}:${c.connection}`);
+  const connectionMissing = (): Error => new Error(t('assistant.error.connectionMissing'));
+  /** The environment for the scope's Claude Code or Codex; a removed connection stops the space. */
+  function envFor(scope: string, kind: 'claude' | 'codex'): Record<string, string> {
+    const target = targetFor(scope);
+    if (target.kind !== kind) throw connectionMissing();
+    return sessionEnvFor(kind, kind === 'codex' ? codexEnv() : cleanEnv(process.env), target) as Record<string, string>;
   }
-  const runClaudeIn = (target: ClaudeTarget, args: string[]): Promise<string> =>
+  /** The scope's OpenRouter key: its own connection's. */
+  function keyFor(scope: string): string | null {
+    const name = openRouterKeyName(targetFor(scope));
+    if (name === null) throw connectionMissing();
+    return secrets.get(name);
+  }
+  const openRouterReady = (scope: string): boolean => {
+    try {
+      return keyFor(scope) !== null;
+    } catch {
+      return false;
+    }
+  };
+  const claudeTargetOf = (id: string): ConnectionTarget => ({ kind: 'claude', id, dir: connections.dirOf(id) });
+  const claudeEnvOf = (target: ConnectionTarget): Record<string, string> => connectionEnv(cleanEnv(process.env), target);
+  const runClaudeIn = (target: ConnectionTarget, args: string[]): Promise<string> => (target.kind === 'claude' ? runClaudeWith(claudeEnvOf(target), args) : Promise.reject(new Error('not available')));
+  const runClaudeWith = (env: Record<string, string>, args: string[]): Promise<string> =>
     new Promise((resolve, reject) => {
       void lookUpClaude().then((cmd) => {
-        if (!cmd || target.kind === 'missing') return reject(new Error('not available'));
-        execFile(cmd, args, { env: claudeEnv(cleanEnv(process.env), target), timeout: 15_000 }, (err, stdout) => {
+        if (!cmd) return reject(new Error('not available'));
+        execFile(cmd, args, { env, timeout: 15_000 }, (err, stdout) => {
           try {
             resolve(outputOf(err, String(stdout)));
           } catch (e) {
@@ -1415,40 +1443,32 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     });
   /** A scope's Claude Code: installed, and signed in with the scope's account. */
   async function claudeStatusFor(scope: string): Promise<ClaudeStatus> {
-    const target = claudeTargetFor(scope);
-    if (target.kind === 'mac') return claudeStatus();
-    if (target.kind === 'missing') return { state: 'signed-out' };
+    const target = targetFor(scope);
+    if (target.kind !== 'claude') return { state: 'signed-out' };
+    if ('builtin' in target) return claudeStatus();
     const base = await claudeStatus();
     if (base.state === 'not-installed') return base;
     const info = parseAuthInfo(await runClaudeIn(target, ['auth', 'status', '--json']).catch(() => ''));
     return { ...base, state: info?.loggedIn ? 'ready' : 'signed-out' };
   }
-  let claudeLogin: { child: ReturnType<typeof spawn>; id: string } | null = null;
-  /** Runs Claude Code's own sign-in (it opens the browser) for an account's folder; resolves when it ends. */
-  async function claudeSignInTo(id: string): Promise<{ ok: true } | { ok: false; error: string }> {
-    const cmd = await lookUpClaude();
-    if (!cmd) return { ok: false, error: t('assistant.error.claudeNotInstalled') };
-    claudeLogin?.child.kill();
-    const target: ClaudeTarget = { kind: 'account', id, dir: claudeAccounts.dirOf(id) };
-    let errText = '';
-    await new Promise<void>((resolve) => {
-      const child = spawn(cmd, ['auth', 'login', '--claudeai'], { env: claudeEnv(cleanEnv(process.env), target), stdio: ['ignore', 'pipe', 'pipe'] });
-      claudeLogin = { child, id };
-      child.stderr?.on('data', (b: Buffer) => (errText = (errText + b.toString()).slice(-500)));
+  let loginChild: ReturnType<typeof spawn> | null = null;
+  /** Runs a program's own sign-in (it opens the browser); resolves when it ends, however it ends. One at a time. */
+  function runLogin(cmd: string, args: string[], env: Record<string, string>): Promise<void> {
+    loginChild?.kill();
+    return new Promise<void>((resolve) => {
+      const child = spawn(cmd, args, { env, stdio: ['ignore', 'pipe', 'pipe'] });
+      loginChild = child;
       child.stdout?.on('data', () => undefined);
+      child.stderr?.on('data', () => undefined);
       const timer = setTimeout(() => child.kill(), 10 * 60_000);
       const done = (): void => {
         clearTimeout(timer);
-        if (claudeLogin?.child === child) claudeLogin = null;
+        if (loginChild === child) loginChild = null;
         resolve();
       };
       child.on('error', done);
       child.on('exit', done);
     });
-    const info = parseAuthInfo(await runClaudeIn(target, ['auth', 'status', '--json']).catch(() => ''));
-    if (!info?.loggedIn) return { ok: false, error: errText.trim() || t('settings.claudeAccounts.signInFailed') };
-    claudeAccounts.setInfo(id, { ...(info.email ? { email: info.email } : {}), ...(info.org ? { org: info.org } : {}), ...(info.plan ? { plan: info.plan } : {}) });
-    return { ok: true };
   }
   // --- OpenAI Codex (the user's own Codex CLI) ---
   let codexPath: Promise<string | null> | null = null;
@@ -1474,19 +1494,89 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
         child.on('exit', (code) => (clearTimeout(timer), resolve(code === 0 ? lookupResult(out, process.platform) : null)));
       });
     })());
-  async function codexStatus(): Promise<ClaudeStatus> {
+  /** Codex installed, and signed in in that environment's CODEX_HOME (this Mac's by default). */
+  async function codexStatus(env: Record<string, string> = codexEnv()): Promise<ClaudeStatus> {
     codexPath = null; // look again (installed meanwhile)
     const cmd = await lookUpCodex();
     if (!cmd) return { state: 'not-installed' };
     const version = await new Promise<string | undefined>((resolve) =>
-      execFile(cmd, ['--version'], { env: codexEnv(), timeout: 15_000 }, (_e, out) => resolve(/(\d+\.\d+\.\d+)/.exec(String(out))?.[1])),
+      execFile(cmd, ['--version'], { env, timeout: 15_000 }, (_e, out) => resolve(/(\d+\.\d+\.\d+)/.exec(String(out))?.[1])),
     );
     // `codex login status` exits 0 when signed in.
-    const signedIn = await new Promise<boolean>((resolve) => execFile(cmd, ['login', 'status'], { env: codexEnv(), timeout: 15_000 }, (e) => resolve(!e)));
+    const signedIn = await new Promise<boolean>((resolve) => execFile(cmd, ['login', 'status'], { env, timeout: 15_000 }, (e) => resolve(!e)));
     return { state: signedIn ? 'ready' : 'signed-out', ...(version ? { version } : {}) };
+  }
+  /** A scope's Codex: installed, and signed in with the scope's connection. */
+  async function codexStatusFor(scope: string): Promise<ClaudeStatus> {
+    if (targetFor(scope).kind !== 'codex') return { state: 'signed-out' };
+    return codexStatus(envFor(scope, 'codex'));
   }
   let codexSignIn: Promise<ClaudeStatus> | null = null;
   let codexSignInChild: ReturnType<typeof spawn> | null = null;
+  /** `codex login` opens the browser for the ChatGPT sign-in and ends when done; one at a time. */
+  function codexLogin(env: Record<string, string>): Promise<ClaudeStatus> {
+    codexSignIn ??= (async () => {
+      const cmd = await lookUpCodex();
+      if (!cmd) return { state: 'not-installed' } as ClaudeStatus;
+      await new Promise<void>((resolve) => {
+        const child = spawn(cmd, ['login'], { env, stdio: 'ignore' });
+        codexSignInChild = child;
+        const timer = setTimeout(() => child.kill(), 10 * 60_000);
+        const done = (): void => {
+          clearTimeout(timer);
+          if (codexSignInChild === child) codexSignInChild = null;
+          resolve();
+        };
+        child.on('error', done);
+        child.on('exit', done);
+      });
+      return codexStatus(env);
+    })().finally(() => (codexSignIn = null));
+    return codexSignIn;
+  }
+  const cliEnv = (kind: 'claude' | 'codex', folder: string | null): Record<string, string> =>
+    connectionEnv(kind === 'codex' ? codexEnv() : cleanEnv(process.env), folder ? { kind, id: path.basename(folder), dir: folder } : { kind, builtin: true });
+  const flows = createConnectionFlows({
+    registry: connections,
+    env: cliEnv,
+    installed: async (kind) => {
+      if (kind === 'codex') codexPath = null;
+      else claudePath = null; // look again: it may have been installed meanwhile
+      return !!(await (kind === 'codex' ? lookUpCodex() : lookUpClaude()));
+    },
+    async signIn(kind, env) {
+      const cmd = await (kind === 'codex' ? lookUpCodex() : lookUpClaude());
+      if (!cmd) return;
+      // An added Claude connection signs in with a Claude subscription, as the wizard says.
+      await runLogin(cmd, kind === 'codex' ? ['login'] : env.CLAUDE_CONFIG_DIR ? ['auth', 'login', '--claudeai'] : ['auth', 'login'], env);
+    },
+    async authInfo(kind, env) {
+      if (kind === 'codex') return { loggedIn: (await codexStatus(env)).state === 'ready' };
+      return parseAuthInfo(await runClaudeWith(env, ['auth', 'status', '--json']).catch(() => ''));
+    },
+    async signOut(kind, env) {
+      const cmd = await (kind === 'codex' ? lookUpCodex() : lookUpClaude());
+      if (!cmd) return;
+      await new Promise<void>((resolve) => execFile(cmd, kind === 'codex' ? ['logout'] : ['auth', 'logout'], { env, timeout: 15_000 }, () => resolve()));
+    },
+    async checkKey(key) {
+      const r = await checkOpenRouterKey((u, init) => net.fetch(String(u), init), key);
+      return r.ok ? { ok: true } : { ok: false, message: r.message };
+    },
+    getKey: (name) => secrets.get(name),
+    setKey: (name, key) => secrets.set(name, key),
+    removeKey: (name) => secrets.remove(name),
+  });
+  const CONNECTION_ERRORS: Record<string, MessageKey> = {
+    name: 'settings.connections.errorName',
+    taken: 'settings.connections.errorTaken',
+    'not-installed': 'settings.connections.errorNotInstalled',
+    'signed-out': 'settings.connections.errorSignIn',
+    unknown: 'settings.connections.errorSignIn',
+    key: 'settings.connections.errorKey',
+  };
+  /** A flow's error code in the user's language; the OpenRouter check's own message as it is. */
+  const connectionError = (code: string): string => (CONNECTION_ERRORS[code] ? t(CONNECTION_ERRORS[code]) : code);
 
   let orModels: { at: number; list: OpenRouterModel[] } | null = null;
   let orModelsLoading: Promise<OpenRouterModel[]> | null = null;
@@ -1912,7 +2002,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
           configs: Object.fromEntries(scopes().map((x) => [x.key, cfg(x.key)])),
           memory: Object.fromEntries(scopes().map((x) => [x.key, memory.list(x.key)])),
           skills: skills.all(),
-          claudeAccounts: claudeAccounts.list(),
+          connections: connections.list(),
           skillsActive: skills.activeMap(),
           button: store.state().assistant?.button !== false,
           mode: assistantMode(),
@@ -2327,8 +2417,8 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     async assistantStatus() {
       const engine = cfg(scopeNow()).engine;
       if (engine === 'off') return { state: 'ready' as const }; // the chat says it is off
-      if (engine === 'codex') return codexStatus();
-      if (engine === 'openrouter') return secrets.get('openrouter') ? { state: 'ready' as const } : { state: 'signed-out' as const };
+      if (engine === 'codex') return codexStatusFor(scopeNow());
+      if (engine === 'openrouter') return openRouterReady(scopeNow()) ? { state: 'ready' as const } : { state: 'signed-out' as const };
       return claudeStatusFor(scopeNow());
     },
 
@@ -2336,25 +2426,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     codexStatus: () => codexStatus(),
 
     codexSignIn() {
-      // `codex login` opens the browser for the ChatGPT sign-in and ends when done.
-      codexSignIn ??= (async () => {
-        const cmd = await lookUpCodex();
-        if (!cmd) return { state: 'not-installed' } as ClaudeStatus;
-        await new Promise<void>((resolve) => {
-          const child = spawn(cmd, ['login'], { env: codexEnv(), stdio: 'ignore' });
-          codexSignInChild = child;
-          const timer = setTimeout(() => child.kill(), 10 * 60_000);
-          const done = (): void => {
-            clearTimeout(timer);
-            if (codexSignInChild === child) codexSignInChild = null;
-            resolve();
-          };
-          child.on('error', done);
-          child.on('exit', done);
-        });
-        return codexStatus();
-      })().finally(() => (codexSignIn = null));
-      return codexSignIn;
+      return codexLogin(codexEnv()); // this Mac's own Codex (setup, Integrations)
     },
 
     codexSignInCancel() {
@@ -2406,11 +2478,13 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     },
 
     assistantSignIn() {
-      // A space on another Claude account signs in to that account, never to this Mac's.
+      // A space on an added connection signs in to that connection, never to this Mac's.
       const scope = scopeNow();
-      const target = claudeTargetFor(scope);
+      const target = targetFor(scope);
       if (target.kind === 'missing') return Promise.resolve({ state: 'signed-out' } as ClaudeStatus);
-      if (target.kind === 'account') return claudeSignInTo(target.id).then(() => (push(), claudeStatusFor(scope)));
+      if (target.kind === 'openrouter') return Promise.resolve((openRouterReady(scope) ? { state: 'ready' } : { state: 'signed-out' }) as ClaudeStatus);
+      if (!('builtin' in target)) return flows.signInAgain(target.id).then(() => (push(), target.kind === 'codex' ? codexStatusFor(scope) : claudeStatusFor(scope)));
+      if (target.kind === 'codex') return codexLogin(codexEnv()).then((st) => (push(), st));
       // `claude auth login` opens the browser and ends when the user has signed in (or gave up).
       signIn ??= (async () => {
         const cmd = await lookUpClaude();
@@ -2433,7 +2507,8 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     },
 
     assistantSignInCancel() {
-      claudeLogin?.child.kill();
+      loginChild?.kill();
+      codexSignInChild?.kill();
       signInChild?.kill(); // its promise then resolves with the current status
     },
 
@@ -3009,67 +3084,52 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       };
     },
 
-    async claudeAccountsInfo() {
-      const status = await claudeStatus().catch(() => null);
-      const mac = status?.state === 'not-installed' || !status ? null : parseAuthInfo(await runClaudeIn({ kind: 'mac' }, ['auth', 'status', '--json']).catch(() => ''));
-      const accounts = await Promise.all(
-        claudeAccounts.list().map(async (a) => {
-          const info = parseAuthInfo(await runClaudeIn({ kind: 'account', id: a.id, dir: claudeAccounts.dirOf(a.id) }, ['auth', 'status', '--json']).catch(() => ''));
-          if (info?.loggedIn && (info.email !== a.email || info.org !== a.org)) claudeAccounts.setInfo(a.id, { ...(info.email ? { email: info.email } : {}), ...(info.org ? { org: info.org } : {}), ...(info.plan ? { plan: info.plan } : {}) });
-          return { ...a, ...(info?.loggedIn ? { email: info.email, org: info.org, plan: info.plan } : {}), loggedIn: !!info?.loggedIn };
-        }),
-      );
-      return { mac, accounts };
+    connectionsInfo: () => flows.info(),
+    async connectionCreate(kind, name, key) {
+      const r = await flows.create(kind, name, key);
+      push();
+      return r.ok ? r : { ok: false as const, error: connectionError(r.error) };
     },
-    async claudeAccountAdd(name) {
-      let a: ClaudeAccount;
+    async connectionSignIn(id, key) {
+      const r = await flows.signInAgain(id, key);
+      push();
+      return r.ok ? r : { ok: false as const, error: connectionError(r.error) };
+    },
+    connectionCancel() {
+      loginChild?.kill();
+      codexSignInChild?.kill();
+    },
+    async connectionRename(id, name) {
       try {
-        a = claudeAccounts.add(name);
+        connections.rename(id, name);
       } catch (e) {
-        return { ok: false as const, error: (e as Error).message };
+        return { ok: false as const, error: connectionError((e as Error).message) };
       }
       push();
-      const r = await claudeSignInTo(a.id);
-      if (!r.ok) claudeAccounts.remove(a.id);
-      push();
-      return r.ok ? { ok: true as const, id: a.id } : r;
+      return { ok: true as const };
     },
-    async claudeAccountSignIn(id) {
-      if (!claudeAccounts.list().some((a) => a.id === id)) return { ok: false as const, error: t('settings.claudeAccounts.signInFailed') };
-      const r = await claudeSignInTo(id);
-      push();
-      return r;
-    },
-    claudeAccountCancel() {
-      claudeLogin?.child.kill();
-    },
-    claudeAccountRemove(id) {
-      const a = claudeAccounts.list().find((x) => x.id === id);
-      if (!a) return;
-      const users = scopes().filter((s) => cfg(s.key).claudeAccount === id).length;
+    connectionRemove(id) {
+      const c = connections.get(id);
+      if (!c || c.builtin) return;
+      const users = scopes().filter((s) => cfg(s.key).connection === id).length;
       const r = dialog.showMessageBoxSync(win, {
         type: 'warning',
-        message: t('settings.claudeAccounts.removeTitle', { name: a.name }),
-        detail: users ? t('settings.claudeAccounts.removeDetail', { count: users }) : t('settings.claudeAccounts.removeDetailUnused'),
-        buttons: [t('settings.claudeAccounts.remove'), t('common.cancel')],
+        message: t('settings.connections.removeTitle', { name: c.name }),
+        detail: users ? t('settings.connections.removeDetail', { count: users }) : t('settings.connections.removeDetailUnused'),
+        buttons: [t('settings.connections.remove'), t('common.cancel')],
         defaultId: 1,
         cancelId: 1,
       });
       if (r !== 0) return;
-      // Its sessions end; signing out removes its Keychain entry; then its folder goes.
+      // Its sessions end first; then it is signed out and its folder or key goes. Its spaces stop: never another connection.
       for (const [cid, sess] of sessions) {
         const sc = conversations.get(cid)?.scope;
-        if (sc && cfg(sc).claudeAccount === id) {
+        if (sc && cfg(sc).connection === id) {
           sess.close();
           sessions.delete(cid);
         }
       }
-      void runClaudeIn({ kind: 'account', id, dir: claudeAccounts.dirOf(id) }, ['auth', 'logout'])
-        .catch(() => undefined)
-        .finally(() => {
-          claudeAccounts.remove(id);
-          push();
-        });
+      void flows.remove(id).finally(() => push());
     },
 
     openMemory(scope) {
@@ -3344,6 +3404,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       quitting = true; // pages closing now are not reopened
       signInChild?.kill(); // its local sign-in callback must not outlive the app
       codexSignInChild?.kill();
+      loginChild?.kill(); // a connection still signing in is dropped at the next start (pending)
       googleSync.dispose();
       for (const sess of sessions.values()) sess.release(); // their conversations resume next time
       conversations.flush();

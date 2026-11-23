@@ -106,9 +106,15 @@ Run with your real accounts before adopting a new version. Tick each line.
 - [ ] Apple's language missing (e.g. Portuguese): the bar and Settings offer to download it.
 - [ ] Ungroup a space with meetings: Mission Desk asks; Cancel keeps everything.
 
-## Claude accounts
-- [ ] Settings → Assistant → **Add a Claude account**: name it, sign in in the browser; it shows the account's email and organisation.
-- [ ] Choose it in one space's card: that space's assistant answers with it; another space still uses this Mac's account.
-- [ ] A meeting follow-up in that space runs with that account.
-- [ ] Sign the account out (or remove it): its space asks to sign in / to choose an account; it never answers with the personal account.
+## Assistant connections
+- [ ] A build from 2026-11-22 with an extra Claude account: after the update the account is in Settings → Integrations with its name, still signed in, and its space still uses it.
+- [ ] Integrations → **+ New connection** → Claude Code: the name is filled in ("Claude 2"); sign in in the browser; it shows the account's email and organisation.
+- [ ] Same, then **Cancel** while the browser waits: nothing is added.
+- [ ] A name another connection has (any case) is refused before signing in.
+- [ ] OpenRouter: a wrong key says why and keeps the wizard; a good one adds the connection.
+- [ ] Codex (when installed): add a second ChatGPT account; both sign in, each in its own space.
+- [ ] Choose a connection in one space's card: that space's assistant answers with it; another space still uses this Mac's.
+- [ ] A meeting follow-up in that space runs with that connection.
+- [ ] Rename a built-in ("Claude Code (this Mac)" → "Claude pessoal"): the space selects show the new name.
+- [ ] Remove a connection a space uses: Mission Desk asks, saying 1 space uses it; that space then says its connection was removed and never answers with another.
 

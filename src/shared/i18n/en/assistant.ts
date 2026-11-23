@@ -146,6 +146,6 @@ export const assistant = {
   'assistant.openRouter.statusRetry': 'OpenRouter answered {status}. Try again.',
   'assistant.openRouter.unreachable': "Couldn't reach OpenRouter. Check the connection.",
   'assistant.keychainUnavailable': 'The macOS Keychain is not available, so the key was not saved.',
-  'assistant.error.claudeAccountMissing': 'This space’s Claude account was removed. Choose its Claude account in Settings → Assistant.',
+  'assistant.error.connectionMissing': 'This space’s assistant connection was removed: choose one in Settings → Assistant.',
   'assistant.panel.memory': 'Memory: what this space’s assistant remembers',
 } satisfies Record<string, Msg>;

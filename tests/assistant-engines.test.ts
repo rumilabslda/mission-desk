@@ -1,8 +1,14 @@
 import { ENGINES, isEngine, scopeConfig } from '../src/shared/assistant-engines';
 
 test('each space uses Claude by default, with the global model and effort', () => {
-  expect(scopeConfig({ model: 'opus', effort: 'high' }, 'space:A')).toEqual({ engine: 'claude', model: 'opus', effort: 'high', openrouterModel: 'openrouter/auto', codexModel: '', claudeAccount: '' });
-  expect(scopeConfig(undefined, 'all')).toEqual({ engine: 'claude', model: 'default', effort: 'medium', openrouterModel: 'openrouter/auto', codexModel: '', claudeAccount: '' });
+  expect(scopeConfig({ model: 'opus', effort: 'high' }, 'space:A')).toEqual({ engine: 'claude', model: 'opus', effort: 'high', openrouterModel: 'openrouter/auto', codexModel: '', connection: '' });
+  expect(scopeConfig(undefined, 'all')).toEqual({ engine: 'claude', model: 'default', effort: 'medium', openrouterModel: 'openrouter/auto', codexModel: '', connection: '' });
+});
+
+test('yesterday’s Claude account counts only for a space that is on Claude', () => {
+  expect(scopeConfig({ scopes: { s: { engine: 'claude', claudeAccount: 'acme12345678' } } }, 's').connection).toBe('acme12345678');
+  expect(scopeConfig({ scopes: { s: { engine: 'openrouter', claudeAccount: 'acme12345678' } } }, 's').connection).toBe('');
+  expect(scopeConfig({ scopes: { s: { engine: 'codex', claudeAccount: 'acme12345678' } } }, 's').connection).toBe('');
 });
 
 test("a space's own choice wins; bad stored values fall back", () => {
