@@ -5,7 +5,7 @@ import { type MessageKey, rich, t } from '../i18n';
 export const INSTALL_CLAUDE = 'curl -fsSL https://claude.ai/install.sh | bash';
 export const INSTALL_CODEX = 'npm install -g @openai/codex';
 
-const KIND_NAME: Record<ConnectionKind, MessageKey> = { claude: 'settings.connections.kind.claude', codex: 'settings.connections.kind.codex', openrouter: 'settings.connections.kind.openrouter' };
+export const KIND_NAME: Record<ConnectionKind, MessageKey> = { claude: 'settings.connections.kind.claude', codex: 'settings.connections.kind.codex', openrouter: 'settings.connections.kind.openrouter' };
 const KIND_HINT: Record<ConnectionKind, MessageKey> = { claude: 'settings.connections.kindHint.claude', codex: 'settings.connections.kindHint.codex', openrouter: 'settings.connections.kindHint.openrouter' };
 const BUILTIN_NAME: Record<ConnectionKind, MessageKey> = {
   claude: 'settings.connections.builtinName.claude',

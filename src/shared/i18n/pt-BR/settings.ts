@@ -258,6 +258,7 @@ export const settings: Translation<typeof en> = {
   "settings.connections.signInAgain": "Fazer login de novo",
   "settings.connections.newKey": "Nova chave",
   "settings.connections.signedInAs": "Conectado como {who}",
+  "settings.connections.missing": "A conexão que este espaço usava foi removida: escolha outra.",
   "settings.memory.open": { one: "Memória ({count} nota)", other: "Memória ({count} notas)" },
   "settings.memory.dialogTitle": "Memória · {name}",
   "settings.memory.count": "{count} de {max}",

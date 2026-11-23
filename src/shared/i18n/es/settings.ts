@@ -258,6 +258,7 @@ export const settings: Translation<typeof en> = {
   "settings.connections.signInAgain": "Volver a iniciar sesión",
   "settings.connections.newKey": "Nueva clave",
   "settings.connections.signedInAs": "Sesión iniciada como {who}",
+  "settings.connections.missing": "Se quitó la conexión que usaba este espacio: elige otra.",
   "settings.memory.open": { one: "Memoria ({count} nota)", other: "Memoria ({count} notas)" },
   "settings.memory.dialogTitle": "Memoria · {name}",
   "settings.memory.count": "{count} de {max}",

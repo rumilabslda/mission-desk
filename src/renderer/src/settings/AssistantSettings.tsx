@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { ASSISTANT_EFFORTS, ASSISTANT_MODELS, type AssistantEffort, type AssistantModel, type ClaudeStatus } from '../../../shared/assistant';
-import { type AssistantEngine, ENGINES } from '../../../shared/assistant-engines';
+import { ASSISTANT_EFFORTS, ASSISTANT_MODELS, type AssistantEffort, type AssistantModel } from '../../../shared/assistant';
+import type { AssistantEngine } from '../../../shared/assistant-engines';
 import type { AccountView, UiSnapshot } from '../../../shared/ipc';
 import type { Account } from '../../../shared/types';
 import { ClaudeConnectPanel } from '../ConnectClaudeDialog';
-import { type MessageKey, rich, t } from '../i18n';
-import { ConnectionsSettings } from './ConnectionsSettings';
+import { type MessageKey, t } from '../i18n';
+import { BUILTIN, CONNECTION_KINDS, type Connection, type ConnectionInfo, type ConnectionKind } from '../../../shared/connections';
+import { connectionLabel, ConnectionsSettings, KIND_NAME } from './ConnectionsSettings';
 
 const ACCESS: { value: NonNullable<Account['claudeAccess']>; label: MessageKey }[] = [
   { value: 'off', label: 'common.off' },
@@ -29,7 +30,6 @@ function accountsOf(snap: UiSnapshot, scope: string): AccountView[] {
   return [];
 }
 
-type Ready = Partial<Record<AssistantEngine, boolean>>;
 
 /** One scope's notes: only its own assistant sees them. Click a note to change it. */
 /** Opens the scope's memory (the same window as the assistant's 🧠 button). */
@@ -43,52 +43,60 @@ function MemoryButton({ scope, count }: { scope: string; count: number }): React
   );
 }
 
-function ScopeCard({ snap, scope, name, ready, orModels }: { snap: UiSnapshot; scope: string; name: string; ready: Ready; orModels: { id: string; name: string }[] }): React.JSX.Element {
+function ScopeCard({ snap, scope, name, conns, orModels }: { snap: UiSnapshot; scope: string; name: string; conns: ConnectionInfo[] | null; orModels: { id: string; name: string }[] }): React.JSX.Element {
   const c = snap.assistant.configs[scope] ?? { engine: 'claude', model: 'default', effort: 'medium', openrouterModel: 'openrouter/auto', codexModel: '', connection: '' };
   const set = (patch: Partial<{ engine: AssistantEngine; model: AssistantModel; effort: AssistantEffort; openrouterModel: string; codexModel: string; connection: string }>): void =>
     window.missiondesk.setAssistantScopeConfig(scope, patch);
   const [codexModel, setCodexModel] = useState(c.codexModel);
   useEffect(() => setCodexModel(c.codexModel), [c.codexModel]);
   const accounts = accountsOf(snap, scope);
-  const claudeConns = snap.assistant.connections.filter((x) => x.kind === 'claude' && !x.builtin);
+  // The space's connection: '' is its type's built-in. One that no longer exists is missing: never another.
+  const currentId = c.engine === 'off' ? '' : c.connection || BUILTIN[c.engine];
+  const builtinNow = c.engine !== 'off' && currentId === BUILTIN[c.engine];
+  const stored = snap.assistant.connections.find((x) => x.id === currentId && x.kind === c.engine && !x.builtin);
+  const missing = c.engine !== 'off' && !builtinNow && !stored;
+  const current = c.engine === 'off' ? undefined : conns?.find((x) => x.id === currentId && x.kind === c.engine);
+  const groups = CONNECTION_KINDS.map((kind) => {
+    const items: (Pick<Connection, 'id' | 'kind' | 'name' | 'builtin' | 'email'> & { gone?: boolean })[] = (conns ?? []).filter((x) => x.kind === kind);
+    if (c.engine === kind && !items.some((x) => x.id === currentId)) {
+      // The space's own choice always shows, even before the list loads or when it's gone.
+      items.unshift(builtinNow ? { id: currentId, kind, name: '', builtin: true } : stored ? { ...stored } : { id: currentId, kind, name: '—', gone: true });
+    }
+    return { kind, items };
+  }).filter((g) => g.items.length > 0);
+  const choose = (v: string): void => {
+    if (v === 'off') return set({ engine: 'off' });
+    const [kind, id] = v.split('|') as [ConnectionKind, string];
+    set({ engine: kind, connection: id === BUILTIN[kind] ? '' : id });
+  };
   return (
     <div className="set-card asg-card">
       <div className="asg-head">
         <strong>{name}</strong>
-        <select className="set-select" value={c.engine} onChange={(e) => set({ engine: e.target.value as AssistantEngine })} title={t('settings.assistant.engineTitle')}>
-          {ENGINES.map((en) => (
-            <option key={en.id} value={en.id}>
-              {en.name}
-            </option>
+        <select className="set-select" value={c.engine === 'off' ? 'off' : `${c.engine}|${currentId}`} onChange={(e) => choose(e.target.value)} title={t('settings.assistant.engineTitle')}>
+          {groups.map((g) => (
+            <optgroup key={g.kind} label={t(KIND_NAME[g.kind])}>
+              {g.items.map((x) => (
+                <option key={x.id} value={`${x.kind}|${x.id}`}>
+                  {x.gone ? '—' : connectionLabel(x) + (x.email ? ` · ${x.email}` : '')}
+                </option>
+              ))}
+            </optgroup>
           ))}
           <option value="off">{t('common.off')}</option>
         </select>
       </div>
-      {c.engine !== 'off' && ready[c.engine] === false && (
+      {missing && <p className="asg-error">{t('settings.connections.missing')}</p>}
+      {c.engine !== 'off' && !missing && conns !== null && current?.state !== 'ready' && (
         <p className="asg-error">
-          {t('settings.assistant.notConnected', { name: ENGINES.find((x) => x.id === c.engine)?.name ?? c.engine })}{' '}
+          {t('settings.assistant.notConnected', { name: current ? connectionLabel(current) : builtinNow ? connectionLabel({ kind: c.engine, name: '', builtin: true }) : (stored?.name ?? '') })}{' '}
           <button className="set-link" onClick={() => window.missiondesk.openSettings('integrations')}>
             {t('settings.assistant.connectInIntegrations')}
           </button>
         </p>
       )}
-      {c.engine === 'claude' && c.connection && !claudeConns.some((a) => a.id === c.connection) && <p className="asg-error">{t('settings.claudeAccounts.missing')}</p>}
       {c.engine !== 'off' && (
         <div className="asg-row">
-          {c.engine === 'claude' && (claudeConns.length > 0 || c.connection) && (
-            <label>
-              {t('settings.claudeAccounts.choose')}
-              <select className="set-select" value={c.connection} onChange={(e) => set({ connection: e.target.value })}>
-                <option value="">{t('settings.claudeAccounts.mac')}</option>
-                {claudeConns.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.email ? `${a.name} · ${a.email}` : a.name}
-                  </option>
-                ))}
-                {c.connection && !claudeConns.some((a) => a.id === c.connection) && <option value={c.connection}>—</option>}
-              </select>
-            </label>
-          )}
           {c.engine === 'claude' && (
             <label>
               {t('settings.assistant.model')}
@@ -179,14 +187,17 @@ function ScopeCard({ snap, scope, name, ready, orModels }: { snap: UiSnapshot; s
 
 /** Settings → Assistant: one per space or one for everything, and each space's assistant. */
 export function AssistantSettings({ snap }: { snap: UiSnapshot }): React.JSX.Element {
-  const [ready, setReady] = useState<Ready>({});
+  const [conns, setConns] = useState<ConnectionInfo[] | null>(null);
   const [orModels, setOrModels] = useState<{ id: string; name: string }[]>([]);
   const uses = (e: AssistantEngine): boolean => Object.values(snap.assistant.configs).some((c) => c.engine === e);
+  const storedKey = JSON.stringify(snap.assistant.connections);
   useEffect(() => {
-    void window.missiondesk.claudeIntegrationStatus().then((s) => setReady((r) => ({ ...r, claude: s.state === 'ready' })));
-    void window.missiondesk.openRouterStatus().then((s) => setReady((r) => ({ ...r, openrouter: s.connected })));
-    void window.missiondesk.codexStatus().then((s) => setReady((r) => ({ ...r, codex: s.state === 'ready' })));
-  }, []);
+    let live = true;
+    void window.missiondesk.connectionsInfo().then((l) => live && setConns(l));
+    return () => {
+      live = false;
+    };
+  }, [storedKey]);
   const needModels = uses('openrouter');
   useEffect(() => {
     if (needModels && orModels.length === 0) void window.missiondesk.openRouterModels().then(setOrModels);
@@ -214,7 +225,7 @@ export function AssistantSettings({ snap }: { snap: UiSnapshot }): React.JSX.Ele
       <h3>{snap.assistant.mode === 'space' ? t('settings.assistant.spacesHeading') : t('settings.assistant.everythingHeading')}</h3>
       <p className="set-muted">{t('settings.assistant.intro')}</p>
       {snap.assistant.scopes.map((s) => (
-        <ScopeCard key={s.key} snap={snap} scope={s.key} name={s.name} ready={ready} orModels={orModels} />
+        <ScopeCard key={s.key} snap={snap} scope={s.key} name={s.name} conns={conns} orModels={orModels} />
       ))}
     </>
   );

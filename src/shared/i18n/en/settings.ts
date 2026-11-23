@@ -275,4 +275,5 @@ export const settings = {
   'settings.connections.signInAgain': 'Sign in again',
   'settings.connections.newKey': 'New key',
   'settings.connections.signedInAs': 'Signed in as {who}',
+  'settings.connections.missing': 'The connection this space used was removed: choose one.',
 } satisfies Record<string, Msg>;
