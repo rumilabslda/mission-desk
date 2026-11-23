@@ -46,7 +46,7 @@ export function createConnectionFlows(d: FlowDeps) {
       if (kind === 'openrouter' && !key?.trim()) return { ok: false, error: 'key' };
       let c: Connection;
       try {
-        c = registry.add(kind, name);
+        c = registry.add(kind, name, { pending: true }); // in no list until it connects
       } catch (e) {
         return { ok: false, error: (e as Error).message };
       }
@@ -62,13 +62,18 @@ export function createConnectionFlows(d: FlowDeps) {
           registry.remove(c.id);
           return { ok: false, error: (e as Error).message };
         }
+        registry.confirm(c.id);
         return { ok: true, id: c.id };
       }
-      const ok = await connectCli(kind, registry.dirOf(c.id), c.id).catch(() => false);
+      const folder = registry.dirOf(c.id);
+      const ok = await connectCli(kind, folder, c.id).catch(() => false);
       if (!ok) {
+        // A sign-in that half finished may have left a Keychain item for this folder: sign it out first.
+        await d.signOut(kind, d.env(kind, folder)).catch(() => undefined);
         registry.remove(c.id);
         return { ok: false, error: 'signed-out' };
       }
+      registry.confirm(c.id);
       return { ok: true, id: c.id };
     },
 
@@ -92,9 +97,13 @@ export function createConnectionFlows(d: FlowDeps) {
     async remove(id: string): Promise<boolean> {
       const c = registry.get(id);
       if (!c || c.builtin) return false;
+      // Out of the list first, at once: no session can start on it while it signs out.
+      const env = c.kind === 'openrouter' ? null : d.env(c.kind, registry.dirOf(id));
+      registry.forget(id);
       if (c.kind === 'openrouter') d.removeKey(keyNameOf(id));
-      else await d.signOut(c.kind, d.env(c.kind, registry.dirOf(id))).catch(() => undefined);
-      return registry.remove(id);
+      else if (env) await d.signOut(c.kind, env).catch(() => undefined);
+      registry.removeFolder(id);
+      return true;
     },
 
     /** Every connection that exists, built-ins first within each type, with whether it's ready. A built-in

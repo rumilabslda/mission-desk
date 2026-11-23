@@ -3359,6 +3359,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       quitting = true; // pages closing now are not reopened
       signInChild?.kill(); // its local sign-in callback must not outlive the app
       codexSignInChild?.kill();
+      loginChild?.kill(); // a connection still signing in is dropped at the next start (pending)
       googleSync.dispose();
       for (const sess of sessions.values()) sess.release(); // their conversations resume next time
       conversations.flush();

@@ -5,6 +5,12 @@ test('each space uses Claude by default, with the global model and effort', () =
   expect(scopeConfig(undefined, 'all')).toEqual({ engine: 'claude', model: 'default', effort: 'medium', openrouterModel: 'openrouter/auto', codexModel: '', connection: '' });
 });
 
+test('yesterday’s Claude account counts only for a space that is on Claude', () => {
+  expect(scopeConfig({ scopes: { s: { engine: 'claude', claudeAccount: 'acme12345678' } } }, 's').connection).toBe('acme12345678');
+  expect(scopeConfig({ scopes: { s: { engine: 'openrouter', claudeAccount: 'acme12345678' } } }, 's').connection).toBe('');
+  expect(scopeConfig({ scopes: { s: { engine: 'codex', claudeAccount: 'acme12345678' } } }, 's').connection).toBe('');
+});
+
 test("a space's own choice wins; bad stored values fall back", () => {
   const prefs = { model: 'opus', effort: 'high', scopes: { 'space:A': { engine: 'off' as const }, 'space:B': { model: 'haiku', effort: 'low' }, 'space:C': { engine: 'nope', model: 'x', effort: 'y' } } };
   expect(scopeConfig(prefs, 'space:A').engine).toBe('off');

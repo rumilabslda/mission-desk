@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BUILTIN, CONNECTION_KINDS, type Connection, type ConnectionInfo, type ConnectionKind } from '../../../shared/connections';
 import { type MessageKey, rich, t } from '../i18n';
 
@@ -186,6 +186,14 @@ function NewConnectionWizard({ list, onRefresh, onClose }: { list: ConnectionInf
   const [step, setStep] = useState<'type' | 'name' | 'connect'>('type');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const waiting = useRef(false);
+  // Settings closed, or another section opened, while the browser sign-in waits: stop it, so nothing is left.
+  useEffect(
+    () => () => {
+      if (waiting.current) md.connectionCancel();
+    },
+    [md],
+  );
   const names = list.map(connectionLabel);
   // The program is installed when its built-in shows (Settings lists it only then).
   const installed = (k: ConnectionKind): boolean => k === 'openrouter' || list.some((c) => c.id === BUILTIN[k]);
@@ -202,7 +210,9 @@ function NewConnectionWizard({ list, onRefresh, onClose }: { list: ConnectionInf
     if (!kind) return;
     setBusy(true);
     setError('');
+    waiting.current = true;
     const r = await (key === undefined ? md.connectionCreate(kind, name) : md.connectionCreate(kind, name, key));
+    waiting.current = false;
     setBusy(false);
     if (r.ok) onClose(true);
     else setError(r.error);

@@ -49,7 +49,9 @@ export function scopeConfig(prefs: Prefs, scope: string): ScopeConfig {
   const engine = isEngine(own.engine) ? own.engine : isEngine(prefs?.defaultEngine) ? prefs.defaultEngine : 'claude';
   const openrouterModel = isOpenRouterModel(own.openrouterModel) ? own.openrouterModel : 'openrouter/auto';
   const codexModel = isCodexModel(own.codexModel) ? own.codexModel : '';
-  // `claudeAccount` is the field the 2026-11-22 build wrote (Claude accounts); a connection id now.
-  const connection = isConnectionRef(own.connection) ? own.connection : isConnectionRef(own.claudeAccount) ? own.claudeAccount : '';
+  // `claudeAccount` is the field the 2026-11-22 build wrote (Claude accounts); a connection id now. That
+  // build only used it while the space was on Claude: a space since moved to another type ignores it.
+  const legacy = engine === 'claude' && isConnectionRef(own.claudeAccount) ? own.claudeAccount : '';
+  const connection = isConnectionRef(own.connection) ? own.connection : legacy;
   return { engine, model, effort, openrouterModel, codexModel, connection };
 }

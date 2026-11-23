@@ -119,3 +119,18 @@ test('unique names count every connection, built-ins included', () => {
   expect(uniqueName('claude', ['Claude 2', 'Claude Acme'])).toBe('Claude 3');
   expect(uniqueName('codex', [])).toBe('Codex 2');
 });
+
+test('leaving Settings while the browser sign-in waits cancels it', async () => {
+  replies.connectionCreate = new Promise(() => undefined);
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  await act(async () => root.render(<ConnectionsSettings connections={[]} />));
+  await click(button(host, '+ New connection'));
+  await click(host.querySelector<HTMLButtonElement>('[data-kind=claude]')!);
+  await click(button(host, 'Next'));
+  await click(button(host, 'Sign in in the browser'));
+  expect(made()).toEqual([['connectionCreate', 'claude', 'Claude 2']]);
+  await act(async () => root.unmount());
+  expect(made()).toEqual([['connectionCreate', 'claude', 'Claude 2'], ['connectionCancel']]);
+});

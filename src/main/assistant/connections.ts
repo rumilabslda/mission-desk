@@ -41,23 +41,34 @@ function sanitize(raw: unknown, kind?: ConnectionKind): Connection | null {
   };
 }
 
+type Stored = Connection & { pending?: boolean };
+
 /**
  * The assistant connections: a list in <dir>/connections.json (mode 600) and, for each added Claude
  * Code or Codex connection, its own folder <dir>/connections/<id> (mode 700). Built-ins are stored
- * only once renamed. Yesterday's <dir>/claude-accounts.json is taken over once, on load.
+ * only once renamed. Yesterday's <dir>/claude-accounts.json is taken over once, on load; its folders
+ * stay where they are (<dir>/claude-accounts/<id>), since Claude Code keys its Keychain sign-in on
+ * the folder's path. A connection still being set up is pending: in no list, and gone after a restart.
  */
 export function createConnections(dir: string) {
   const file = path.join(dir, 'connections.json');
   const root = path.join(dir, 'connections');
-  let items: Connection[] = load();
+  const legacyRoot = path.join(dir, 'claude-accounts');
+  let items: Stored[] = load();
+  dropPending();
   migrateClaudeAccounts();
 
-  function load(): Connection[] {
+  function load(): Stored[] {
     try {
       const raw = JSON.parse(fs.readFileSync(file, 'utf8')) as { connections?: unknown };
       if (!Array.isArray(raw.connections)) return [];
       const seen = new Set<string>();
-      return raw.connections.map((c) => sanitize(c)).filter((c): c is Connection => !!c && !seen.has(c.id) && !!seen.add(c.id));
+      return raw.connections
+        .map((c): Stored | null => {
+          const x = sanitize(c);
+          return x && (c as { pending?: unknown }).pending === true && !x.builtin ? { ...x, pending: true } : x;
+        })
+        .filter((c): c is Stored => !!c && !seen.has(c.id) && !!seen.add(c.id));
     } catch {
       return [];
     }
@@ -72,45 +83,50 @@ export function createConnections(dir: string) {
 
   function dirOf(id: string): string {
     if (!ADDED_ID.test(id)) throw new Error('bad connection id');
-    return path.join(root, id);
+    const legacy = path.join(legacyRoot, id); // an account from 2026-11-22: its sign-in is keyed on this path
+    return fs.existsSync(legacy) ? legacy : path.join(root, id);
+  }
+
+  /** A setup the app quit in the middle of: nothing of it is kept. */
+  function dropPending(): void {
+    const pending = items.filter((c) => c.pending);
+    if (!pending.length) return;
+    items = items.filter((c) => !c.pending);
+    try {
+      save();
+    } catch {
+      return;
+    }
+    for (const c of pending) fs.rmSync(dirOf(c.id), { recursive: true, force: true });
   }
 
   function migrateClaudeAccounts(): void {
     const oldFile = path.join(dir, 'claude-accounts.json');
-    const oldRoot = path.join(dir, 'claude-accounts');
     if (!fs.existsSync(oldFile)) return;
-    let accounts: unknown[] = [];
+    let accounts: unknown[];
     try {
       const raw = JSON.parse(fs.readFileSync(oldFile, 'utf8')) as { accounts?: unknown };
-      if (Array.isArray(raw.accounts)) accounts = raw.accounts;
+      accounts = Array.isArray(raw.accounts) ? raw.accounts : [];
     } catch {
-      /* a damaged old file has nothing to bring over */
+      return; // damaged: left as it is, nothing taken over
     }
+    const before = items;
     for (const a of accounts) {
       const c = sanitize(a, 'claude');
       if (!c || c.builtin || items.some((x) => x.id === c.id)) continue;
-      const from = path.join(oldRoot, c.id);
-      const to = dirOf(c.id);
-      try {
-        if (fs.existsSync(from) && !fs.existsSync(to)) {
-          fs.mkdirSync(root, { recursive: true });
-          fs.renameSync(from, to);
-        }
-      } catch {
-        continue; // its folder couldn't move: leave the account where it was rather than lose its sign-in
-      }
       items = [...items, c];
     }
-    save();
-    fs.rmSync(oldFile, { force: true });
     try {
-      fs.rmdirSync(oldRoot); // only when empty: anything left there stays
+      save();
     } catch {
-      /* not there, or not empty */
+      items = before; // not written: the old file stays, and is taken over next time
+      return;
     }
+    fs.rmSync(oldFile, { force: true });
   }
 
-  const nameOf = (id: string): string => items.find((c) => c.id === id)?.name ?? BUILTIN_NAMES[id] ?? '';
+  const visible = (): Connection[] => items.filter((c) => !c.pending).map(({ pending: _p, ...c }) => c);
+  const nameOf = (id: string): string => items.find((c) => c.id === id && !c.pending)?.name ?? BUILTIN_NAMES[id] ?? '';
   const taken = (name: string, except?: string): boolean => {
     const low = name.toLowerCase();
     const names = [...items.filter((c) => c.id !== except).map((c) => c.name), ...Object.keys(BUILTIN_NAMES).filter((id) => id !== except && !items.some((c) => c.id === id)).map((id) => BUILTIN_NAMES[id])];
@@ -124,8 +140,8 @@ export function createConnections(dir: string) {
   };
 
   return {
-    list: (): Connection[] => items,
-    get: (id: string): Connection | undefined => items.find((c) => c.id === id),
+    list: visible,
+    get: (id: string): Connection | undefined => visible().find((c) => c.id === id),
     dirOf,
     nameOf,
     uniqueName(kind: ConnectionKind): string {
@@ -134,7 +150,8 @@ export function createConnections(dir: string) {
         if (!taken(name)) return name;
       }
     },
-    add(kind: ConnectionKind, name: string): Connection {
+    /** Adds a connection; a pending one stays out of every list until confirm(). */
+    add(kind: ConnectionKind, name: string, opts: { pending?: boolean } = {}): Connection {
       if (!isConnectionKind(kind)) throw new Error('kind');
       const clean = checkName(name);
       const c: Connection = { id: randomBytes(6).toString('hex'), kind, name: clean, addedAt: new Date().toISOString() };
@@ -142,9 +159,15 @@ export function createConnections(dir: string) {
         fs.mkdirSync(dirOf(c.id), { recursive: true, mode: 0o700 });
         fs.chmodSync(dirOf(c.id), 0o700);
       }
-      items = [...items, c];
+      items = [...items, opts.pending ? { ...c, pending: true } : c];
       save();
       return c;
+    },
+    /** A pending connection that connected: now it is listed and kept. */
+    confirm(id: string): void {
+      if (!items.some((c) => c.id === id && c.pending)) return;
+      items = items.map((c) => (c.id === id ? (({ pending: _p, ...x }) => x)(c) : c));
+      save();
     },
     rename(id: string, name: string): void {
       const clean = checkName(name, id);
@@ -160,12 +183,23 @@ export function createConnections(dir: string) {
       items = items.map((c) => (c.id === id ? { ...c, ...info } : c));
       save();
     },
-    /** Forgets an added connection and deletes its folder. Built-ins are never removed. */
-    remove(id: string): boolean {
+    /** Takes an added connection (pending or not) out of the list; its folder stays until removeFolder. Built-ins are never removed. */
+    forget(id: string): boolean {
       if (isBuiltinId(id) || !items.some((c) => c.id === id)) return false;
       items = items.filter((c) => c.id !== id);
       save();
+      return true;
+    },
+    removeFolder(id: string): void {
       fs.rmSync(dirOf(id), { recursive: true, force: true });
+    },
+    /** Forgets an added connection and deletes its folder. */
+    remove(id: string): boolean {
+      if (isBuiltinId(id) || !items.some((c) => c.id === id)) return false;
+      const folder = dirOf(id);
+      items = items.filter((c) => c.id !== id);
+      save();
+      fs.rmSync(folder, { recursive: true, force: true });
       return true;
     },
   };

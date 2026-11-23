@@ -48,13 +48,37 @@ test('a damaged file loads as empty', () => {
   expect(createConnections(dir).list()).toEqual([]);
 });
 
-test('yesterday’s Claude accounts become connections, keeping id, name and folder', () => {
-  fs.mkdirSync(path.join(dir, 'claude-accounts', 'acme12345678'), { recursive: true });
-  fs.writeFileSync(path.join(dir, 'claude-accounts', 'acme12345678', '.claude.json'), '{"x":1}');
+test('yesterday’s Claude accounts become connections, keeping id, name and the very same folder', () => {
+  const old = path.join(dir, 'claude-accounts', 'acme12345678');
+  fs.mkdirSync(old, { recursive: true });
+  fs.writeFileSync(path.join(old, '.claude.json'), '{"x":1}');
   fs.writeFileSync(path.join(dir, 'claude-accounts.json'), JSON.stringify({ accounts: [{ id: 'acme12345678', name: 'Acme', addedAt: '2026-11-22', email: 'me@acme.com' }] }));
   const r = createConnections(dir);
   expect(r.list()).toEqual([expect.objectContaining({ id: 'acme12345678', kind: 'claude', name: 'Acme', email: 'me@acme.com' })]);
-  expect(fs.readFileSync(path.join(r.dirOf('acme12345678'), '.claude.json'), 'utf8')).toBe('{"x":1}');
+  // Claude Code keys its Keychain sign-in on the folder's path: it must not move.
+  expect(r.dirOf('acme12345678')).toBe(old);
+  expect(fs.readFileSync(path.join(old, '.claude.json'), 'utf8')).toBe('{"x":1}');
   expect(fs.existsSync(path.join(dir, 'claude-accounts.json'))).toBe(false);
-  expect(fs.existsSync(path.join(dir, 'claude-accounts'))).toBe(false);
+  r.remove('acme12345678');
+  expect(fs.existsSync(old)).toBe(false);
+});
+
+test('a damaged old accounts file is left where it is', () => {
+  fs.writeFileSync(path.join(dir, 'claude-accounts.json'), '{nope');
+  createConnections(dir);
+  expect(fs.readFileSync(path.join(dir, 'claude-accounts.json'), 'utf8')).toBe('{nope');
+});
+
+test('a connection still being set up is not listed, and is gone after a restart', () => {
+  const r = createConnections(dir);
+  const c = r.add('claude', 'Claude Acme', { pending: true });
+  expect(r.list()).toEqual([]);
+  expect(r.get(c.id)).toBeUndefined();
+  expect(() => r.add('claude', 'Claude Acme')).toThrow('taken');
+  const again = createConnections(dir);
+  expect(again.list()).toEqual([]);
+  expect(fs.existsSync(again.dirOf(c.id))).toBe(false);
+  const d = r.add('claude', 'Claude Rumi', { pending: true });
+  r.confirm(d.id);
+  expect(createConnections(dir).get(d.id)?.name).toBe('Claude Rumi');
 });

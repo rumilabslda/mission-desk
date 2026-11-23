@@ -33,10 +33,11 @@ function setup(over: { loggedIn?: boolean; installed?: boolean; keyOk?: boolean 
   return { registry, keys, calls, flows };
 }
 
-test('a Claude connection whose sign-in ends signed out leaves nothing behind', async () => {
-  const { registry, flows } = setup({ loggedIn: false });
+test('a Claude connection whose sign-in ends signed out leaves nothing behind, not even a half sign-in', async () => {
+  const { registry, flows, calls } = setup({ loggedIn: false });
   const r = await flows.create('claude', 'Claude Acme');
   expect(r.ok).toBe(false);
+  expect(calls.some((c) => c.startsWith('signOut claude:'))).toBe(true);
   expect(registry.list()).toEqual([]);
   expect(fs.existsSync(path.join(dir, 'connections')) ? fs.readdirSync(path.join(dir, 'connections')) : []).toEqual([]);
 });
@@ -79,6 +80,32 @@ test('remove signs out and deletes the folder, or deletes the key; built-ins are
   expect(keys.size).toBe(0);
   expect(await flows.remove('mac-claude')).toBe(false);
   expect(registry.list()).toEqual([]);
+});
+
+test('while it signs in, a new connection is in no list; a removed one leaves the list before its sign-out', async () => {
+  const { registry, flows } = setup();
+  let seenDuring: unknown = 'not called';
+  const r = await flows.create('claude', 'Claude Acme');
+  if (!r.ok) throw new Error(r.error);
+  expect(registry.list().map((c) => c.id)).toEqual([r.id]);
+  const removing = createConnectionFlows({
+    registry,
+    env: (kind, folder) => ({ WHO: `${kind}:${folder ?? 'mac'}` }),
+    installed: async () => true,
+    signIn: async () => undefined,
+    authInfo: async () => ({ loggedIn: false }),
+    signOut: async () => void (seenDuring = registry.get(r.id)),
+    checkKey: async () => ({ ok: true as const }),
+    getKey: () => null,
+    setKey: () => undefined,
+    removeKey: () => undefined,
+  });
+  const folder = registry.dirOf(r.id);
+  const p = removing.remove(r.id);
+  expect(registry.get(r.id)).toBeUndefined(); // gone at once: no new session can start on it
+  expect(await p).toBe(true);
+  expect(seenDuring).toBeUndefined();
+  expect(fs.existsSync(folder)).toBe(false);
 });
 
 test('a duplicate name is refused before any sign-in', async () => {
