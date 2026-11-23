@@ -147,6 +147,6 @@ export const assistant: Translation<typeof en> = {
   'assistant.openRouter.statusRetry': 'OpenRouter antwoordde met {status}. Probeer het opnieuw.',
   'assistant.openRouter.unreachable': 'Kan OpenRouter niet bereiken. Controleer de verbinding.',
   'assistant.keychainUnavailable': 'De macOS-sleutelhanger is niet beschikbaar, dus de sleutel is niet bewaard.',
-  "assistant.error.claudeAccountMissing": "Het Claude-account van deze ruimte is verwijderd. Kies het Claude-account ervan in Instellingen → Assistent.",
+  "assistant.error.connectionMissing": "De assistentverbinding van deze ruimte is verwijderd: kies er een in Instellingen → Assistent.",
   "assistant.panel.memory": "Geheugen: wat de assistent van deze ruimte weet",
 };
