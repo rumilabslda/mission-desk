@@ -4,9 +4,9 @@ Shortcuts use ⌘ on macOS and Ctrl on Windows and Linux.
 
 ## Getting started
 
-The first time you open Mission Desk, a short setup starts by showing the language it's in (your Mac's): change it there and everything switches before you go on. Then it asks three things: whether you'd like an assistant (and connects it), how you'd like to organise your work in spaces, and which apps go in each space. Then each app opens in turn so you can sign in. Each one stays signed in from then on.
+The first time you open Mission Desk, a short setup starts by showing the language it's in (your Mac's): change it there and everything switches before you go on. Then it asks three things: how you'd like to organise your work in spaces, which apps go in each space, and whether you'd like an assistant. The assistant can be the Claude Code or Codex already on your Mac, OpenRouter, or any connection from **Settings → Integrations** (**+ Add another account** creates one right there). One assistant serves every space, or choose one for each space ("Claude Acme" for work, your own Claude at home, none in another). Then each app opens in turn so you can sign in. Each one stays signed in from then on.
 
-You can skip the setup and add apps one by one with the **+** at the bottom of the sidebar, or run the setup again from **Settings → General**. Running it again only adds: a space with the same name as one you have gets the new apps.
+You can skip the setup and add apps one by one with the **+** at the bottom of the sidebar, or run the setup again from **Settings → General**. Running it again only adds: a space with the same name as one you have gets the new apps, and the spaces you already have keep their assistant.
 
 ### Language
 

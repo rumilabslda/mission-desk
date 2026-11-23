@@ -11,12 +11,20 @@ export interface SetupApp {
   url?: string;
 }
 
-export interface SetupPlan {
-  /** The assistant every space uses ('off': none). */
+/** An assistant: its type ('off': none) and connection ('' = that type's built-in, else an added one's id). */
+export interface SetupAssistant {
   engine: AssistantEngine;
-  /** Let the assistant read the apps created here. */
+  connection: string;
+}
+
+export interface SetupPlan {
+  /** The assistant of every space set up here (and of the apps outside spaces), unless a space has its own. */
+  engine: AssistantEngine;
+  connection: string;
+  /** Let each space's assistant read the apps created here. */
   assistantReads: boolean;
-  spaces: { name: string; apps: SetupApp[] }[];
+  /** `assistant`: this space's own choice (only when the setup asked space by space). */
+  spaces: { name: string; apps: SetupApp[]; assistant?: SetupAssistant }[];
   /** Apps outside any space. */
   apps: SetupApp[];
 }
@@ -66,12 +74,16 @@ export function appNames(apps: { service: ServiceId; url?: string }[]): string[]
 
 /** What the setup screens collect before they hand Mission Desk a plan. */
 export interface SetupDraft {
+  /** The assistant for every space (its type and connection, see SetupAssistant). */
   engine: AssistantEngine;
-  /** Let the assistant read the apps (asked on the last step). */
+  connection: string;
+  /** Each space chooses its own assistant (a space without a choice keeps the one above). */
+  perSpace: boolean;
+  /** Let the assistant read the apps (asked with the assistant). */
   reads: boolean;
   /** No spaces: every app side by side. */
   together: boolean;
-  spaces: { key: string; name: string; apps: DraftApp[] }[];
+  spaces: { key: string; name: string; apps: DraftApp[]; assistant?: SetupAssistant }[];
   /** The apps when everything stays together. */
   loose: DraftApp[];
 }
@@ -83,10 +95,26 @@ export interface DraftApp {
 
 export type SetupStep = { kind: 'welcome' | 'assistant' | 'spaces' | 'ready' } | { kind: 'apps'; space: number };
 
-/** The screens in order: one for the apps of each space (-1: all together). */
+/**
+ * The screens in order: one for the apps of each space (-1: all together), then the assistant, which
+ * is chosen for the spaces and apps already there (and may be the hardest step: it comes last).
+ */
 export function setupSteps(d: Pick<SetupDraft, 'together' | 'spaces'>): SetupStep[] {
   const apps: SetupStep[] = d.together ? [{ kind: 'apps', space: -1 }] : d.spaces.map((_, i) => ({ kind: 'apps', space: i }));
-  return [{ kind: 'welcome' }, { kind: 'assistant' }, { kind: 'spaces' }, ...apps, { kind: 'ready' }];
+  return [{ kind: 'welcome' }, { kind: 'spaces' }, ...apps, { kind: 'assistant' }, { kind: 'ready' }];
+}
+
+/** Whether any space (or the apps outside spaces) gets an assistant. */
+export function assistantsInPlan(p: Pick<SetupPlan, 'engine' | 'spaces' | 'apps'>): boolean {
+  const used = p.spaces.map((s) => (s.assistant ?? p).engine);
+  if (p.apps.length > 0 || p.spaces.some((s) => !s.assistant)) used.push(p.engine);
+  return used.some((e) => e !== 'off');
+}
+
+/** Apps with calls (Meet, Teams, Zoom), whose meetings the space's assistant can sum up. */
+export function hasMeetingApps(d: Pick<SetupDraft, 'together' | 'spaces' | 'loose'>): boolean {
+  const apps = d.together ? d.loose : d.spaces.flatMap((s) => s.apps);
+  return apps.some((a) => a.service === 'google' || a.service === 'microsoft' || a.service === 'zoom');
 }
 
 const named = (apps: DraftApp[]): SetupApp[] => {
@@ -96,12 +124,18 @@ const named = (apps: DraftApp[]): SetupApp[] => {
 
 /** The plan sent to Mission Desk: spaces without apps are left out. */
 export function planOf(d: SetupDraft): SetupPlan {
-  return {
+  const p: SetupPlan = {
     engine: d.engine,
-    assistantReads: d.engine !== 'off' && d.reads,
-    spaces: d.together ? [] : d.spaces.filter((s) => s.apps.length > 0).map((s) => ({ name: s.name.trim(), apps: named(s.apps) })),
+    connection: d.engine === 'off' ? '' : d.connection,
+    assistantReads: false,
+    spaces: d.together
+      ? []
+      : d.spaces
+          .filter((s) => s.apps.length > 0)
+          .map((s) => ({ name: s.name.trim(), apps: named(s.apps), ...(d.perSpace && s.assistant ? { assistant: s.assistant } : {}) })),
     apps: d.together ? named(d.loose) : [],
   };
+  return { ...p, assistantReads: d.reads && assistantsInPlan(p) };
 }
 
 /** Why a space name can't be added (null: it can); 'empty' says nothing to the user. */

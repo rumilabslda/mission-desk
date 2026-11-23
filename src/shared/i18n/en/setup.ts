@@ -56,6 +56,8 @@ export const setup = {
   'setup.welcome.homeText': 'Your meetings, to-dos and unread messages, and one click to join a call.',
   'setup.welcome.assistantTitle': 'An assistant that stays in its space',
   'setup.welcome.assistantText': 'It reads only the apps you share with it, and only in that space.',
+  'setup.welcome.meetingsTitle': 'Meetings transcribed on your Mac',
+  'setup.welcome.meetingsText': 'In Meet, Teams and Zoom, with the summary and your to-dos when it ends. The audio never leaves your Mac.',
 
   // Assistant
   'setup.assistant.title': 'Would you like an assistant?',
@@ -67,6 +69,14 @@ export const setup = {
   'setup.assistant.openrouterHint': 'GPT, Gemini, Llama and more, with your own OpenRouter key.',
   'setup.assistant.offName': 'Not now',
   'setup.assistant.offHint': 'You can add one later in Settings.',
+  'setup.assistant.addAnother': '+ Add another account',
+  'setup.assistant.perSpaceTitle': 'Choose an assistant for each space',
+  'setup.assistant.perSpaceText': 'For example another Claude account for work. A space you leave as it is uses the one above.',
+  'setup.assistant.spaceLabel': '{name}’s assistant',
+  'setup.assistant.sameAsAbove': 'Same as above ({name})',
+  'setup.assistant.meetings': 'Your apps include calls: when a meeting ends, the space’s assistant can write its summary and your to-dos.',
+  'setup.assistant.readsTitle': 'Let the assistant read these apps',
+  'setup.assistant.signInAgain': '{name} isn’t signed in.',
 
   // Connecting the assistant
   'setup.engine.checking': 'Checking {name}…',
@@ -138,7 +148,8 @@ export const setup = {
   'setup.ready.ledeSpaces':
     'Mission Desk adds your {count} apps in {spaces} spaces and opens {first} first. Sign in to each one once; it stays signed in on this Mac.',
   'setup.ready.alreadyThere': 'Already there: adds to it',
-  'setup.ready.readsTitle': 'Let {name} read these apps',
+  'setup.ready.noAssistant': 'No assistant',
+  'setup.ready.keepsAssistant': 'Keeps its assistant',
   'setup.ready.readsText':
     'So it can brief you and find who’s waiting on you. It can’t type, click or send in them. You can change this per app in Settings.',
 

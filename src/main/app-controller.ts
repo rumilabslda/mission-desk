@@ -91,7 +91,7 @@ import { createSpacePanel } from './views/space-panel';
 import { createQuickOverlay, type QuickOverlay } from './views/quick-overlay';
 import { type ClaudeIntegration, createClaudeIntegration } from './claude/electron-host';
 import { opensOnToday } from '../shared/today';
-import { baseName, existingSpace, needsSetup, spaceColours, uniqueName, type SetupApp, type SetupPlan } from '../shared/setup';
+import { baseName, existingSpace, needsSetup, spaceColours, uniqueName, type SetupApp, type SetupAssistant, type SetupPlan } from '../shared/setup';
 import { ACCOUNT_COLORS } from '../shared/ipc';
 import { cliLookup, codexCandidates, lookupResult } from './platform';
 import { meetingProvider, nativeJoinUrl } from '../shared/meetings';
@@ -2828,8 +2828,14 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     finishSetup(plan) {
       if (!setupOpen) return 0; // only from the setup on screen, once (a repeated request adds nothing)
       setupOpen = false;
-      store.setAssistantPrefs({ defaultEngine: plan.engine }); // 'off' too: "Not now" means no assistant
-      const reads = plan.assistantReads && plan.engine !== 'off';
+      // The assistant applies to what is set up here only: a later run never changes the spaces already
+      // there. The first run also makes it the default for spaces added later ('off' too: "Not now").
+      if (store.state().accounts.length === 0) store.setAssistantPrefs({ defaultEngine: plan.engine });
+      const chosen = (own?: SetupAssistant): SetupAssistant => own ?? { engine: plan.engine, connection: plan.connection };
+      const looseBefore = store.state().accounts.some((x) => !x.spaceId);
+      if (plan.apps.length > 0 && !looseBefore) setScopeConfig('nospace', chosen());
+      // Reading is allowed only where the place's assistant is on (an existing place keeps its own assistant).
+      const readsIn = (scope: string): boolean => plan.assistantReads && cfg(scope).engine !== 'off';
       const created: string[] = [];
       const spaces = store.state().spaces ?? [];
       // One colour per space (the same rule as the setup's preview): an existing space keeps its own.
@@ -2843,7 +2849,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
         const here = store.state().accounts.filter((x) => (place && 'spaceId' in place ? x.spaceId === place.spaceId : !place && !x.spaceId));
         const name = place && 'newSpace' in place ? app.name : uniqueName(baseName(app), here.map((x) => x.name));
         const a = store.add({ service: app.service, name, color, ...(app.url ? { url: app.url } : {}) }, place);
-        if (reads) store.update(a.id, { claudeAccess: 'read' });
+        if (!(place && 'newSpace' in place) && readsIn(a.spaceId ? `space:${a.spaceId}` : 'nospace')) store.update(a.id, { claudeAccess: 'read' });
         created.push(a.id);
         return a;
       };
@@ -2855,6 +2861,11 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
           return;
         }
         const first = add(sp.apps[0], { newSpace: sp.name }, colours[i]);
+        // The new space's assistant, before its apps' reading follows it.
+        if (first.spaceId) {
+          setScopeConfig(`space:${first.spaceId}`, chosen(sp.assistant));
+          if (readsIn(`space:${first.spaceId}`)) store.update(first.id, { claudeAccess: 'read' });
+        }
         for (const app of sp.apps.slice(1)) add(app, first.spaceId ? { spaceId: first.spaceId } : undefined, colours[i]);
       });
       for (const app of plan.apps) add(app, undefined, ACCOUNT_COLORS[loose++ % ACCOUNT_COLORS.length]);

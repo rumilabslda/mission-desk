@@ -56,6 +56,8 @@ export const setup: Translation<typeof en> = {
   'setup.welcome.homeText': 'Je vergaderingen, taken en ongelezen berichten, en met één klik deelnemen aan een gesprek.',
   'setup.welcome.assistantTitle': 'Een assistent die in zijn ruimte blijft',
   'setup.welcome.assistantText': 'Hij leest alleen de apps die je met hem deelt, en alleen in die ruimte.',
+  'setup.welcome.meetingsTitle': 'Vergaderingen uitgeschreven op je Mac',
+  'setup.welcome.meetingsText': 'In Meet, Teams en Zoom, met de samenvatting en je taken aan het eind. Het geluid verlaat je Mac nooit.',
 
   // Assistant
   'setup.assistant.title': 'Wil je een assistent?',
@@ -67,6 +69,14 @@ export const setup: Translation<typeof en> = {
   'setup.assistant.openrouterHint': 'GPT, Gemini, Llama en meer, met je eigen OpenRouter-sleutel.',
   'setup.assistant.offName': 'Nu niet',
   'setup.assistant.offHint': 'Je kunt er later een toevoegen in Instellingen.',
+  'setup.assistant.addAnother': '+ Nog een account toevoegen',
+  'setup.assistant.perSpaceTitle': 'Kies een assistent per ruimte',
+  'setup.assistant.perSpaceText': 'Bijvoorbeeld een ander Claude-account voor je werk. Een ruimte die je laat zoals hij is, gebruikt die hierboven.',
+  'setup.assistant.spaceLabel': 'Assistent van {name}',
+  'setup.assistant.sameAsAbove': 'Zoals hierboven ({name})',
+  'setup.assistant.meetings': 'Je apps hebben gesprekken: als een vergadering afloopt, kan de assistent van de ruimte de samenvatting en je taken schrijven.',
+  'setup.assistant.readsTitle': 'Laat de assistent deze apps lezen',
+  'setup.assistant.signInAgain': '{name} is niet ingelogd.',
 
   // Connecting the assistant
   'setup.engine.checking': '{name} controleren…',
@@ -138,7 +148,8 @@ export const setup: Translation<typeof en> = {
   'setup.ready.ledeSpaces':
     'Mission Desk voegt je {count} apps toe in {spaces} ruimtes en opent eerst {first}. Log één keer bij elke app in; die blijft ingelogd op deze Mac.',
   'setup.ready.alreadyThere': 'Bestaat al: wordt aangevuld',
-  'setup.ready.readsTitle': 'Laat {name} deze apps lezen',
+  'setup.ready.noAssistant': 'Geen assistent',
+  'setup.ready.keepsAssistant': 'Houdt zijn assistent',
   'setup.ready.readsText':
     'Zo kan die je bijpraten en zien wie er op je wacht. Typen, klikken of versturen in de apps kan niet. Je kunt dit per app wijzigen in Instellingen.',
 

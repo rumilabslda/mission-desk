@@ -56,6 +56,8 @@ export const setup: Translation<typeof en> = {
   'setup.welcome.homeText': 'Suas reuniões, tarefas e mensagens não lidas, e um clique para entrar em uma chamada.',
   'setup.welcome.assistantTitle': 'Um assistente que fica no seu espaço',
   'setup.welcome.assistantText': 'Ele só lê os apps que você compartilha com ele, e só naquele espaço.',
+  'setup.welcome.meetingsTitle': 'Reuniões transcritas no seu Mac',
+  'setup.welcome.meetingsText': 'No Meet, Teams e Zoom, com o resumo e suas tarefas quando termina. O áudio nunca sai do seu Mac.',
 
   // Assistant
   'setup.assistant.title': 'Quer um assistente?',
@@ -67,6 +69,14 @@ export const setup: Translation<typeof en> = {
   'setup.assistant.openrouterHint': 'GPT, Gemini, Llama e outros, com a sua própria chave do OpenRouter.',
   'setup.assistant.offName': 'Agora não',
   'setup.assistant.offHint': 'Você pode adicionar um depois em Ajustes.',
+  'setup.assistant.addAnother': '+ Adicionar outra conta',
+  'setup.assistant.perSpaceTitle': 'Escolher um assistente para cada espaço',
+  'setup.assistant.perSpaceText': 'Por exemplo, outra conta do Claude para o trabalho. Um espaço que você deixar como está usa o de cima.',
+  'setup.assistant.spaceLabel': 'Assistente de {name}',
+  'setup.assistant.sameAsAbove': 'Igual ao de cima ({name})',
+  'setup.assistant.meetings': 'Seus apps têm chamadas: quando uma reunião termina, o assistente do espaço pode escrever o resumo e suas tarefas.',
+  'setup.assistant.readsTitle': 'Permitir que o assistente leia estes apps',
+  'setup.assistant.signInAgain': '{name} não está conectado.',
 
   // Connecting the assistant
   'setup.engine.checking': 'Verificando o {name}…',
@@ -138,7 +148,8 @@ export const setup: Translation<typeof en> = {
   'setup.ready.ledeSpaces':
     'O Mission Desk adiciona seus {count} apps em {spaces} espaços e abre primeiro o {first}. Faça login em cada um uma vez; o login fica salvo neste Mac.',
   'setup.ready.alreadyThere': 'Já existe: será complementado',
-  'setup.ready.readsTitle': 'Permitir que o {name} leia estes apps',
+  'setup.ready.noAssistant': 'Sem assistente',
+  'setup.ready.keepsAssistant': 'Mantém o assistente dele',
   'setup.ready.readsText':
     'Assim ele pode resumir o seu dia e descobrir quem está esperando por você. Ele não pode digitar, clicar nem enviar nada neles. Você pode mudar isso por app em Ajustes.',
 
