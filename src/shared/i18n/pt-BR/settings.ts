@@ -9,7 +9,7 @@ export const settings: Translation<typeof en> = {
   // Side list
   'settings.title': 'Ajustes',
   'settings.section.general': 'Geral',
-  'settings.section.accounts': 'Contas',
+  'settings.section.apps': "Apps",
   'settings.section.spaces': 'Espaços',
   'settings.section.calendar': 'Calendário',
   'settings.section.integrations': 'Integrações',
@@ -40,7 +40,7 @@ export const settings: Translation<typeof en> = {
   'settings.general.runSetup': 'Fazer a configuração de novo',
 
   // Accounts
-  'settings.accounts.empty': 'Nenhuma conta ainda. Adicione uma com o botão +.',
+  'settings.accounts.empty': "Ainda não há apps. Adicione um com o botão +.",
   'settings.account.remove': 'Remover…',
   'settings.account.colour': 'Cor',
   'settings.account.space': 'Espaço',

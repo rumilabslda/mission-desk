@@ -6,24 +6,13 @@ import type { Account, SidebarStyle, Space } from '../../shared/types';
 import { AccountAvatar } from './AccountAvatar';
 import { AssistantSettings, IntegrationsSettings } from './settings/AssistantSettings';
 import { SkillsSettings } from './settings/SkillsSettings';
-import { MeetingsSettings, meetingsAvailable } from './settings/MeetingsSettings';
+import { MeetingsSettings } from './settings/MeetingsSettings';
+import { type Section, settingsSections } from './settings/sections';
 import { CalendarToggles, LooseCalendars } from './settings/CalendarToggles';
 import { SERVICE_LABEL } from './service-glyph';
 import { COMPANY, COPYRIGHT, LICENSE_NAME, SITE, WEBSITE } from '../../shared/about';
 
-type Section = 'general' | 'accounts' | 'spaces' | 'assistant' | 'skills' | 'meetings' | 'integrations' | 'data' | 'about';
-
-const SECTIONS: { id: Section; label: MessageKey }[] = [
-  { id: 'general', label: 'settings.section.general' },
-  { id: 'accounts', label: 'settings.section.accounts' },
-  { id: 'spaces', label: 'settings.section.spaces' },
-  { id: 'integrations', label: 'settings.section.integrations' },
-  { id: 'assistant', label: 'settings.section.assistant' },
-  { id: 'skills', label: 'settings.section.skills' },
-  { id: 'meetings', label: 'meetings.title' },
-  { id: 'data', label: 'settings.section.data' },
-  { id: 'about', label: 'settings.section.about' },
-];
+const SECTIONS = settingsSections(window.missiondesk?.platform ?? 'darwin');
 
 const STYLES: { id: SidebarStyle; label: MessageKey; hint: MessageKey }[] = [
   { id: 'sections', label: 'settings.style.sections', hint: 'settings.style.sectionsHint' },
@@ -294,7 +283,7 @@ export function SettingsView({ snapshot: snap }: { snapshot: UiSnapshot }): Reac
     <div className="settings">
       <nav className="set-nav">
         <h1>{t('settings.title')}</h1>
-        {SECTIONS.filter((s) => s.id !== 'meetings' || meetingsAvailable(window.missiondesk.platform)).map((s) => (
+        {SECTIONS.map((s) => (
           <button key={s.id} className={section === s.id ? 'on' : ''} onClick={() => setSection(s.id)}>
             {t(s.label)}
           </button>
@@ -357,9 +346,9 @@ export function SettingsView({ snapshot: snap }: { snapshot: UiSnapshot }): Reac
             </button>
           </>
         )}
-        {section === 'accounts' && (
+        {section === 'apps' && (
           <>
-            <h2>{t('settings.section.accounts')}</h2>
+            <h2>{t('settings.section.apps')}</h2>
             {snap.accounts.length === 0 && <p className="set-muted">{t('settings.accounts.empty')}</p>}
             {snap.accounts.map((a) => (
               <AccountCard key={a.id} a={a} snap={snap} />

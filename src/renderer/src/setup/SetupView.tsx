@@ -20,7 +20,8 @@ import {
   type SetupStep,
 } from "../../../shared/setup";
 import type { ServiceId } from "../../../shared/types";
-import { rich, t } from "../i18n";
+import { isLocale, LOCALE_NAMES, LOCALES } from "../../../shared/i18n/locales";
+import { locale, rich, t } from "../i18n";
 import { useModal } from "../modal";
 import { ServiceLogo } from "../service-glyph";
 import "./setup.css";
@@ -407,6 +408,7 @@ function Welcome({
 }): React.JSX.Element {
   return (
     <>
+      {!again && <LanguagePicker />}
       <Title headRef={headRef}>
         {again ? t("setup.welcome.titleAgain") : t("setup.welcome.title")}
       </Title>
@@ -439,6 +441,35 @@ function Welcome({
         </ul>
       )}
     </>
+  );
+}
+
+/**
+ * The interface language, asked before anything else. It starts on the Mac's language; choosing
+ * another switches at once (every page reloads, and the setup opens again here, with nothing lost
+ * since nothing has been chosen yet). Choosing the Mac's language keeps following the Mac.
+ */
+function LanguagePicker(): React.JSX.Element {
+  const system = window.missiondesk.locale?.system ?? "en";
+  return (
+    <label className="su-lang">
+      <Glyph d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z" />
+      <span className="su-lang-name">{t("settings.language.title")}</span>
+      <select
+        value={locale()}
+        onChange={(e) => {
+          const v = e.target.value;
+          if (!isLocale(v) || v === locale()) return;
+          window.missiondesk.setLanguage(v === system ? "system" : v);
+        }}
+      >
+        {LOCALES.map((l) => (
+          <option key={l} value={l} lang={l}>
+            {LOCALE_NAMES[l]}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 

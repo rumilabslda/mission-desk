@@ -9,7 +9,7 @@ export const settings: Translation<typeof en> = {
   // Side list
   'settings.title': 'Instellingen',
   'settings.section.general': 'Algemeen',
-  'settings.section.accounts': 'Accounts',
+  'settings.section.apps': "Apps",
   'settings.section.spaces': 'Ruimtes',
   'settings.section.calendar': 'Agenda',
   'settings.section.integrations': 'Integraties',
@@ -40,7 +40,7 @@ export const settings: Translation<typeof en> = {
   'settings.general.runSetup': 'Doorloop de configuratie opnieuw',
 
   // Accounts
-  'settings.accounts.empty': 'Nog geen accounts. Voeg er een toe met de +-knop.',
+  'settings.accounts.empty': "Nog geen apps. Voeg er een toe met de knop +.",
   'settings.account.remove': 'Verwijder…',
   'settings.account.colour': 'Kleur',
   'settings.account.space': 'Ruimte',

@@ -279,6 +279,31 @@
   stroke-linejoin: round;
 }
 
+/* Language, first thing on the welcome screen */
+.su-lang {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 22px;
+  padding: 4px 6px 4px 4px;
+  border: 1px solid var(--su-line);
+  border-radius: 12px;
+  background: var(--su-card);
+}
+.su-lang .su-glyph { width: 30px; height: 30px; padding: 6px; border-radius: 8px; }
+.su-lang-name { font-size: 13px; font-weight: 600; }
+.su-lang select {
+  font: inherit;
+  font-size: 13.5px;
+  padding: 5px 8px;
+  border: 1px solid var(--su-line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--su-ink);
+  cursor: pointer;
+}
+.su-lang select:focus-visible { outline: 2px solid var(--su-ring); outline-offset: 1px; }
+
 /* Assistant */
 .su-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .su-choice {

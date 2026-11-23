@@ -8,7 +8,7 @@ export const settings = {
   // Side list
   'settings.title': 'Settings',
   'settings.section.general': 'General',
-  'settings.section.accounts': 'Accounts',
+  'settings.section.apps': "Apps",
   'settings.section.spaces': 'Spaces',
   'settings.section.calendar': 'Calendar',
   'settings.section.integrations': 'Integrations',
@@ -39,7 +39,7 @@ export const settings = {
   'settings.general.runSetup': 'Run the setup again',
 
   // Accounts
-  'settings.accounts.empty': 'No accounts yet. Add one with the + button.',
+  'settings.accounts.empty': "No apps yet. Add one with the + button.",
   'settings.account.remove': 'Remove…',
   'settings.account.colour': 'Colour',
   'settings.account.space': 'Space',
