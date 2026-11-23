@@ -97,7 +97,8 @@ export function createConnectionFlows(d: FlowDeps) {
       return registry.remove(id);
     },
 
-    /** Every connection that exists, built-ins first within each type, with whether it's ready. */
+    /** Every connection that exists, built-ins first within each type, with whether it's ready. A built-in
+   * that wasn't renamed has no name: Settings shows its name in the user's language. */
     async info(): Promise<ConnectionInfo[]> {
       const out: ConnectionInfo[] = [];
       for (const kind of ['claude', 'codex'] as const) {
@@ -110,7 +111,7 @@ export function createConnectionFlows(d: FlowDeps) {
         if (installed) {
           const b = BUILTIN[kind];
           const s = await state(null);
-          out.push({ ...(registry.get(b) ?? { id: b, kind, name: registry.nameOf(b), addedAt: '' }), builtin: true, ...(s.info?.loggedIn ? infoOf(s.info) : {}), state: s.state });
+          out.push({ ...(registry.get(b) ?? { id: b, kind, name: '', addedAt: '' }), builtin: true, ...(s.info?.loggedIn ? infoOf(s.info) : {}), state: s.state });
         }
         for (const c of registry.list().filter((x) => x.kind === kind && !x.builtin)) {
           const s = await state(registry.dirOf(c.id));
@@ -120,7 +121,7 @@ export function createConnectionFlows(d: FlowDeps) {
       }
       if (d.getKey('openrouter') !== null) {
         const b = BUILTIN.openrouter;
-        out.push({ ...(registry.get(b) ?? { id: b, kind: 'openrouter' as const, name: registry.nameOf(b), addedAt: '' }), builtin: true, state: 'ready' });
+        out.push({ ...(registry.get(b) ?? { id: b, kind: 'openrouter' as const, name: '', addedAt: '' }), builtin: true, state: 'ready' });
       }
       for (const c of registry.list().filter((x) => x.kind === 'openrouter' && !x.builtin)) {
         out.push({ ...c, state: d.getKey(keyNameOf(c.id)) !== null ? 'ready' : 'signed-out' });

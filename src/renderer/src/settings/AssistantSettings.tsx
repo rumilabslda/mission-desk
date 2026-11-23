@@ -5,6 +5,7 @@ import type { AccountView, UiSnapshot } from '../../../shared/ipc';
 import type { Account } from '../../../shared/types';
 import { ClaudeConnectPanel } from '../ConnectClaudeDialog';
 import { type MessageKey, rich, t } from '../i18n';
+import { ConnectionsSettings } from './ConnectionsSettings';
 
 const ACCESS: { value: NonNullable<Account['claudeAccess']>; label: MessageKey }[] = [
   { value: 'off', label: 'common.off' },
@@ -219,193 +220,20 @@ export function AssistantSettings({ snap }: { snap: UiSnapshot }): React.JSX.Ele
   );
 }
 
-const INSTALL_CLAUDE = 'curl -fsSL https://claude.ai/install.sh | bash';
-const INSTALL_CODEX = 'npm install -g @openai/codex';
-
-function statusText(st: ClaudeStatus | null, app: string): string {
-  if (st === null) return t('settings.integrations.checking');
-  if (st.state === 'ready')
-    return 'version' in st && st.version ? t('settings.integrations.connectedVersion', { app, version: st.version }) : t('settings.integrations.connected');
-  return st.state === 'signed-out' ? t('settings.integrations.signedOut') : t('settings.integrations.notInstalled');
-}
-
-/** A CLI the user signs in to in the browser (Claude Code, Codex): status, install, sign in. */
-function CliIntegration({
-  title,
-  app,
-  blurb,
-  install,
-  getStatus,
-  signIn,
-  cancel,
-  children,
-}: {
-  title: string;
-  app: string;
-  blurb: string;
-  install: string;
-  getStatus(): Promise<ClaudeStatus>;
-  signIn(): Promise<ClaudeStatus>;
-  cancel(): void;
-  children?: React.ReactNode;
-}): React.JSX.Element {
-  const [status, setStatus] = useState<ClaudeStatus | null>(null);
-  const [waiting, setWaiting] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const check = (): void => {
-    setStatus(null);
-    void getStatus().then(setStatus);
-  };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(check, []);
-  return (
-    <div className="set-card asg-card">
-      <div className="asg-head">
-        <strong>{title}</strong>
-        <span className={`asg-state ${status?.state ?? ''}`}>{statusText(status, app)}</span>
-      </div>
-      <p className="set-muted">{blurb}</p>
-      {status?.state === 'signed-out' &&
-        (waiting ? (
-          <p className="set-muted">
-            {t('settings.integrations.waiting')}{' '}
-            <button className="set-link" onClick={cancel}>
-              {t('common.cancel')}
-            </button>
-          </p>
-        ) : (
-          <div>
-            <button
-              className="primary"
-              onClick={() => {
-                setWaiting(true);
-                void signIn().then((st) => {
-                  setStatus(st);
-                  setWaiting(false);
-                });
-              }}
-            >
-              {t('settings.integrations.signIn')}
-            </button>
-          </div>
-        ))}
-      {status?.state === 'not-installed' && (
-        <div className="asg-install">
-          <p className="set-muted">{t('settings.integrations.installHint')}</p>
-          <div className="ast-cmd">
-            <code>{install}</code>
-            <button onClick={() => void navigator.clipboard.writeText(install).then(() => setCopied(true))}>{copied ? t('settings.integrations.copied') : t('settings.integrations.copy')}</button>
-          </div>
-          <button className="set-link" onClick={check}>
-            {t('settings.integrations.installed')}
-          </button>
-        </div>
-      )}
-      {children}
-    </div>
-  );
-}
-
-function OpenRouterIntegration(): React.JSX.Element {
-  const [connected, setConnected] = useState<boolean | null>(null);
-  const [key, setKey] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  useEffect(() => {
-    void window.missiondesk.openRouterStatus().then((s) => setConnected(s.connected));
-  }, []);
-  async function connect(): Promise<void> {
-    setBusy(true);
-    setError('');
-    const r = await window.missiondesk.openRouterConnect(key);
-    setBusy(false);
-    setConnected(r.connected);
-    if (r.error) setError(r.error);
-    else setKey('');
-  }
-  return (
-    <div className="set-card asg-card">
-      <div className="asg-head">
-        <strong>OpenRouter</strong>
-        <span className={`asg-state ${connected ? 'ready' : connected === false ? 'signed-out' : ''}`}>{connected === null ? t('settings.integrations.checking') : connected ? t('settings.integrations.connected') : t('settings.integrations.notConnected')}</span>
-      </div>
-      <p className="set-muted">{t('settings.integrations.openrouterBlurb')}</p>
-      {connected ? (
-        <div>
-          <button className="set-link" onClick={() => (window.missiondesk.openRouterDisconnect(), setConnected(false))}>
-            {t('settings.integrations.disconnect')}
-          </button>
-        </div>
-      ) : (
-        <>
-          <div className="asg-key">
-            <input
-              type="password"
-              className="set-input"
-              placeholder="sk-or-v1-…"
-              value={key}
-              autoComplete="off"
-              spellCheck={false}
-              onChange={(e) => setKey(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && key.trim() && !busy && void connect()}
-            />
-            <button className="primary" disabled={!key.trim() || busy} onClick={() => void connect()}>
-              {busy ? t('settings.integrations.checking') : t('settings.integrations.connect')}
-            </button>
-          </div>
-          {error && <p className="asg-error">{error}</p>}
-          <p className="set-muted">
-            {rich('settings.integrations.createKey', {
-              link: (s) => (
-                <a
-                  href="https://openrouter.ai/keys"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    window.missiondesk.openExternal('https://openrouter.ai/keys');
-                  }}
-                >
-                  {s}
-                </a>
-              ),
-            })}
-          </p>
-        </>
-      )}
-    </div>
-  );
-}
-
 /** Settings → Integrations: the assistants Mission Desk can use, and Claude in other apps. */
-export function IntegrationsSettings(): React.JSX.Element {
+export function IntegrationsSettings({ snap }: { snap: UiSnapshot }): React.JSX.Element {
   return (
     <>
       <h2>{t('settings.section.integrations')}</h2>
       <p className="set-muted">{t('settings.integrations.intro')}</p>
-      <CliIntegration
-        title="Claude"
-        app="Claude Code"
-        blurb={t('settings.integrations.claudeBlurb')}
-        install={INSTALL_CLAUDE}
-        getStatus={() => window.missiondesk.claudeIntegrationStatus()}
-        signIn={() => window.missiondesk.assistantSignIn()}
-        cancel={() => window.missiondesk.assistantSignInCancel()}
-      >
-        <h3>{t('settings.integrations.claudeOtherApps')}</h3>
+      <ConnectionsSettings connections={snap.assistant.connections} />
+      <h3>{t('settings.integrations.claudeOtherApps')}</h3>
+      <div className="set-card asg-card">
         <ClaudeConnectPanel />
         <button className="set-link" onClick={() => window.missiondesk.showClaudeLog()}>
           {t('settings.integrations.claudeLog')}
         </button>
-      </CliIntegration>
-      <CliIntegration
-        title="OpenAI Codex"
-        app="Codex"
-        blurb={t('settings.integrations.codexBlurb')}
-        install={INSTALL_CODEX}
-        getStatus={() => window.missiondesk.codexStatus()}
-        signIn={() => window.missiondesk.codexSignIn()}
-        cancel={() => window.missiondesk.codexSignInCancel()}
-      />
-      <OpenRouterIntegration />
+      </div>
     </>
   );
 }
