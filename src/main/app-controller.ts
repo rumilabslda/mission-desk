@@ -5,6 +5,9 @@ import { createTranscriber, type Transcriber } from './meetings/transcriber';
 import { createOrchestrator } from './meetings/orchestrator';
 import { createDetector } from './meetings/detector';
 import { type Ask, createOneShot } from './meetings/one-shot';
+import { createInsightRunner, type InsightRunner } from './meetings/insights/runner';
+import { buildSources } from './meetings/insights/sources';
+import { createKeywordRetriever } from './meetings/insights/retrieve';
 import { createMeetingRunner } from './meetings/run';
 import { meetingsHost } from './meetings/assistant-host';
 import { applyRetention, spacesLeftEmpty } from './meetings/lifecycle';
@@ -21,7 +24,7 @@ import { createUpdater } from './updates/updater';
 import { createConnections } from './assistant/connections';
 import { openRouterKeyName, sessionEnvFor } from './assistant/connection-env';
 import { createConnectionFlows } from './assistant/connection-flows';
-import { connectionEnv, type ConnectionInfo, type ConnectionKind, connectionTarget, type ConnectionTarget, isBuiltinId, parseAuthInfo } from '../shared/connections';
+import { BUILTIN, connectionEnv, type ConnectionInfo, type ConnectionKind, connectionTarget, type ConnectionTarget, isBuiltinId, parseAuthInfo } from '../shared/connections';
 import { DEFAULT_ACTIONS, type EngineId, type EngineStatus, type Meeting, type MeetingAction, type MeetingEndedInfo, meetingLocale, type MeetingGlobalSettings, type SpaceMeetingSettings, spaceMeetingSettings } from '../shared/meeting';
 import { type LanguageSetting, type Locale, type MessageKey, resolveLocale, setLocale, t } from '../shared/i18n';
 import { updateMode } from '../shared/updates';
@@ -230,6 +233,11 @@ export interface AppController {
   meetingStop(): void;
   meetingSetLanguage(locale: string): void;
   meetingCopyNotice(): void;
+  meetingInsightsPause(): void;
+  meetingInsightsResume(): void;
+  meetingInsightNotUseful(id: string): void;
+  meetingInsightOpen(id: string, source: number): void;
+  meetingBarHeight(px: number): void;
   meetingInstallLocale(locale: string): void;
   meetingBarWebContents(): WebContents | null;
   meetingRun(scope: string, id: string, actions: MeetingAction[]): void;
@@ -702,6 +710,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       if (!win.isDestroyed()) win.webContents.send(IPC.meetingEnded, info);
     },
     now: () => Date.now(),
+    insights: (m) => insightsFor(m),
   });
   const meetingRunner = createMeetingRunner({
     store: meetingStore,
@@ -750,6 +759,8 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
   let modalOpen = false;
   let prunedFor: string | null = null;
   let lastBarMode: 'ask' | 'live' | null = null;
+  /** The height the bar page last asked for (its insight card or list open). */
+  let barHeight = 36;
   const meetingBar = createMeetingOverlay(win, { uiPreloadPath });
   /** The bar follows the live (or asking) meeting's view: on it while it's on screen, hidden otherwise. */
   const currentBarTarget = () => barTarget(orchestrator.liveView(), orchestrator.asking(), (accountId, kind) => !!registry.get(accountId, kind)?.getVisible());
@@ -763,8 +774,9 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     }
     const view = target ? registry.get(target.accountId, target.kind) : undefined;
     if (!target || !view) return meetingBar.place(null);
-    const lines = target.mode === 'live' && orchestrator.live()?.notice ? 2 : 1;
-    meetingBar.place(meetingBarBounds(view.getBounds(), lines));
+    const base = target.mode === 'live' && orchestrator.live()?.notice ? 60 : 36;
+    // Live, the bar page may need more: an insight card or the list (it reports its height).
+    meetingBar.place(meetingBarBounds(view.getBounds(), target.mode === 'live' ? Math.max(base, barHeight) : base));
   }
   /**
    * A space removed by a change (ungrouped, or its last app moved or removed) takes its meetings with
@@ -1281,8 +1293,8 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
    * A session with no tools at all, on the scope's own engine and model: for requests whose input is
    * untrusted text (a meeting's transcript), so nothing in it can make the assistant act.
    */
-  function toollessSession(scope: string, system: () => string): Promise<AssistantSession> {
-    const c = cfg(scope);
+  function toollessSession(scope: string, system: () => string, effort?: AssistantEffort): Promise<AssistantSession> {
+    const c = { ...cfg(scope), ...(effort ? { effort } : {}) };
     if (c.engine === 'codex') {
       const cwd = path.join(app.getPath('userData'), 'assistant', 'codex-followup');
       fs.mkdirSync(cwd, { recursive: true });
@@ -1317,8 +1329,65 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     );
   }
   /** One tool-less request on the scope's assistant; null when the scope's assistant is off. */
-  const askFor = (scope: string): Ask | null =>
-    cfg(scope).engine === 'off' ? null : createOneShot((system) => toollessSession(scope, system), cfg(scope).engine === 'codex' ? (id) => deleteCodexRollout(id, codexHomeFor(scope)) : undefined);
+  const askFor = (scope: string, effort?: AssistantEffort): Ask | null =>
+    cfg(scope).engine === 'off' ? null : createOneShot((system) => toollessSession(scope, system, effort), cfg(scope).engine === 'codex' ? (id) => deleteCodexRollout(id, codexHomeFor(scope)) : undefined);
+
+  /**
+   * The live meeting's insights: the space's own data only, its own connection with no tools and a
+   * low effort. Whether the connection is ready is looked up now and every 10 minutes.
+   */
+  function insightsFor(m: Meeting): InsightRunner | null {
+    const scope = m.scope;
+    if (cfg(scope).engine === 'off') return null;
+    let why: string | null = null;
+    const look = (): void => {
+      const c = cfg(scope);
+      if (c.engine === 'off') return void (why = t('meetings.insights.unavailable'));
+      const want = c.connection || BUILTIN[c.engine];
+      void flows
+        .info()
+        .then((list) => {
+          const cur = list.find((x) => x.kind === c.engine && x.id === want);
+          const next = cur?.state === 'ready' ? null : t('meetings.insights.unavailable');
+          if (next !== why) {
+            why = next;
+            pushSoon();
+          }
+        })
+        .catch(() => undefined);
+    };
+    look();
+    const every = setInterval(() => (orchestrator.live()?.id === m.id ? look() : clearInterval(every)), 10 * 60_000);
+    const day = new Intl.DateTimeFormat(localeNow.format, { day: '2-digit', month: '2-digit' });
+    return createInsightRunner({
+      now: () => Date.now(),
+      meeting: { scope, id: m.id, title: m.title, language: m.language, startedAt: Date.parse(m.startedAt) },
+      ask: () => askFor(scope, 'low'),
+      unavailable: () => why,
+      sources: () =>
+        buildSources({
+          scope,
+          liveId: m.id,
+          notes: memory.all(),
+          // The space's 50 latest meetings with a summary.
+          meetings: meetingStore
+            .list(scope, m.id)
+            .filter((x) => x.state === 'ready')
+            .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
+            .slice(0, 50)
+            .map((x) => meetingStore.get(scope, x.id))
+            .filter((x): x is Meeting => !!x),
+          todos: todos.list(),
+          feed: homeFeed(),
+          accounts: store.state().accounts,
+          dateLabel: (iso) => day.format(new Date(iso)),
+        }),
+      retriever: createKeywordRetriever(),
+      myName: 'Me',
+      save: (i) => meetingStore.addInsight(scope, m.id, i),
+      changed: pushSoon,
+    });
+  }
   /** The Codex folder a scope's Codex runs in: an added connection's own, or this Mac's. */
   function codexHomeFor(scope: string): string {
     const target = targetFor(scope);
@@ -2957,6 +3026,33 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     meetingResume: () => orchestrator.resume(),
     meetingStop: () => void orchestrator.stop(),
     meetingSetLanguage: (locale) => void orchestrator.setLanguage(locale),
+    meetingInsightsPause() {
+      orchestrator.insightsPause();
+      push();
+    },
+    meetingInsightsResume() {
+      orchestrator.insightsResume();
+      push();
+    },
+    meetingInsightNotUseful(id) {
+      const l = orchestrator.live();
+      if (l && meetingStore.markInsight(l.scope, l.id, id, true)) push();
+    },
+    /** Opens what the saved insight points to (never a place the page names). */
+    meetingInsightOpen(id, source) {
+      const l = orchestrator.live();
+      const open = l ? meetingStore.get(l.scope, l.id)?.insights?.find((i) => i.id === id)?.sources[source]?.open : undefined;
+      if (!open) return;
+      if (open.kind === 'memory') controller.openMemory(open.scope);
+      else if (open.kind === 'meeting') controller.openMeetings(open.scope, open.id);
+      else if (open.kind === 'home') controller.openToday();
+      else controller.openMessage(open.key);
+    },
+    meetingBarHeight(px) {
+      if (px === barHeight) return;
+      barHeight = px;
+      placeMeetingBar();
+    },
     meetingCopyNotice() {
       clipboard.writeText(store.state().meetings?.notice || t('meetings.notice.default'));
     },

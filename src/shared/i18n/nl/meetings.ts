@@ -126,6 +126,8 @@ export const meetings: Translation<typeof en> = {
   'meetings.notice.missingCall': 'De andere deelnemers worden niet getranscribeerd.',
   'meetings.notice.probeUnreliable': 'Namen en dempen kunnen niet worden uitgelezen in deze vergadering: anderen worden getoond als “Anderen”.',
   'meetings.notice.failed': 'Transcriptie gestopt: {reason}',
+  // Live insights
+  'meetings.insights.unavailable': 'De assistent van deze ruimte is niet verbonden.',
   // Live insights: how a source is named on the card
   'meetings.insights.source.memory': 'Geheugen',
   'meetings.insights.source.decision': 'Vergadering van {date} · Besluit',

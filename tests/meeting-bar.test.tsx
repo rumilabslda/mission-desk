@@ -73,8 +73,14 @@ test('a missing language offers its download', () => {
 });
 
 test('the bar sits top-centre over the meeting', () => {
-  expect(meetingBarBounds({ x: 0, y: 0, width: 1000, height: 700 })).toEqual({ x: 220, y: 8, width: 560, height: 36 });
-  expect(meetingBarBounds({ x: 72, y: 40, width: 400, height: 700 }, 2)).toEqual({ x: 80, y: 48, width: 384, height: 60 });
+  expect(meetingBarBounds({ x: 0, y: 0, width: 1000, height: 700 }, 36)).toEqual({ x: 220, y: 8, width: 560, height: 36 });
+  expect(meetingBarBounds({ x: 72, y: 40, width: 400, height: 700 }, 60)).toEqual({ x: 80, y: 48, width: 384, height: 60 });
+});
+
+test('the overlay grows with the card or list, up to 400 px and 60% of the meeting', () => {
+  expect(meetingBarBounds({ x: 0, y: 0, width: 800, height: 1000 }, 500).height).toBe(400);
+  expect(meetingBarBounds({ x: 0, y: 0, width: 800, height: 300 }, 500).height).toBe(180);
+  expect(meetingBarBounds({ x: 0, y: 0, width: 800, height: 1000 }, 10).height).toBe(36);
 });
 
 import { barTarget } from '../src/main/views/meeting-bar-bounds';

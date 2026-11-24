@@ -126,6 +126,8 @@ export const meetings: Translation<typeof en> = {
   'meetings.notice.missingCall': 'Los demás participantes no se están transcribiendo.',
   'meetings.notice.probeUnreliable': 'No se pueden leer los nombres ni el silencio en esta reunión: los demás aparecen como “Otros”.',
   'meetings.notice.failed': 'La transcripción se ha detenido: {reason}',
+  // Live insights
+  'meetings.insights.unavailable': 'El asistente de este espacio no está conectado.',
   // Live insights: how a source is named on the card
   'meetings.insights.source.memory': 'Memoria',
   'meetings.insights.source.decision': 'Reunión del {date} · Decisión',

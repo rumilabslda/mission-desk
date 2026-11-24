@@ -53,6 +53,18 @@ export function registerIpc(win: BrowserWindow, controller: AppController): void
   bar(IPC.meetingSetLanguage, (l) => isMeetingLocale(l) && controller.meetingSetLanguage(l));
   bar(IPC.meetingCopyNotice, () => controller.meetingCopyNotice());
   bar(IPC.meetingInstallLocale, (l) => isMeetingLocale(l) && controller.meetingInstallLocale(l));
+  // Live insights: from the bar only (its card and list are the only place they show).
+  const barOnly = (channel: string, handler: (...args: unknown[]) => void): void => {
+    ipcMain.on(channel, (e, ...args: unknown[]) => {
+      if (fromMeetingBar(e)) handler(...args);
+    });
+  };
+  const isInsightId = (v: unknown): v is string => typeof v === 'string' && /^[a-z0-9]{6,16}$/.test(v);
+  barOnly(IPC.meetingInsightsPause, () => controller.meetingInsightsPause());
+  barOnly(IPC.meetingInsightsResume, () => controller.meetingInsightsResume());
+  barOnly(IPC.meetingInsightNotUseful, (id) => isInsightId(id) && controller.meetingInsightNotUseful(id));
+  barOnly(IPC.meetingInsightOpen, (id, i) => isInsightId(id) && Number.isInteger(i) && (i as number) >= 0 && (i as number) <= 2 && controller.meetingInsightOpen(id, i as number));
+  barOnly(IPC.meetingBarHeight, (px) => Number.isInteger(px) && (px as number) >= 36 && (px as number) <= 400 && controller.meetingBarHeight(px as number));
   ipcMain.handle(IPC.addAccount, (e, input: unknown) => {
     const parsed = fromUi(e) ? parseNewAccount(input) : null;
     if (!parsed) throw new Error('Invalid account');

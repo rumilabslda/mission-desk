@@ -55,12 +55,19 @@ beforeEach(() => {
 });
 afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
 
-function setup(opts: { mode?: SpaceMeetingSettings['mode']; fellBack?: string; alternate?: boolean } = {}) {
+type FakeRunner = { log: string[]; segments(s: unknown[]): void; pause(): void; resume(): void; stop(): void; state(): { state: 'on'; count: number; list: [] } };
+const fakeRunner = (): FakeRunner => {
+  const log: string[] = [];
+  return { log, segments: (s) => log.push(`seg:${(s[0] as { text: string }).text}`), pause: () => log.push('pause'), resume: () => log.push('resume'), stop: () => log.push('stop'), state: () => ({ state: 'on', count: 0, list: [] }) };
+};
+
+function setup(opts: { mode?: SpaceMeetingSettings['mode']; fellBack?: string; alternate?: boolean; insights?: boolean; runner?: FakeRunner } = {}) {
   const store = createMeetingStore(dir, () => new Date(now));
   const tr = fakeTranscriber();
   let pcmCb: (ch: 'me' | 'call', d: Int16Array) => void = () => {};
   let stateCb: (s: { me: boolean; call: boolean }) => void = () => {};
-  const settings: Record<string, SpaceMeetingSettings> = { 'space:s1': { mode: opts.mode ?? 'always' } };
+  const settings: Record<string, SpaceMeetingSettings> = { 'space:s1': { mode: opts.mode ?? 'always', ...(opts.insights === false ? { insights: false } : {}) } };
+  const runners: string[] = [];
   const ended: string[] = [];
   const captured: string[] = [];
   const o = createOrchestrator({
@@ -87,9 +94,10 @@ function setup(opts: { mode?: SpaceMeetingSettings['mode']; fellBack?: string; a
     push: () => {},
     ended: (m) => ended.push(m.id),
     now: () => now,
+    ...(opts.runner ? { insights: (m) => (runners.push(m.id), opts.runner as never) } : {}),
   });
   const meet = (accountId = 'g1', key = 'meet:abc-defg-hij') => ({ accountId, kind: 'meet' as const, provider: 'meet' as const, key, url: 'https://meet.google.com/abc-defg-hij' });
-  return { o, store, tr, ended, captured, settings, pcm: (ch: 'me' | 'call', d: Int16Array) => pcmCb(ch, d), state: (s: { me: boolean; call: boolean }) => stateCb(s), meet };
+  return { o, store, tr, ended, captured, settings, runners, pcm: (ch: 'me' | 'call', d: Int16Array) => pcmCb(ch, d), state: (s: { me: boolean; call: boolean }) => stateCb(s), meet };
 }
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
@@ -284,4 +292,41 @@ test('M4: an accidental join is measured to when it ended, not to when the engin
   s.tr.segment('me', { start: 0, end: 1000, text: 'oops' });
   await s.o.end('g1', 'meet', 'meet:abc-defg-hij');
   expect(s.ended).toEqual([]);
+});
+
+describe('live insights', () => {
+  test('segments reach the insights runner, and live() shows its state', async () => {
+    const runner = fakeRunner();
+    const { o, tr, meet, runners } = setup({ runner });
+    await o.start(meet());
+    expect(runners).toEqual([o.live()!.id]);
+    tr.segment('call', { start: 0, end: 1000, text: 'olá' } as never);
+    expect(runner.log).toEqual(['seg:olá']);
+    expect(o.live()?.insights).toEqual({ state: 'on', count: 0, list: [] });
+  });
+
+  test('pause and resume reach it', async () => {
+    const runner = fakeRunner();
+    const { o, meet } = setup({ runner });
+    await o.start(meet());
+    o.insightsPause();
+    o.insightsResume();
+    expect(runner.log).toEqual(['pause', 'resume']);
+  });
+
+  test('ending stops it', async () => {
+    const runner = fakeRunner();
+    const { o, meet } = setup({ runner });
+    await o.start(meet());
+    await o.end('g1', 'meet', 'meet:abc-defg-hij');
+    expect(runner.log).toContain('stop');
+  });
+
+  test('no runner when insights are off for the space', async () => {
+    const runner = fakeRunner();
+    const { o, meet, runners } = setup({ runner, insights: false });
+    await o.start(meet());
+    expect(runners).toEqual([]);
+    expect(o.live()?.insights).toBeUndefined();
+  });
 });
