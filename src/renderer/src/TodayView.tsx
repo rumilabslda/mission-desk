@@ -111,7 +111,7 @@ export function TodayView({ snapshot }: { snapshot: UiSnapshot }): React.JSX.Ele
     <div className="td-page">
       <header className="td-head">
         <div>
-          <h1>{greeting(now)}</h1>
+          <h1>{greeting(now, snapshot.userName)}</h1>
           <p className="td-date">{dateFmt.format(now)}</p>
         </div>
         <div className="td-head-side">

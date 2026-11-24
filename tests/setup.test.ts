@@ -121,6 +121,12 @@ describe('the setup flow (renderer)', () => {
     expect(planOf(draft({ engine: 'off' })).assistantReads).toBe(false); // no assistant: nothing to read
   });
 
+  test('the name typed on the first screen goes with the plan; none: nothing', () => {
+    expect(planOf(draft({ userName: '  Armando ' })).userName).toBe('Armando');
+    expect('userName' in planOf(draft({ userName: '  ' }))).toBe(false);
+    expect('userName' in planOf(draft())).toBe(false);
+  });
+
   test('space names: trimmed, not empty, not twice, not too long', () => {
     expect(spaceNameProblem('  Acme ', ['Personal'])).toBeNull();
     expect(spaceNameProblem('   ', [])).toBe('empty');

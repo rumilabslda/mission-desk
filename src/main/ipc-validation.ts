@@ -1,6 +1,7 @@
 import { isEngineId, isMeetingAction, isMeetingLocale, isMeetingMode, MAX_NOTICE, MEETING_ACTIONS, type MeetingGlobalSettings, RETENTION_DAYS, type SpaceMeetingSettings } from '../shared/meeting';
 import { appNames, type SetupApp, type SetupAssistant, type SetupPlan } from '../shared/setup';
 import { isBuiltinId, isConnectionRef } from '../shared/connections';
+import { cleanUserName } from '../shared/user';
 import { isEngine } from '../shared/assistant-engines';
 import { cleanSiteUrl } from '../shared/custom-site';
 import type { NewAccountInput } from '../shared/ipc';
@@ -285,5 +286,11 @@ export function parseSetupPlan(v: unknown): SetupPlan | null {
   const loose = apps(p.apps);
   if (!loose) return null;
   if (spaces.reduce((n, s) => n + s.apps.length, loose.length) > MAX_SETUP_APPS) return null;
-  return { ...main, assistantReads: p.assistantReads === true, spaces, apps: loose };
+  let userName: string | undefined;
+  if (p.userName !== undefined) {
+    const n = cleanUserName(p.userName);
+    if (n === null) return null;
+    if (n) userName = n;
+  }
+  return { ...main, assistantReads: p.assistantReads === true, spaces, apps: loose, ...(userName ? { userName } : {}) };
 }

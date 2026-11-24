@@ -22,6 +22,9 @@ export const settings: Translation<typeof en> = {
   'settings.general.openOnHome': 'Open met Start',
   'settings.general.openOnHomeHint': 'Toon je vergaderingen, taken en ongelezen berichten wanneer Mission Desk opstart.',
   'settings.general.previews': 'Toon berichtvoorvertoning op Start',
+  'settings.general.name': 'Je naam',
+  'settings.general.namePlaceholder': 'Hoe je genoemd wilt worden',
+  'settings.general.nameHint': 'Start begroet je ermee, en de assistent en je vergaderingen weten wie je bent. Optioneel.',
   'settings.general.previewsHint':
     'Start toont nieuwe chats en e-mails. Zet dit uit om de tekst te verbergen: alleen de afzender of het gesprek is zichtbaar. Er wordt niets bewaard; de lijst wordt gewist wanneer Mission Desk stopt.',
   'settings.general.sidebarStyle': 'Stijl van navigatiekolom',

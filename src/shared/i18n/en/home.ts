@@ -5,6 +5,7 @@ export const home = {
   // Greeting by time of day (src/shared/today.ts).
   'home.greeting.morning': 'Good morning',
   'home.greeting.afternoon': 'Good afternoon',
+  'home.greeting.named': '{greeting}, {name}',
   'home.greeting.evening': 'Good evening',
 
   // How long ago a message came, on its line (src/shared/messages.ts).

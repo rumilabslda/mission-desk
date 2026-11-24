@@ -19,7 +19,7 @@ import { MAX_MEMORY_NOTES } from '../../shared/assistant';
 import type { MeetingEndedInfo } from '../../shared/meeting';
 import { t } from './i18n';
 
-const EMPTY: UiSnapshot = { accounts: [], activeAccountId: null, googleTabs: {}, claude: { enabled: false, acting: [] }, calendarOpen: false, settingsOpen: false, todayOpen: false, openOnToday: true, messages: [], messagePreviews: true, messageSources: [], update: { mode: 'off', auto: true, state: { kind: 'idle' } }, todos: [], weekStartSetting: 'auto', language: 'system', meetingsOpen: false, meetings: { list: [], live: null, asking: null, barMode: null, localeInstall: null, settings: {}, spaces: {}, engines: [] }, calendarHidden: [], weekStart: 1, spaces: [], sidebarStyle: 'sections', assistant: { open: false, width: 380, model: 'default', effort: 'medium', button: true, mode: 'space', scope: 'all', scopes: [], conversationId: null, conversations: [], working: false, engine: 'claude', configs: {}, memory: {}, skills: [], skillsActive: {}, connections: [] }, settingsSection: null, setupOpen: false };
+const EMPTY: UiSnapshot = { accounts: [], activeAccountId: null, googleTabs: {}, claude: { enabled: false, acting: [] }, calendarOpen: false, settingsOpen: false, todayOpen: false, openOnToday: true, messages: [], messagePreviews: true, userName: '', messageSources: [], update: { mode: 'off', auto: true, state: { kind: 'idle' } }, todos: [], weekStartSetting: 'auto', language: 'system', meetingsOpen: false, meetings: { list: [], live: null, asking: null, barMode: null, localeInstall: null, settings: {}, spaces: {}, engines: [] }, calendarHidden: [], weekStart: 1, spaces: [], sidebarStyle: 'sections', assistant: { open: false, width: 380, model: 'default', effort: 'medium', button: true, mode: 'space', scope: 'all', scopes: [], conversationId: null, conversations: [], working: false, engine: 'claude', configs: {}, memory: {}, skills: [], skillsActive: {}, connections: [] }, settingsSection: null, setupOpen: false };
 
 /** A scope's name for the memory window: the space, "No space" or "All spaces". */
 function memoryScopeName(snap: UiSnapshot, scope: string): string {
@@ -97,6 +97,7 @@ export function App(): React.JSX.Element {
           hasAccounts={snap.accounts.length > 0}
           existing={snap.spaces.map((s) => ({ name: s.name, color: snap.accounts.find((x) => x.spaceId === s.id)?.color }))}
           defaultEngine={snap.assistant.defaultEngine}
+          userName={snap.userName}
         />
       )}
       {ended && <MeetingEndedDialog info={ended} onClose={() => setEnded(null)} />}

@@ -40,6 +40,8 @@ export interface UiSnapshot {
   messages: MessageView[];
   /** Show the start of each message on Home (Settings → General). */
   messagePreviews: boolean;
+  /** The user's name ('' when none). */
+  userName: string;
   /** Accounts that sent a notification this session (their apps' notifications are on). */
   messageSources: string[];
   /** New versions: how this copy updates, the background-check setting, and where it stands. */
@@ -208,6 +210,8 @@ export interface UiApi {
   dismissMessage(key: string): void;
   clearMessages(): void;
   setMessagePreviews(on: boolean): void;
+  /** The user's name ('' forgets it). */
+  setUserName(name: string): void;
   checkForUpdates(): void;
   installUpdate(): void;
   setAutoUpdate(on: boolean): void;
@@ -422,6 +426,7 @@ export const IPC = {
   dismissMessage: 'ui:dismiss-message',
   clearMessages: 'ui:clear-messages',
   setMessagePreviews: 'ui:set-message-previews',
+  setUserName: 'ui:set-user-name',
   checkForUpdates: 'ui:check-for-updates',
   installUpdate: 'ui:install-update',
   setAutoUpdate: 'ui:set-auto-update',

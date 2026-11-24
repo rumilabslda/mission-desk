@@ -35,6 +35,7 @@ import { isLocale, LOCALE_NAMES, LOCALES } from "../../../shared/i18n/locales";
 import { locale, rich, t } from "../i18n";
 import { useModal } from "../modal";
 import { ServiceLogo } from "../service-glyph";
+import { MAX_USER_NAME } from "../../../shared/user";
 import { meetingsAvailable } from "../settings/MeetingsSettings";
 import {
   connectionLabel,
@@ -134,17 +135,21 @@ export function SetupView({
   hasAccounts,
   existing,
   defaultEngine,
+  userName,
 }: {
   hasAccounts: boolean;
   /** The spaces the user already has (a second run adds to them), with their colour. */
   existing: Existing[];
   /** The assistant chosen before (a second run starts from it, so it isn't changed by accident). */
   defaultEngine?: AssistantEngine;
+  /** The name given before (Settings → General), shown on the first screen. */
+  userName?: string;
 }): React.JSX.Element {
   useModal(true);
   const [draft, setDraft] = useState<SetupDraft>(() => ({
     ...EMPTY_DRAFT,
     engine: defaultEngine ?? EMPTY_DRAFT.engine,
+    userName: userName ?? "",
   }));
   const [index, setIndex] = useState(0);
   const [dir, setDir] = useState<"fwd" | "back">("fwd");
@@ -337,7 +342,12 @@ export function SetupView({
           <div className="su-col">
             <div className={`su-step ${dir}`} key={`${index}:${step.kind}`}>
               {step.kind === "welcome" && (
-                <Welcome headRef={headRef} again={hasAccounts} />
+                <Welcome
+                  headRef={headRef}
+                  again={hasAccounts}
+                  name={draft.userName ?? ""}
+                  setName={(userName) => update((d) => ({ ...d, userName }))}
+                />
               )}
               {step.kind === "assistant" && (
                 <AssistantStep
@@ -441,13 +451,28 @@ function Title({
 function Welcome({
   headRef,
   again,
+  name,
+  setName,
 }: {
   headRef: HeadRef;
   again: boolean;
+  name: string;
+  setName(n: string): void;
 }): React.JSX.Element {
   return (
     <>
       {!again && <LanguagePicker />}
+      <label className="su-name">
+        <span className="su-label">{t("setup.welcome.nameLabel")}</span>
+        <input
+          className="su-input"
+          value={name}
+          maxLength={MAX_USER_NAME}
+          placeholder={t("setup.welcome.namePlaceholder")}
+          autoComplete="name"
+          onChange={(e) => setName(e.target.value)}
+        />
+      </label>
       <Title headRef={headRef}>
         {again ? t("setup.welcome.titleAgain") : t("setup.welcome.title")}
       </Title>

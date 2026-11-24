@@ -22,6 +22,9 @@ export const settings: Translation<typeof en> = {
   'settings.general.openOnHome': 'Abrir en Inicio',
   'settings.general.openOnHomeHint': 'Muestra tus reuniones, tareas y mensajes sin leer al abrir Mission Desk.',
   'settings.general.previews': 'Mostrar vista previa de los mensajes en Inicio',
+  'settings.general.name': 'Su nombre',
+  'settings.general.namePlaceholder': 'Cómo quiere que le llamen',
+  'settings.general.nameHint': 'Inicio le saluda con él, y el asistente y las reuniones saben quién es. Opcional.',
   'settings.general.previewsHint':
     'Inicio muestra los chats y correos nuevos. Desactiva esta opción para ocultar el texto: solo se verá el remitente o la conversación. No se guarda nada; la lista se vacía al salir de Mission Desk.',
   'settings.general.sidebarStyle': 'Estilo de la barra lateral',

@@ -82,6 +82,8 @@ export interface AppState {
   language?: import('./i18n/locales').Locale;
   /** The first-run setup was finished or skipped. */
   onboarded?: boolean;
+  /** The user's name: Home greets them with it, and the assistant and meetings know who "Me" is. */
+  userName?: string;
   /** Open Mission Desk on the Home page (the Today page in code; default on; false = off). */
   openOnToday?: boolean;
   /** Home's message list shows the start of each message (false: only who sent it). */

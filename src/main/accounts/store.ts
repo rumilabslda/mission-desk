@@ -58,6 +58,8 @@ export interface Store {
   setAutoUpdate(on: boolean): void;
   /** The first-run setup was finished or skipped. */
   setOnboarded(): void;
+  /** The user's name ('' forgets it). */
+  setUserName(name: string): void;
   loadWarning(): string | null;
 }
 
@@ -288,6 +290,12 @@ export function createStore(filePath: string): Store {
 
     setOnboarded() {
       state = { ...state, onboarded: true };
+      save();
+    },
+
+    setUserName(name) {
+      const { userName: _old, ...rest } = state;
+      state = name ? { ...rest, userName: name } : rest;
       save();
     },
 

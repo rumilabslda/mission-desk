@@ -301,3 +301,12 @@ test('open on Today is on by default and can be turned off', () => {
   store.setOpenOnToday(true);
   expect(createStore(file).state().openOnToday).toBeUndefined();
 });
+
+test("the user's name is kept, and '' clears it", () => {
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'missiondesk-name-')), 'accounts.json');
+  const s = createStore(file);
+  s.setUserName('Armando');
+  expect(createStore(file).state().userName).toBe('Armando');
+  s.setUserName('');
+  expect(createStore(file).state().userName).toBeUndefined();
+});

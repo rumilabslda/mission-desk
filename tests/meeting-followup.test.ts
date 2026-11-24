@@ -126,3 +126,15 @@ test('M1: the draft and the event only ever go to the meeting’s guests, whatev
   const r2 = await runFollowUp(async () => JSON.stringify({ followUpEvent: ev }), meeting(), { ...ctx, actions: ['event'] }, new AbortController().signal);
   expect(r2.followUpEvent?.guests).toEqual(['MARIA@acme.com']);
 });
+
+test('the prompt says who the user is, and that to-dos and waiting on are only theirs', () => {
+  const { system, user } = buildPrompt(meeting(), { ...ctx, myName: 'Armando' });
+  expect(system).toContain('The user is "Armando"');
+  expect(user).toContain('[00:00] Armando: Vou enviar a proposta.');
+  // My to-dos: concrete actions the user took on or was asked to do; not status updates or others' work.
+  expect(system).toMatch(/myTodos[^\n]*only concrete actions/);
+  expect(system).toMatch(/myTodos[^\n]*not status updates/i);
+  // Waiting on: only what someone agreed to deliver to the user; not their own work reported in a stand-up.
+  expect(system).toMatch(/waitingOn[^\n]*only what another participant explicitly agreed to deliver to the user/);
+  expect(system).toMatch(/waitingOn[^\n]*not their own work/i);
+});

@@ -3,6 +3,7 @@ import { isAssistantEffort, isAssistantModel } from '../shared/assistant';
 import { isScopeKey } from '../shared/assistant-scope';
 import { cleanDraft, isSkillMode, type SkillSource, skillFetchUrl } from '../shared/skills';
 import { isCodexModel, isEngine, isOpenRouterModel, type ScopeConfig } from '../shared/assistant-engines';
+import { cleanUserName } from '../shared/user';
 import { IPC } from '../shared/ipc';
 import { CAPTURE_IPC } from '../shared/capture-ipc';
 import { isLanguageSetting } from '../shared/i18n/locales';
@@ -178,6 +179,10 @@ export function registerIpc(win: BrowserWindow, controller: AppController): void
   on(IPC.dismissMessage, (key) => typeof key === 'string' && key.length <= 600 && controller.dismissMessage(key));
   on(IPC.clearMessages, () => controller.clearMessages());
   on(IPC.setMessagePreviews, (on) => typeof on === 'boolean' && controller.setMessagePreviews(on));
+  on(IPC.setUserName, (name) => {
+    const n = cleanUserName(name);
+    if (n !== null) controller.setUserName(n);
+  });
   on(IPC.checkForUpdates, () => controller.checkForUpdates());
   on(IPC.installUpdate, () => controller.installUpdate());
   on(IPC.setAutoUpdate, (on) => typeof on === 'boolean' && controller.setAutoUpdate(on));

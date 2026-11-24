@@ -22,6 +22,9 @@ export const settings: Translation<typeof en> = {
   'settings.general.openOnHome': 'Mit Start öffnen',
   'settings.general.openOnHomeHint': 'Beim Öffnen von Mission Desk deine Meetings, Aufgaben und ungelesenen Nachrichten anzeigen.',
   'settings.general.previews': 'Nachrichtenvorschau auf Start anzeigen',
+  'settings.general.name': 'Ihr Name',
+  'settings.general.namePlaceholder': 'Wie Sie genannt werden möchten',
+  'settings.general.nameHint': 'Die Startseite begrüßt Sie damit, und der Assistent und Ihre Meetings wissen, wer Sie sind. Optional.',
   'settings.general.previewsHint':
     'Start listet neue Chats und E-Mails auf. Deaktiviere diese Option, um den Text auszublenden: Dann erscheinen nur Absender oder Unterhaltung. Nichts wird gespeichert; die Liste wird geleert, wenn Mission Desk beendet wird.',
   'settings.general.sidebarStyle': 'Stil der Seitenleiste',
