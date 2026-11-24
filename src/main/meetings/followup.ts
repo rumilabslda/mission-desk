@@ -102,7 +102,7 @@ export interface FollowUpContext {
 
 const WANTS: Record<MeetingAction, string> = {
   summary: '"summary": { "decisions": [], "points": [], "nextSteps": [] }: short one-line items.',
-  myTodos: '"myTodos": []: only concrete actions the user personally took on, or that someone asked the user (by name or as "you") to do; one line each, starting with a verb. Not status updates, general plans or intentions ("focus on X this week"), and not work for other people or teams: those belong in the summary. Often empty or one or two items.',
+  myTodos: '"myTodos": []: only concrete actions the user said they will do themselves ("I\'ll send…", "I\'ll try to talk with…"), or that someone asked the user (by name or as "you") to do; one line each, starting with a verb. Not status updates or where the user\'s focus is ("I\'m focused on X"), and not work for other people or teams: those belong in the summary.',
   waitingOn: '"waitingOn": [{ "who": "", "what": "" }]: only what another participant explicitly agreed to deliver to the user, or that the user is waiting on to move forward, with who. Not their own work reported in a stand-up or status round, and not tasks between other people: those belong in the summary.',
   email: '"email": { "to": [], "subject": "", "body": "" }: a follow-up e-mail from the user to the guests (to: only addresses from the guest list), plain text, warm and brief, with the decisions and next steps. Never sent automatically.',
   memory: '"memoryNotes": []: at most 5 lasting facts about the client, the people or how they work that are worth remembering in future chats (not tasks, not secrets).',
