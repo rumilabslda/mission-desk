@@ -18,6 +18,48 @@ export interface SpaceMeetingSettings {
   language?: string;
   /** The "Meeting ended" ticks, as last left. */
   actions?: MeetingAction[];
+  /** Insights during the meeting (unset: on, when the space has an assistant). */
+  insights?: boolean;
+}
+
+/** Insights during meetings are on unless the space turned them off. */
+export const insightsOn = (s: SpaceMeetingSettings): boolean => s.insights !== false;
+
+/** What a live insight rests on (see the meeting insights spec). */
+export type InsightKind = 'past' | 'commitment' | 'contradiction';
+/** What "Open source" opens: never taken from a page, only from the saved insight. */
+export type OpenRef =
+  | { kind: 'memory'; scope: string }
+  | { kind: 'meeting'; scope: string; id: string }
+  | { kind: 'home' }
+  | { kind: 'message'; key: string };
+/** A source as the card shows it: Mission Desk's own copy of the text, never the model's. */
+export interface InsightSource {
+  label: string;
+  text: string;
+  open: OpenRef;
+}
+export interface MeetingInsight {
+  id: string;
+  /** Milliseconds into the meeting. */
+  at: number;
+  kind: InsightKind;
+  text: string;
+  ask?: string;
+  /** The words from the conversation that prompted it. */
+  said: string;
+  sources: InsightSource[];
+  notUseful?: boolean;
+}
+/** The live meeting's insights, for the bar. */
+export interface LiveInsights {
+  state: 'on' | 'paused' | 'unavailable';
+  reason?: string;
+  count: number;
+  /** The one the card shows (at most one new card every 3 minutes). */
+  latest?: MeetingInsight;
+  /** Every insight of this meeting, newest first. */
+  list: MeetingInsight[];
 }
 
 export interface MeetingGlobalSettings {
@@ -72,6 +114,8 @@ export interface Meeting {
   actions?: MeetingAction[];
   /** The transcript was deleted after the retention period (the summary stays). */
   transcriptPruned?: boolean;
+  /** What the space's assistant pointed out during the meeting. */
+  insights?: MeetingInsight[];
 }
 
 export type MeetingState = 'transcribing' | 'notRun' | 'running' | 'ready' | 'failed';
@@ -112,6 +156,7 @@ export interface LiveMeeting {
   language: string;
   engine: EngineId;
   notice?: { code: 'fellBack' | 'localeMissing' | 'missingSide' | 'probeUnreliable'; text: string; locale?: string };
+  insights?: LiveInsights;
 }
 
 export interface EngineStatus {

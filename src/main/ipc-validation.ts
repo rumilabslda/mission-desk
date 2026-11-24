@@ -100,7 +100,7 @@ export function parseAccountPatch(input: unknown): AccountPatch | null {
 export function parseSpaceMeetingSettings(v: unknown): SpaceMeetingSettings | null {
   if (typeof v !== 'object' || v === null) return null;
   const o = v as Record<string, unknown>;
-  if (Object.keys(o).some((k) => !['mode', 'language', 'actions'].includes(k)) || !isMeetingMode(o.mode)) return null;
+  if (Object.keys(o).some((k) => !['mode', 'language', 'actions', 'insights'].includes(k)) || !isMeetingMode(o.mode)) return null;
   const out: SpaceMeetingSettings = { mode: o.mode };
   if (o.language !== undefined) {
     if (!isMeetingLocale(o.language)) return null;
@@ -109,6 +109,10 @@ export function parseSpaceMeetingSettings(v: unknown): SpaceMeetingSettings | nu
   if (o.actions !== undefined) {
     if (!Array.isArray(o.actions) || o.actions.length > MEETING_ACTIONS.length || !o.actions.every(isMeetingAction)) return null;
     out.actions = [...new Set(o.actions)];
+  }
+  if (o.insights !== undefined) {
+    if (typeof o.insights !== 'boolean') return null;
+    out.insights = o.insights;
   }
   return out;
 }
