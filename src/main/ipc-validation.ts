@@ -1,4 +1,4 @@
-import { isEngineId, isMeetingAction, isMeetingLocale, isMeetingMode, MAX_NOTICE, MEETING_ACTIONS, type MeetingGlobalSettings, RETENTION_DAYS, type SpaceMeetingSettings } from '../shared/meeting';
+import { isEngineId, isMeetingAction, isMeetingLocale, isMeetingMode, MAX_NOTICE, MEETING_ACTIONS, type MeetingGlobalSettings, type MeetingMode, RETENTION_DAYS, type SpaceMeetingSettings } from '../shared/meeting';
 import { appNames, type SetupApp, type SetupAssistant, type SetupPlan } from '../shared/setup';
 import { isBuiltinId, isConnectionRef } from '../shared/connections';
 import { cleanUserName } from '../shared/user';
@@ -275,13 +275,14 @@ export function parseSetupPlan(v: unknown): SetupPlan | null {
     const name = cleanSpaceName(x?.name);
     const list = apps(x?.apps);
     if (!name || !list) return null;
+    if (x.meetingMode !== undefined && !isMeetingMode(x.meetingMode)) return null;
     let own: SetupAssistant | undefined;
     if (x.assistant !== undefined) {
       const a = x.assistant as Record<string, unknown> | null;
       own = (typeof a === 'object' && a !== null && assistant(a.engine, a.connection)) || undefined;
       if (!own) return null;
     }
-    if (list.length) spaces.push({ name, apps: list, ...(own ? { assistant: own } : {}) }); // a space holds apps
+    if (list.length) spaces.push({ name, apps: list, ...(own ? { assistant: own } : {}), ...(x.meetingMode !== undefined ? { meetingMode: x.meetingMode as MeetingMode } : {}) }); // a space holds apps
   }
   const loose = apps(p.apps);
   if (!loose) return null;
@@ -292,5 +293,11 @@ export function parseSetupPlan(v: unknown): SetupPlan | null {
     if (n === null) return null;
     if (n) userName = n;
   }
-  return { ...main, assistantReads: p.assistantReads === true, spaces, apps: loose, ...(userName ? { userName } : {}) };
+  let meetings: SetupPlan['meetings'];
+  if (p.meetings !== undefined) {
+    const m = p.meetings as Record<string, unknown> | null;
+    if (typeof m !== 'object' || m === null || !isMeetingMode(m.mode) || !isEngineId(m.engine) || typeof m.insights !== 'boolean') return null;
+    meetings = { mode: m.mode, engine: m.engine, insights: m.insights };
+  }
+  return { ...main, assistantReads: p.assistantReads === true, spaces, apps: loose, ...(userName ? { userName } : {}), ...(meetings ? { meetings } : {}) };
 }

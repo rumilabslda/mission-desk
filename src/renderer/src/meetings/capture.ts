@@ -1,14 +1,16 @@
 import { toPcm16 } from './pcm';
+import { playBack } from './playback';
 
 /**
  * The hidden capture page (#capture): records the meeting tab and the microphone while main asks,
- * and streams 100 ms Int16 frames to main. Never plays anything back; nothing is stored.
+ * and streams 100 ms Int16 frames to main. Plays the call back (see playBack), never the
+ * microphone; nothing is stored.
  */
 const RATE = 16000;
 const FRAME = RATE / 10;
 
 interface Running {
-  ctx: AudioContext;
+  contexts: AudioContext[];
   streams: MediaStream[];
 }
 let running: Running | null = null;
@@ -47,10 +49,11 @@ async function start(callSourceId: string | null): Promise<void> {
   const gen = ++generation;
   const streams: MediaStream[] = [];
   const ctx = new AudioContext({ sampleRate: RATE });
+  const contexts = [ctx];
   const overtaken = (): boolean => {
     if (gen === generation) return false;
     for (const st of streams) for (const tr of st.getTracks()) tr.stop();
-    void ctx.close();
+    for (const c of contexts) void c.close();
     return true;
   };
   await ctx.audioWorklet.addModule('pcm-worklet.js');
@@ -64,6 +67,9 @@ async function start(callSourceId: string | null): Promise<void> {
       });
       streams.push(call);
       if (overtaken()) return;
+      const speakers = new AudioContext();
+      contexts.push(speakers);
+      playBack(speakers, call);
       await channel(ctx, call, 'call');
       state.call = true;
     } catch (e) {
@@ -80,7 +86,7 @@ async function start(callSourceId: string | null): Promise<void> {
     state.error = `${state.error ? `${state.error}; ` : ''}me: ${(e as Error).message}`;
   }
   if (overtaken()) return;
-  running = { ctx, streams };
+  running = { contexts, streams };
   window.missiondesk.captureState(state);
 }
 
@@ -88,7 +94,7 @@ function stop(): void {
   generation += 1;
   if (!running) return;
   for (const s of running.streams) for (const t of s.getTracks()) t.stop();
-  void running.ctx.close();
+  for (const c of running.contexts) void c.close();
   running = null;
 }
 

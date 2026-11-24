@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 import type { ClaudeStatus } from "../../../shared/assistant";
+import type { EngineId, EngineStatus, MeetingMode } from "../../../shared/meeting";
 import type { AssistantEngine } from "../../../shared/assistant-engines";
 import {
   BUILTIN,
@@ -32,7 +33,7 @@ import {
 } from "../../../shared/setup";
 import type { ServiceId } from "../../../shared/types";
 import { isLocale, LOCALE_NAMES, LOCALES } from "../../../shared/i18n/locales";
-import { locale, rich, t } from "../i18n";
+import { locale, rich, t, type MessageKey } from "../i18n";
 import { useModal } from "../modal";
 import { ServiceLogo } from "../service-glyph";
 import { MAX_USER_NAME } from "../../../shared/user";
@@ -75,20 +76,27 @@ const ENGINE_NAME: Record<AssistantEngine, string> = {
   openrouter: "OpenRouter",
   off: "",
 };
-const STAGES = [
-  t("setup.stage.welcome"),
-  t("setup.stage.spaces"),
-  t("setup.stage.apps"),
-  t("setup.stage.assistant"),
-  t("setup.stage.ready"),
-];
-const STAGE_OF: Record<SetupStep["kind"], number> = {
-  welcome: 0,
-  spaces: 1,
-  apps: 2,
-  assistant: 3,
-  ready: 4,
+/** The progress bar's stages, in order ("Meetings" only when the setup asks about them). */
+const STAGE_KINDS: SetupStep["kind"][] = ["welcome", "spaces", "apps", "assistant", "meetings", "ready"];
+const STAGE_NAME: Record<SetupStep["kind"], string> = {
+  welcome: t("setup.stage.welcome"),
+  spaces: t("setup.stage.spaces"),
+  apps: t("setup.stage.apps"),
+  assistant: t("setup.stage.assistant"),
+  meetings: t("setup.stage.meetings"),
+  ready: t("setup.stage.ready"),
 };
+const MEETING_MODES: { id: MeetingMode; name: MessageKey; hint: MessageKey }[] = [
+  { id: "ask", name: "setup.meetings.askName", hint: "setup.meetings.askHint" },
+  { id: "always", name: "setup.meetings.alwaysName", hint: "setup.meetings.alwaysHint" },
+  { id: "off", name: "setup.meetings.offName", hint: "setup.meetings.offHint" },
+];
+const MODE_LABEL: Record<MeetingMode, MessageKey> = { always: "meetings.settings.always", ask: "meetings.settings.ask", off: "meetings.settings.off" };
+const ENGINE_CHOICES: { id: EngineId; name: MessageKey; hint: MessageKey }[] = [
+  { id: "apple", name: "meetings.engine.apple", hint: "setup.meetings.appleHint" },
+  { id: "parakeet", name: "meetings.engine.parakeet", hint: "setup.meetings.parakeetHint" },
+  { id: "whisper", name: "meetings.engine.whisper", hint: "setup.meetings.whisperHint" },
+];
 /** Meetings are transcribed on macOS only. */
 const isMac = meetingsAvailable(window.missiondesk?.platform ?? "darwin");
 
@@ -136,6 +144,8 @@ export function SetupView({
   existing,
   defaultEngine,
   userName,
+  meetingEngines = [],
+  meetingEngine,
 }: {
   hasAccounts: boolean;
   /** The spaces the user already has (a second run adds to them), with their colour. */
@@ -144,18 +154,29 @@ export function SetupView({
   defaultEngine?: AssistantEngine;
   /** The name given before (Settings → General), shown on the first screen. */
   userName?: string;
+  /** The transcription engines and the one in use (Settings → Meetings). */
+  meetingEngines?: EngineStatus[];
+  meetingEngine?: EngineId;
 }): React.JSX.Element {
   useModal(true);
   const [draft, setDraft] = useState<SetupDraft>(() => ({
     ...EMPTY_DRAFT,
     engine: defaultEngine ?? EMPTY_DRAFT.engine,
     userName: userName ?? "",
+    // Apple's engine unless this Mac can't run it (before macOS 26): then the small, fast one.
+    meetings: {
+      mode: "ask",
+      perSpace: false,
+      engine: meetingEngine ?? (meetingEngines.find((e) => e.id === "apple")?.state === "unavailable" ? "parakeet" : "apple"),
+      insights: true,
+    },
   }));
   const [index, setIndex] = useState(0);
   const [dir, setDir] = useState<"fwd" | "back">("fwd");
   const [finishing, setFinishing] = useState(false);
   const [error, setError] = useState("");
-  const steps = useMemo(() => setupSteps(draft), [draft]);
+  const steps = useMemo(() => setupSteps(draft, { meetings: isMac }), [draft]);
+  const meetingsShown = steps.some((s) => s.kind === "meetings");
   // The assistant connections (Settings → Integrations), looked up once and again after a change.
   const [conns, setConns] = useState<ConnectionInfo[] | null>(null);
   const refreshConns = useCallback(async (): Promise<ConnectionInfo[]> => {
@@ -197,7 +218,7 @@ export function SetupView({
     [steps.length],
   );
 
-  const plan = planOf(draft);
+  const plan = planOf(draft, { meetings: meetingsShown });
   const appCount =
     plan.spaces.reduce((n, s) => n + s.apps.length, 0) + plan.apps.length;
 
@@ -274,12 +295,14 @@ export function SetupView({
     return () => window.removeEventListener("keydown", onKey);
   });
 
-  const stage = STAGE_OF[step.kind];
+  const stageKinds = STAGE_KINDS.filter((k) => k !== "meetings" || meetingsShown);
+  const stage = stageKinds.indexOf(step.kind);
+  const appsStage = stageKinds.indexOf("apps");
   const appsSteps = steps.filter((s) => s.kind === "apps").length;
   const appsDone =
     step.kind === "apps"
       ? steps.indexOf(step) - steps.findIndex((s) => s.kind === "apps") + 1
-      : stage > STAGE_OF.apps
+      : stage > appsStage
         ? appsSteps
         : 0;
 
@@ -302,11 +325,11 @@ export function SetupView({
             className="su-progress"
             aria-label={t("setup.progressLabel", {
               step: stage + 1,
-              total: STAGES.length,
-              stage: STAGES[stage],
+              total: stageKinds.length,
+              stage: STAGE_NAME[step.kind],
             })}
           >
-            {STAGES.map((s, i) => (
+            {stageKinds.map((k) => STAGE_NAME[k]).map((s, i) => (
               <li
                 key={s}
                 className={i < stage ? "done" : i === stage ? "now" : ""}
@@ -314,8 +337,8 @@ export function SetupView({
                 <span
                   className="su-bar"
                   style={
-                    i === STAGE_OF.apps &&
-                    stage === STAGE_OF.apps &&
+                    i === appsStage &&
+                    stage === appsStage &&
                     appsSteps > 1
                       ? ({
                           "--fill": `${(appsDone / appsSteps) * 100}%`,
@@ -379,8 +402,18 @@ export function SetupView({
                   count={appsSteps}
                 />
               )}
+              {step.kind === "meetings" && (
+                <MeetingsStep
+                  headRef={headRef}
+                  draft={draft}
+                  update={update}
+                  existing={existing}
+                  engines={meetingEngines}
+                />
+              )}
               {step.kind === "ready" && (
                 <ReadyStep
+                  meetingsShown={meetingsShown}
                   headRef={headRef}
                   existing={existing}
                   draft={draft}
@@ -1591,9 +1624,143 @@ function AppsStep({
   );
 }
 
+/* ───────────── Meetings ───────────── */
+
+/**
+ * Whether meetings are transcribed: one mode for every new space (Ask by default), or each its own;
+ * the engine (Apple's needs nothing; the others download after the setup); insights.
+ */
+function MeetingsStep({
+  headRef,
+  draft,
+  update,
+  existing,
+  engines,
+}: {
+  headRef: HeadRef;
+  draft: SetupDraft;
+  update: Update;
+  existing: Existing[];
+  engines: EngineStatus[];
+}): React.JSX.Element {
+  const m = draft.meetings!;
+  const setM = (patch: Partial<NonNullable<SetupDraft["meetings"]>>): void =>
+    update((d) => ({ ...d, meetings: { ...d.meetings!, ...patch } }));
+  const isExisting = (name: string): boolean =>
+    existing.some((e) => e.name.trim().toLowerCase() === name.trim().toLowerCase());
+  // New spaces with an app that has calls: only they can choose.
+  const withCalls = draft.together
+    ? []
+    : draft.spaces.filter((s) => !isExisting(s.name) && hasMeetingApps({ together: false, spaces: [s], loose: [] }));
+  const canPerSpace = withCalls.length > 1;
+  useEffect(() => {
+    if (!canPerSpace && m.perSpace) setM({ perSpace: false });
+  });
+  const modes = m.perSpace ? [m.mode, ...withCalls.map((s) => s.meetingMode ?? m.mode)] : [m.mode];
+  const anyOn = modes.some((x) => x !== "off");
+  const apple = engines.find((e) => e.id === "apple");
+  const plan = planOf(draft, { meetings: true });
+  const modeName = (id: MeetingMode): string => t(MEETING_MODES.find((x) => x.id === id)!.name);
+  return (
+    <>
+      <Title headRef={headRef}>{t("setup.meetings.title")}</Title>
+      <p className="su-lede">{t("setup.meetings.lede")}</p>
+      <div className="su-choices" role="radiogroup" aria-label={t("setup.meetings.groupLabel")}>
+        {MEETING_MODES.map((c) => (
+          <button
+            key={c.id}
+            role="radio"
+            aria-checked={m.mode === c.id}
+            className={`su-choice${m.mode === c.id ? " on" : ""}${c.id === "off" ? " quiet" : ""}`}
+            onClick={() => setM({ mode: c.id })}
+          >
+            <span className="su-radio" aria-hidden="true" />
+            <span className="su-choice-text">
+              <strong>{t(c.name)}</strong>
+              <span>{t(c.hint)}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+      {canPerSpace && (
+        <label className="su-together">
+          <input type="checkbox" checked={m.perSpace} onChange={(e) => setM({ perSpace: e.target.checked })} />
+          <span>
+            <strong>{t("setup.meetings.perSpaceTitle")}</strong>
+            <span>{t("setup.meetings.perSpaceText")}</span>
+          </span>
+        </label>
+      )}
+      {m.perSpace && canPerSpace && (
+        <ul className="su-per-space">
+          {withCalls.map((s) => (
+            <li key={s.key}>
+              <span className="su-sum-name">{s.name}</span>
+              <select
+                className="su-select"
+                aria-label={t("setup.meetings.spaceLabel", { name: s.name })}
+                value={s.meetingMode ?? ""}
+                onChange={(e) =>
+                  update((d) => ({
+                    ...d,
+                    spaces: d.spaces.map((x) => (x.key === s.key ? { ...x, meetingMode: (e.target.value || undefined) as MeetingMode | undefined } : x)),
+                  }))
+                }
+              >
+                <option value="">{t("setup.meetings.sameAsAbove", { name: modeName(m.mode) })}</option>
+                {MEETING_MODES.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {modeName(c.id)}
+                  </option>
+                ))}
+              </select>
+            </li>
+          ))}
+        </ul>
+      )}
+      {anyOn && (
+        <>
+          <h2 className="su-subtitle">{t("setup.meetings.engineTitle")}</h2>
+          <div className="su-choices" role="radiogroup" aria-label={t("setup.meetings.engineTitle")}>
+            {ENGINE_CHOICES.map((c) => {
+              const off = c.id === "apple" && apple?.state === "unavailable";
+              return (
+                <button
+                  key={c.id}
+                  role="radio"
+                  aria-checked={m.engine === c.id}
+                  disabled={off}
+                  className={`su-choice${m.engine === c.id ? " on" : ""}`}
+                  onClick={() => setM({ engine: c.id })}
+                >
+                  <span className="su-radio" aria-hidden="true" />
+                  <span className="su-choice-text">
+                    <strong>{t(c.name)}</strong>
+                    <span>{off ? apple?.reason || t("setup.meetings.appleUnavailable") : t(c.hint)}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {assistantsInPlan(plan) && (
+            <label className="su-together">
+              <input type="checkbox" checked={m.insights} onChange={(e) => setM({ insights: e.target.checked })} />
+              <span>
+                <strong>{t("setup.meetings.insightsTitle")}</strong>
+                <span>{t("setup.meetings.insightsText")}</span>
+              </span>
+            </label>
+          )}
+        </>
+      )}
+    </>
+  );
+}
+
 /* ───────────── Ready ───────────── */
 
 function ReadyStep({
+  meetingsShown,
   headRef,
   existing,
   draft,
@@ -1601,6 +1768,7 @@ function ReadyStep({
   appCount,
   error,
 }: {
+  meetingsShown: boolean;
   headRef: HeadRef;
   existing: Existing[];
   draft: SetupDraft;
@@ -1608,7 +1776,7 @@ function ReadyStep({
   appCount: number;
   error: string;
 }): React.JSX.Element {
-  const plan = planOf(draft);
+  const plan = planOf(draft, { meetings: meetingsShown });
   const cols = spaceColours(
     plan.spaces.map((s) => s.name),
     existing,
@@ -1618,6 +1786,7 @@ function ReadyStep({
     apps: SetupPlan["apps"];
     color: string;
     assistant?: SetupAssistant;
+    meetingMode?: MeetingMode;
   }[] = draft.together
     ? [{ name: "", apps: plan.apps, color: "" }]
     : plan.spaces.map((s, i) => ({ ...s, color: cols[i] }));
@@ -1681,6 +1850,9 @@ function ReadyStep({
               {(g.assistant ?? plan).engine !== "off" &&
                 !isExisting(g.name) && <span aria-hidden="true">✦ </span>}
               {assistantOf(g)}
+              {plan.meetings && !isExisting(g.name) && (
+                <> · {t("setup.ready.meetings", { mode: t(MODE_LABEL[g.meetingMode ?? plan.meetings.mode]) })}</>
+              )}
             </span>
           </div>
         ))}

@@ -13,6 +13,7 @@ Run with your real accounts before adopting a new version. Tick each line.
 - [ ] After finishing, Settings → Assistant shows each space on the connection chosen; a space with "No assistant" is Off and its apps aren't shared with the assistant.
 - [ ] With an app with calls (Google, Microsoft 365, Zoom), the assistant screen says the space's assistant can sum up its meetings.
 - [ ] Run the setup again (Settings → General) and choose **Not now** with a new space: the spaces you already had keep their assistant.
+- [ ] On a Mac, with Google, Microsoft 365 or Zoom chosen, the setup shows **Meetings** after the assistant; with only Slack or WhatsApp it doesn't. **No, thanks** hides the engine; **Choose for each space** sets one space to Always and another to Ask, and Ready shows each one's transcription. After finishing, Settings → Meetings shows the same modes and engine; choosing Parakeet or Whisper starts its download.
 
 ## Sign-in and isolation
 - [ ] Add two different Google accounts. Both sign in (with 2FA) without "This browser or app may not be secure".

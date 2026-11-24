@@ -9,7 +9,8 @@ All notable changes to Mission Desk. Versions follow [Semantic Versioning](https
 - **Language first:** the setup's first screen shows the language Mission Desk is in (your Mac's) and lets you change it before going on; everything switches at once.
 - **The assistant comes after your apps**, so it's chosen for the spaces you just made: Welcome, Spaces, Apps, Assistant, Ready.
 - **Assistant connections in the setup:** pick the Claude Code or Codex on this Mac, OpenRouter, or any connection from Settings → Integrations, or add one with **+ Add another account**. One for every space, or **Choose an assistant for each space**. The permission to read the apps is asked there too.
-- **Ready shows each space's assistant** next to its apps.
+- **Meetings in the setup:** on a Mac, when an app has calls, the setup asks whether to transcribe meetings: **Ask at each meeting** (the default), **Always** or **No, thanks**, for every space or each its own, which engine (Apple's, Parakeet or Whisper, downloaded after the setup), and insights during meetings.
+- **Ready shows each space's assistant** (and its transcription) next to its apps.
 - **Meetings on the first screen:** "Meetings transcribed on your Mac" joins the highlights; when your apps include calls, the assistant screen says the space's assistant can sum them up.
 - Running the setup again no longer changes the assistant of the spaces you already have (choosing **Not now** used to turn it off for spaces without their own choice).
 
@@ -23,6 +24,7 @@ All notable changes to Mission Desk. Versions follow [Semantic Versioning](https
 - **Each space picks its connection by name** in Settings → Assistant, meetings' follow-ups included. A space whose connection was removed stops; it never switches to another connection on its own. Yesterday's extra Claude accounts become connections, with their sign-in and spaces kept.
 
 ### Meetings
+- **The other side stays audible while transcribing:** recording a meeting took its sound away from your speakers (Chromium sends a captured tab's audio only to the recording). The call is now played back to you at full quality while it's transcribed.
 - **Transcription on your Mac** for the meetings you join in Google Meet, Microsoft Teams and Zoom inside Mission Desk. Each space chooses **Always**, **Ask** or **Off** (Settings → Meetings). A bar over the meeting shows it's transcribing, with Pause, Stop, the meeting's language and **Copy notice** to tell the participants. The audio is never stored or sent anywhere: only the text is kept, in the meeting's space.
 - **Three engines**, all on the Mac: Apple's (macOS 26, nothing to download), **Whisper large-v3 turbo** (the most accurate) and **Parakeet v3** (very fast), downloaded with one click in Settings → Meetings, checked file by file, and deleted when you ask.
 - **When a meeting ends**, choose what the space's assistant does: the summary, your to-dos, what others owe you ("Waiting on"), a follow-up e-mail draft (opened in your Gmail or Outlook, never sent), notes for the space's memory and a follow-up event (both as proposals). The transcript goes to the assistant with no tools, so nothing said in a meeting can make it act.
