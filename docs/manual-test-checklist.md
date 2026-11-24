@@ -112,6 +112,12 @@ Run with your real accounts before adopting a new version. Tick each line.
 - [ ] Settings → Meetings: download Whisper and Parakeet (progress, Cancel), **Use** each in a call, **Delete** (asks, frees the space).
 - [ ] Apple's language missing (e.g. Portuguese): the bar and Settings offer to download it.
 - [ ] Ungroup a space with meetings: Mission Desk asks; Cancel keeps everything.
+- [ ] Insights: add the memory note "Acme reviews billing in December" to a space with an assistant. In a call in that space, say "o atraso na faturação" (or "the billing delay") a few times over two minutes: within ~30 s a card shows under the bar, with that note as its source.
+- [ ] Insights: **Open source** opens the memory window; **Not useful** closes the card, and the meeting page lists the insight marked Not useful.
+- [ ] Insights: the card hides after 20 s, but not while the pointer is over it; it never takes the keyboard from the call.
+- [ ] Insights: **✦** opens the list; **Pause insights** stops new cards while the transcript continues; **Resume insights** brings them back.
+- [ ] Insights: with **Insights during meetings** off for the space there's no ✦; a space with no assistant shows the switch disabled.
+- [ ] Insights: a new space with nothing in its memory, meetings, to-dos or messages never shows a card.
 
 ## Assistant connections
 - [ ] A build from 2026-11-22 with an extra Claude account: after the update the account is in Settings → Integrations with its name, still signed in, and its space still uses it.

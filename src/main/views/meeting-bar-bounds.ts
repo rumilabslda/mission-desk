@@ -1,7 +1,12 @@
-/** Where the transcription bar sits over the meeting view: top-centred, 560 px wide at most, one or two lines. */
-export function meetingBarBounds(view: { x: number; y: number; width: number; height: number }, lines: 1 | 2 = 1): { x: number; y: number; width: number; height: number } {
+/**
+ * Where the transcription bar sits over the meeting view: top-centred, 560 px wide at most. Its
+ * height is what the bar page needs (one line, two with a notice, more with an insight card or the
+ * list), never under one line, over 400 px or over 60% of the meeting.
+ */
+export function meetingBarBounds(view: { x: number; y: number; width: number; height: number }, height: number): { x: number; y: number; width: number; height: number } {
   const width = Math.max(0, Math.min(560, view.width - 16));
-  return { x: view.x + Math.round((view.width - width) / 2), y: view.y + 8, width, height: lines === 2 ? 60 : 36 };
+  const max = Math.max(36, Math.min(400, Math.round(view.height * 0.6)));
+  return { x: view.x + Math.round((view.width - width) / 2), y: view.y + 8, width, height: Math.max(36, Math.min(max, Math.round(height))) };
 }
 
 type View = { accountId: string; kind: string };

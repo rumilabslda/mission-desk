@@ -313,6 +313,13 @@ export interface UiApi {
   meetingSetLanguage(locale: string): void;
   meetingCopyNotice(): void;
   meetingInstallLocale(locale: string): void;
+  /** Live insights on the bar: pause or resume them, "Not useful", "Open source" (by index). */
+  meetingInsightsPause(): void;
+  meetingInsightsResume(): void;
+  meetingInsightNotUseful(id: string): void;
+  meetingInsightOpen(id: string, source: number): void;
+  /** The height the bar page needs (its card or list open). */
+  meetingBarHeight(px: number): void;
   /** Runs a meeting's chosen actions through its space's assistant. */
   meetingRun(scope: string, id: string, actions: MeetingAction[]): void;
   onMeetingEnded(cb: (info: MeetingEndedInfo) => void): () => void;
@@ -486,6 +493,11 @@ export const IPC = {
   meetingSetLanguage: 'ui:meeting-set-language',
   meetingCopyNotice: 'ui:meeting-copy-notice',
   meetingInstallLocale: 'ui:meeting-install-locale',
+  meetingInsightsPause: 'ui:meeting-insights-pause',
+  meetingInsightsResume: 'ui:meeting-insights-resume',
+  meetingInsightNotUseful: 'ui:meeting-insight-not-useful',
+  meetingInsightOpen: 'ui:meeting-insight-open',
+  meetingBarHeight: 'ui:meeting-bar-height',
   meetingRun: 'ui:meeting-run',
   meetingEnded: 'ui:meeting-ended',
   meetingGet: 'ui:meeting-get',

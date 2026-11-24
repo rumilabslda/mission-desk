@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { act } from 'react';
-import { beforeEach, expect, test } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { createRoot } from 'react-dom/client';
 import { meetingBarBounds } from '../src/main/views/meeting-bar-bounds';
 import { MeetingBarView } from '../src/renderer/src/meetings/MeetingBar';
@@ -73,8 +73,14 @@ test('a missing language offers its download', () => {
 });
 
 test('the bar sits top-centre over the meeting', () => {
-  expect(meetingBarBounds({ x: 0, y: 0, width: 1000, height: 700 })).toEqual({ x: 220, y: 8, width: 560, height: 36 });
-  expect(meetingBarBounds({ x: 72, y: 40, width: 400, height: 700 }, 2)).toEqual({ x: 80, y: 48, width: 384, height: 60 });
+  expect(meetingBarBounds({ x: 0, y: 0, width: 1000, height: 700 }, 36)).toEqual({ x: 220, y: 8, width: 560, height: 36 });
+  expect(meetingBarBounds({ x: 72, y: 40, width: 400, height: 700 }, 60)).toEqual({ x: 80, y: 48, width: 384, height: 60 });
+});
+
+test('the overlay grows with the card or list, up to 400 px and 60% of the meeting', () => {
+  expect(meetingBarBounds({ x: 0, y: 0, width: 800, height: 1000 }, 500).height).toBe(400);
+  expect(meetingBarBounds({ x: 0, y: 0, width: 800, height: 300 }, 500).height).toBe(180);
+  expect(meetingBarBounds({ x: 0, y: 0, width: 800, height: 1000 }, 10).height).toBe(36);
 });
 
 import { barTarget } from '../src/main/views/meeting-bar-bounds';
@@ -93,4 +99,118 @@ test('I1: the bar draws what it was placed for', () => {
   const host = render({ live, asking: { title: 'Other', switchTo: true }, spaceName: 'Acme', localeInstall: null, mode: 'live' });
   expect(host.textContent).toContain('Transcribing');
   expect(host.textContent).not.toContain('instead');
+});
+
+describe('live insights on the bar', () => {
+  const ins = (id: string, over: Partial<import('../src/shared/meeting').MeetingInsight> = {}): import('../src/shared/meeting').MeetingInsight => ({
+    id,
+    at: 1000,
+    kind: 'past',
+    text: `Insight ${id}`,
+    said: 'o atraso',
+    sources: [{ label: 'Meeting of 12/11 · Decision', text: 'Rever a faturação em dezembro', open: { kind: 'meeting', scope: 'space:s1', id: 'm0' } }],
+    ...over,
+  });
+  const withInsights = (over: Partial<import('../src/shared/meeting').LiveInsights> = {}): LiveMeeting => ({
+    ...live,
+    insights: { state: 'on', count: 1, latest: ins('abc123def456', { ask: 'Já há data?' }), list: [ins('abc123def456', { ask: 'Já há data?' })], ...over },
+  });
+
+  test('the bar shows ✦ with the count', () => {
+    const host = render({ live: withInsights({ count: 3 }), asking: null, spaceName: 'Acme', localeInstall: null });
+    expect(host.textContent).toContain('✦ 3');
+  });
+
+  test("a new latest insight shows a card with the kind, the text, the source's text and the ask", () => {
+    const host = render({ live: withInsights(), asking: null, spaceName: 'Acme', localeInstall: null });
+    const card = host.querySelector('.mb-card')!;
+    expect(card.getAttribute('role')).toBe('status');
+    expect(card.textContent).toContain('Link to the past');
+    expect(card.textContent).toContain('Insight abc123def456');
+    expect(card.textContent).toContain('Meeting of 12/11 · Decision');
+    expect(card.textContent).toContain('Rever a faturação em dezembro');
+    expect(card.textContent).toContain('Ask: “Já há data?”');
+  });
+
+  test('the card hides after 20 s, not while hovered', () => {
+    vi.useFakeTimers();
+    try {
+      const host = render({ live: withInsights(), asking: null, spaceName: 'Acme', localeInstall: null });
+      const card = host.querySelector('.mb-card')!;
+      act(() => card.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })));
+      act(() => vi.advanceTimersByTime(25_000));
+      expect(host.querySelector('.mb-card')).not.toBeNull();
+      act(() => card.dispatchEvent(new MouseEvent('mouseout', { bubbles: true })));
+      expect(host.querySelector('.mb-card')).toBeNull();
+      const again = render({ live: withInsights(), asking: null, spaceName: 'Acme', localeInstall: null });
+      act(() => vi.advanceTimersByTime(20_000));
+      expect(again.querySelector('.mb-card')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test('Not useful and Open source call the IPC with the insight id (and source index)', () => {
+    const host = render({ live: withInsights(), asking: null, spaceName: 'Acme', localeInstall: null });
+    click(host, 'Open source');
+    expect(calls).toContainEqual(['meetingInsightOpen', 'abc123def456', 0]);
+    click(host, 'Not useful');
+    expect(calls).toContainEqual(['meetingInsightNotUseful', 'abc123def456']);
+    expect(host.querySelector('.mb-card')).toBeNull();
+  });
+
+  test('✦ opens the list, newest first, with Pause insights', () => {
+    const host = render({ live: withInsights({ count: 2, list: [ins('newer1'), ins('older1')] }), asking: null, spaceName: 'Acme', localeInstall: null });
+    click(host, '✦ 2');
+    const items = [...host.querySelectorAll('.mb-list li')].map((li) => li.textContent);
+    expect(items[0]).toContain('Insight newer1');
+    expect(items[1]).toContain('Insight older1');
+    click(host, 'Pause insights');
+    expect(calls).toContainEqual(['meetingInsightsPause']);
+  });
+
+  test('unavailable shows — and the reason as the title', () => {
+    const host = render({ live: withInsights({ state: 'unavailable', reason: 'Not connected', count: 0, latest: undefined, list: [] }), asking: null, spaceName: 'Acme', localeInstall: null });
+    const b = [...host.querySelectorAll('button')].find((x) => x.textContent?.startsWith('✦'))!;
+    expect(b.textContent).toBe('✦ —');
+    expect(b.getAttribute('title')).toBe('Not connected');
+  });
+
+  test('model text is rendered as text, never HTML', () => {
+    const host = render({ live: withInsights({ latest: ins('abc123def456', { text: '<b>x</b>' }) }), asking: null, spaceName: 'Acme', localeInstall: null });
+    expect(host.querySelector('.mb-card b')).toBeNull();
+    expect(host.querySelector('.mb-card')!.textContent).toContain('<b>x</b>');
+  });
+
+  test('the page reports its height', () => {
+    const observed: (() => void)[] = [];
+    const RO = globalThis.ResizeObserver;
+    (globalThis as { ResizeObserver: unknown }).ResizeObserver = class {
+      constructor(cb: () => void) {
+        observed.push(cb);
+      }
+      observe() {}
+      disconnect() {}
+    };
+    try {
+      const host = render({ live: withInsights(), asking: null, spaceName: 'Acme', localeInstall: null });
+      Object.defineProperty(host.querySelector('.mb-page')!, 'offsetHeight', { configurable: true, value: 150 });
+      act(() => observed.forEach((cb) => cb()));
+      expect(calls).toContainEqual(['meetingBarHeight', 150]);
+    } finally {
+      (globalThis as { ResizeObserver: unknown }).ResizeObserver = RO;
+    }
+  });
+});
+
+test('a new meeting starts with the insights list closed', () => {
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  const withList = (id: string): LiveMeeting => ({ ...live, id, insights: { state: 'on', count: 0, list: [] } });
+  act(() => root.render(<MeetingBarView live={withList('m1')} asking={null} spaceName="Acme" localeInstall={null} />));
+  click(host, '✦ 0');
+  expect(host.querySelector('.mb-list')).not.toBeNull();
+  act(() => root.render(<MeetingBarView live={withList('m2')} asking={null} spaceName="Acme" localeInstall={null} />));
+  expect(host.querySelector('.mb-list')).toBeNull();
 });

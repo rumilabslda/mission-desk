@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createStore } from '../src/main/accounts/store';
 import { parseMeetingGlobal, parseSpaceMeetingSettings } from '../src/main/ipc-validation';
-import { spaceMeetingSettings } from '../src/shared/meeting';
+import { insightsOn, spaceMeetingSettings } from '../src/shared/meeting';
 
 let dir: string;
 beforeEach(() => {
@@ -64,4 +64,14 @@ test('a space’s meetings default to the interface language, with the Mac’s r
   expect(meetingLocale('fr', 'fr-CA')).toBe('fr-CA');
   expect(meetingLocale('it', 'it')).toBe('it-IT');
   expect(meetingLocale('nl', 'nl-BE')).toBe('nl-NL');
+});
+
+test('insights are on unless turned off', () => {
+  expect(insightsOn({ mode: 'ask' })).toBe(true);
+  expect(insightsOn({ mode: 'ask', insights: false })).toBe(false);
+});
+
+test('space meeting settings accept an insights boolean only', () => {
+  expect(parseSpaceMeetingSettings({ mode: 'ask', insights: false })).toEqual({ mode: 'ask', insights: false });
+  expect(parseSpaceMeetingSettings({ mode: 'ask', insights: 'no' })).toBeNull();
 });

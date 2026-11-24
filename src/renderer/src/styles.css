@@ -1381,11 +1381,12 @@ html.assistant-fab-page body, html.assistant-page body { overflow: hidden; }
 html.meeting-bar-page #root { height: 100vh; }
 .mb-bar {
   display: flex; flex-direction: column; justify-content: center; gap: 2px;
-  height: 100vh; box-sizing: border-box; padding: 0 6px 0 12px;
+  height: 36px; box-sizing: border-box; padding: 0 6px 0 12px; flex: none;
   background: rgba(24, 25, 30, 0.92); color: #f3f4f6; border-radius: 18px;
   font: 500 12.5px/1.2 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.28); -webkit-user-select: none; user-select: none;
 }
+.mb-bar.two { height: 60px; }
 .mb-bar:not(.two) { flex-direction: row; align-items: center; gap: 6px; }
 .mb-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .mb-sub { font-weight: 400; font-size: 11.5px; color: #c7c9d1; }
@@ -1402,6 +1403,31 @@ html.meeting-bar-page #root { height: 100vh; }
 .mb-bar button:hover, .mb-lang:hover { background: rgba(255, 255, 255, 0.2); }
 .mb-bar .mb-primary, .mb-bar .mb-notice.fresh { background: #4f46e5; }
 .mb-lang { max-width: 130px; appearance: none; -webkit-appearance: none; }
+/* Live insights: the ✦ count on the bar, the newest one's card and the list, under the bar. */
+.mb-page { display: flex; flex-direction: column; gap: 6px; }
+.mb-bar .mb-insights.on { background: #4f46e5; }
+.mb-card, .mb-list {
+  background: rgba(24, 25, 30, 0.94); color: #f3f4f6; border-radius: 14px; padding: 10px 12px;
+  font: 400 12.5px/1.4 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.28); -webkit-user-select: text; user-select: text;
+}
+.mb-card p, .mb-list p { margin: 0; }
+.mb-card-head { display: flex; align-items: center; justify-content: space-between; }
+.mb-kind { font-size: 10.5px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: #a5b4fc; }
+.mb-card-text { margin-top: 4px !important; font-size: 13px; font-weight: 500; }
+.mb-source { margin-top: 6px !important; color: #c7c9d1; font-size: 11.5px; }
+.mb-ask { margin-top: 6px !important; color: #e0e7ff; }
+.mb-card button, .mb-list button { height: 24px; padding: 0 9px; border: 0; border-radius: 12px; background: rgba(255, 255, 255, 0.12); color: inherit; font: inherit; cursor: pointer; }
+.mb-card button:hover, .mb-list button:hover { background: rgba(255, 255, 255, 0.2); }
+.mb-card .mb-x { height: 20px; width: 20px; padding: 0; background: none; font-size: 15px; line-height: 1; }
+.mb-card-actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 8px; }
+.mb-list { max-height: 300px; overflow-y: auto; }
+.mb-list ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.mb-list li { display: grid; gap: 2px; }
+.mb-list li small { color: #9ca3af; font-size: 11px; }
+.mb-list li.not-useful { opacity: 0.5; }
+.mb-empty { color: #c7c9d1; }
+.mb-list-foot { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 10px; color: #c7c9d1; }
 
 /* ── "The meeting ended" ─────────────────────────────────────────────────────────────── */
 .me-dialog { width: 440px; }

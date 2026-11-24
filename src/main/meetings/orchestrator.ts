@@ -1,6 +1,6 @@
 import type { WebContents } from 'electron';
 import { t } from '../../shared/i18n';
-import type { EngineId, LiveMeeting, Meeting, MeetingProviderId, SpaceMeetingSettings } from '../../shared/meeting';
+import { insightsOn, type EngineId, type LiveInsights, type LiveMeeting, type Meeting, type MeetingProviderId, type Segment, type SpaceMeetingSettings } from '../../shared/meeting';
 import { assignSpeakers, mutedAt, type ProbeSample } from '../../shared/meeting-speakers';
 import type { ProbeResult } from '../../shared/meeting-probes';
 import type { ViewKind } from '../../shared/types';
@@ -36,6 +36,7 @@ interface Live {
   engine: EngineId;
   modelDir: string | null;
   notice?: LiveMeeting['notice'];
+  insights: LiveInsightRunner | null;
 }
 
 export interface OrchestratorDeps {
@@ -66,6 +67,17 @@ export interface OrchestratorDeps {
   /** A real meeting ended: show "Meeting ended". */
   ended(m: Meeting): void;
   now(): number;
+  /** The live meeting's insights (called only when the space has them on); null: none for it. */
+  insights?(meeting: Meeting, accountId: string): LiveInsightRunner | null;
+}
+
+/** What the orchestrator needs of an insights runner (see insights/runner.ts). */
+export interface LiveInsightRunner {
+  segments(segs: Segment[]): void;
+  pause(): void;
+  resume(): void;
+  stop(): void;
+  state(): LiveInsights;
 }
 
 /**
@@ -101,7 +113,10 @@ export function createOrchestrator(deps: OrchestratorDeps) {
     tr.onSegment((ch, s) => {
       // The meeting still finishing first: its engine's last words come before the next one starts.
       const target = writing ?? (live ? { scope: live.meeting.scope, id: live.meeting.id } : null);
-      if (target) deps.store.append(target.scope, target.id, [assignSpeakers(ch, s, samples)]);
+      if (!target) return;
+      const seg = assignSpeakers(ch, s, samples);
+      deps.store.append(target.scope, target.id, [seg]);
+      if (!writing) live?.insights?.segments([seg]);
     });
     tr.onGap((g) => {
       if (live) deps.store.gap(live.meeting.scope, live.meeting.id, g);
@@ -166,7 +181,8 @@ export function createOrchestrator(deps: OrchestratorDeps) {
       ...(matched ? { event: matched.event } : {}),
     });
     samples = [];
-    const l: Live = { meeting, accountId: d.accountId, kind: d.kind, provider: d.provider, key: d.key, startMs: now, paused: false, pausedAt: 0, held: false, heldAt: 0, engine: e.engine, modelDir: e.modelDir };
+    const l: Live = { meeting, accountId: d.accountId, kind: d.kind, provider: d.provider, key: d.key, startMs: now, paused: false, pausedAt: 0, held: false, heldAt: 0, engine: e.engine, modelDir: e.modelDir, insights: null };
+    if (insightsOn(deps.settingsFor(scope))) l.insights = deps.insights?.(meeting, d.accountId) ?? null;
     if (e.fellBack) l.notice = { code: 'fellBack', text: e.fellBack };
     else if (!deps.probeReliable(d.provider)) l.notice = { code: 'probeUnreliable', text: t('meetings.notice.probeUnreliable') };
     live = l;
@@ -182,6 +198,7 @@ export function createOrchestrator(deps: OrchestratorDeps) {
     if (!l) return;
     const endMs = deps.now(); // when it ended, not when the engine finished
     if (l.held) deps.store.gap(l.meeting.scope, l.meeting.id, { start: l.heldAt, end: endMs - l.startMs });
+    l.insights?.stop();
     live = null;
     writing = { scope: l.meeting.scope, id: l.meeting.id };
     deps.capture.stop();
@@ -308,7 +325,15 @@ export function createOrchestrator(deps: OrchestratorDeps) {
         language: live.meeting.language,
         engine: live.engine,
         ...(live.notice ? { notice: live.notice } : {}),
+        ...(live.insights ? { insights: live.insights.state() } : {}),
       };
+    },
+    /** "Pause insights" / "Resume insights" on the bar: the transcription goes on. */
+    insightsPause(): void {
+      live?.insights?.pause();
+    },
+    insightsResume(): void {
+      live?.insights?.resume();
     },
     /** Where the live meeting runs (for the bar). */
     liveView: (): { accountId: string; kind: ViewKind } | null => (live ? { accountId: live.accountId, kind: live.kind } : null),

@@ -87,7 +87,7 @@ const stamp = (ms: number): string => {
   return h ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 };
 
-function transcriptText(segs: Segment[], myName: string): string {
+export function transcriptText(segs: Segment[], myName: string): string {
   return segs.map((s) => `[${stamp(s.start)}] ${s.speaker === 'me' ? myName : s.speaker === 'others' ? 'Other participant' : s.speaker}: ${s.text}`).join('\n');
 }
 
