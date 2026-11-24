@@ -2,10 +2,15 @@
 
 All notable changes to Mission Desk. Versions follow [Semantic Versioning](https://semver.org). Until 1.0.0 Mission Desk is an early preview: a new minor number (0.2.0) adds features and may change how things work, a patch (0.1.1) fixes bugs. 1.0.0 will be the first version ready for everyone.
 
-## Unreleased
+## 0.2.0 — 2026-11-24
+
+### Languages
+- Mission Desk now speaks **English, Português (Portugal), Português (Brasil), Español, Français, Deutsch, Italiano and Nederlands**: menus, dialogs, notifications, the setup, Settings, Home, the calendar and the assistant. It follows your Mac's language; pick another in **Settings → General → Language** and it switches at once, no restart.
+- Dates and times follow the language, with your Mac's region (English on a Mac set to Portugal keeps 24-hour times).
+- Your apps keep their own language, and the assistant still answers in the language you write in.
 
 ### Setup
-- **Your name:** the setup's first screen asks it (optional), and Settings → General keeps it. Home greets you with it ("Good afternoon, Armando"), and the assistant and meetings know which person is you.
+- **Your name:** the setup's first screen asks it (optional), and Settings → General keeps it. Home greets you with it ("Good afternoon, Ana"), and the assistant and meetings know which person is you.
 - **Language first:** the setup's first screen shows the language Mission Desk is in (your Mac's) and lets you change it before going on; everything switches at once.
 - **The assistant comes after your apps**, so it's chosen for the spaces you just made: Welcome, Spaces, Apps, Assistant, Ready.
 - **Assistant connections in the setup:** pick the Claude Code or Codex on this Mac, OpenRouter, or any connection from Settings → Integrations, or add one with **+ Add another account**. One for every space, or **Choose an assistant for each space**. The permission to read the apps is asked there too.
@@ -13,6 +18,11 @@ All notable changes to Mission Desk. Versions follow [Semantic Versioning](https
 - **Ready shows each space's assistant** (and its transcription) next to its apps.
 - **Meetings on the first screen:** "Meetings transcribed on your Mac" joins the highlights; when your apps include calls, the assistant screen says the space's assistant can sum them up.
 - Running the setup again no longer changes the assistant of the spaces you already have (choosing **Not now** used to turn it off for spaces without their own choice).
+
+### Apps
+- **Notion**: one Notion account with all its workspaces. Pages it opens become tabs, "Sign in with Google, Apple, Microsoft or ChatGPT" and your company's SSO stay in the account, the microphone works for AI Meeting Notes, and unread Inbox notifications show on its badge.
+- **Proton Mail**, **iCloud Mail** and **Fastmail**: email beyond Google and Microsoft, each with the Inbox's unread count when its page shows it. Links in emails open in your browser.
+- **Zoom**: add a Zoom account (its web version: Team Chat, meetings, calendar), with its unread count, notifications, camera and microphone for calls, and "Sign in with Google, Microsoft or Apple" or your company's SSO. **Join** on a Zoom meeting opens the Zoom app when it's installed, and otherwise your Zoom account in Mission Desk.
 
 ### Settings
 - **Accounts is now Apps**, right after Spaces: General, Spaces, Apps, then the rest.
@@ -22,6 +32,10 @@ All notable changes to Mission Desk. Versions follow [Semantic Versioning](https
 - **Memory window:** the 🧠 button in the assistant panel (and **Memory…** on a space's menu, and Settings → Assistant) opens that space's memory: search, edit in place, delete (it asks on the line) and add notes. One space at a time.
 - **Assistant connections, as many as you need:** Settings → Integrations lists every assistant connection by a name you choose ("Claude pessoal", "Claude Acme", "OpenRouter cliente X"). **+ New connection** asks the type (Claude Code, Codex or OpenRouter), a name, and connects it: the browser sign-in, or the OpenRouter key. Rename, sign in again or remove each one there. Each Claude Code or Codex connection keeps its own sign-in, settings and conversations, and an added one doesn't load your personal CLAUDE.md, hooks or plugins; each OpenRouter connection has its own key.
 - **Each space picks its connection by name** in Settings → Assistant, meetings' follow-ups included. A space whose connection was removed stops; it never switches to another connection on its own. Yesterday's extra Claude accounts become connections, with their sign-in and spaces kept.
+- It now sees Home's latest messages and your to-dos (only from its own space's shared apps), so "who's waiting on me?" is answered at once; it can add a to-do or mark one done when you ask.
+- **Memory per space:** notes about the client, the people and how you like to work, read at the start of every chat. The assistant asks before saving one; see and edit them in Settings → Assistant. One space's notes, messages and to-dos never reach another space's assistant (and "All spaces" has its own notes).
+- **Skills:** instructions the assistant follows, either always (style and tone, like **Humanizer**) or when a request fits (a proposal, a follow-up, a meeting recap). Add them from Mission Desk's catalogue, import a SKILL.md from a link (GitHub links work), or write your own; the assistant can offer to save one too, and asks first. Each skill is on only in the spaces you choose. Type `/` in the chat to use one on purpose. Settings → Skills.
+- `/brief` and `/waiting` start from Home's messages and your to-dos, so they answer faster.
 
 ### Meetings
 - **The other side stays audible while transcribing:** recording a meeting took its sound away from your speakers (Chromium sends a captured tab's audio only to the recording). The call is now played back to you at full quality while it's transcribed.
@@ -32,24 +46,6 @@ All notable changes to Mission Desk. Versions follow [Semantic Versioning](https
 - Removing a space deletes its meetings (Mission Desk asks first). Transcripts can be deleted after 30 or 90 days, keeping the summaries.
 - **To-dos only for you:** after a meeting, "Your to-dos" keeps only concrete actions you took on or were asked to do, and "Waiting on" only what someone agreed to deliver to you. Status updates and everyone's own work in a stand-up go to the summary instead of your to-do list.
 - **Insights during the meeting:** the space's assistant looks at the last minutes every couple of minutes and, only when it's clearly useful, shows a card under the bar: a link to the past, an open commitment or a contradiction, with the real text of its source (memory, past meetings, to-dos or recent messages of that space) and a question worth asking. **Open source**, **Not useful**, and **✦** on the bar for the list and **Pause insights**. On when the space has an assistant; off per space in Settings → Meetings. Each insight is checked before it shows (its source exists, its quote was really said, it doesn't repeat), and nothing said in the meeting can make the assistant act.
-
-## 0.2.0 — 2026-11-22
-
-### Languages
-- Mission Desk now speaks **English, Português (Portugal), Português (Brasil), Español, Français, Deutsch, Italiano and Nederlands**: menus, dialogs, notifications, the setup, Settings, Home, the calendar and the assistant. It follows your Mac's language; pick another in **Settings → General → Language** and it switches at once, no restart.
-- Dates and times follow the language, with your Mac's region (English on a Mac set to Portugal keeps 24-hour times).
-- Your apps keep their own language, and the assistant still answers in the language you write in.
-
-### Apps
-- **Notion**: one Notion account with all its workspaces. Pages it opens become tabs, "Sign in with Google, Apple, Microsoft or ChatGPT" and your company's SSO stay in the account, the microphone works for AI Meeting Notes, and unread Inbox notifications show on its badge.
-- **Proton Mail**, **iCloud Mail** and **Fastmail**: email beyond Google and Microsoft, each with the Inbox's unread count when its page shows it. Links in emails open in your browser.
-- **Zoom**: add a Zoom account (its web version: Team Chat, meetings, calendar), with its unread count, notifications, camera and microphone for calls, and "Sign in with Google, Microsoft or Apple" or your company's SSO. **Join** on a Zoom meeting opens the Zoom app when it's installed, and otherwise your Zoom account in Mission Desk.
-
-### Assistant
-- It now sees Home's latest messages and your to-dos (only from its own space's shared apps), so "who's waiting on me?" is answered at once; it can add a to-do or mark one done when you ask.
-- **Memory per space:** notes about the client, the people and how you like to work, read at the start of every chat. The assistant asks before saving one; see and edit them in Settings → Assistant. One space's notes, messages and to-dos never reach another space's assistant (and "All spaces" has its own notes).
-- **Skills:** instructions the assistant follows, either always (style and tone, like **Humanizer**) or when a request fits (a proposal, a follow-up, a meeting recap). Add them from Mission Desk's catalogue, import a SKILL.md from a link (GitHub links work), or write your own; the assistant can offer to save one too, and asks first. Each skill is on only in the spaces you choose. Type `/` in the chat to use one on purpose. Settings → Skills.
-- `/brief` and `/waiting` start from Home's messages and your to-dos, so they answer faster.
 
 ### Fixes
 - An app no longer goes blank when one of its pages closes itself (as some sign-in pages do when they finish): the page comes back where it was, and a tab that closes itself closes like a browser tab.
