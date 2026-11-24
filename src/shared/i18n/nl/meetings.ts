@@ -126,4 +126,11 @@ export const meetings: Translation<typeof en> = {
   'meetings.notice.missingCall': 'De andere deelnemers worden niet getranscribeerd.',
   'meetings.notice.probeUnreliable': 'Namen en dempen kunnen niet worden uitgelezen in deze vergadering: anderen worden getoond als “Anderen”.',
   'meetings.notice.failed': 'Transcriptie gestopt: {reason}',
+  // Live insights: how a source is named on the card
+  'meetings.insights.source.memory': 'Geheugen',
+  'meetings.insights.source.decision': 'Vergadering van {date} · Besluit',
+  'meetings.insights.source.point': 'Vergadering van {date} · Punt',
+  'meetings.insights.source.nextStep': 'Vergadering van {date} · Volgende stap',
+  'meetings.insights.source.todo': 'Taak',
+  'meetings.insights.source.waiting': 'Wachten op {who}',
 };

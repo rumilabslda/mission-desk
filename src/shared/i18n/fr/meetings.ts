@@ -126,4 +126,11 @@ export const meetings: Translation<typeof en> = {
   'meetings.notice.missingCall': 'Les autres participants ne sont pas transcrits.',
   'meetings.notice.probeUnreliable': 'Impossible de lire les noms et l’état des micros dans cette réunion : les autres participants apparaissent sous « Autres ».',
   'meetings.notice.failed': 'Transcription arrêtée : {reason}',
+  // Live insights: how a source is named on the card
+  'meetings.insights.source.memory': 'Mémoire',
+  'meetings.insights.source.decision': 'Réunion du {date} · Décision',
+  'meetings.insights.source.point': 'Réunion du {date} · Point',
+  'meetings.insights.source.nextStep': 'Réunion du {date} · Prochaine étape',
+  'meetings.insights.source.todo': 'Tâche',
+  'meetings.insights.source.waiting': 'En attente de {who}',
 };

@@ -126,4 +126,11 @@ export const meetings = {
   'meetings.notice.missingCall': 'The other participants aren’t being transcribed.',
   'meetings.notice.probeUnreliable': 'Names and mute can’t be read from this meeting: others show as “Others”.',
   'meetings.notice.failed': 'Transcription stopped: {reason}',
+  // Live insights: how a source is named on the card
+  'meetings.insights.source.memory': 'Memory',
+  'meetings.insights.source.decision': 'Meeting of {date} · Decision',
+  'meetings.insights.source.point': 'Meeting of {date} · Point',
+  'meetings.insights.source.nextStep': 'Meeting of {date} · Next step',
+  'meetings.insights.source.todo': 'To-do',
+  'meetings.insights.source.waiting': 'Waiting on {who}',
 } satisfies Record<string, Msg>;
