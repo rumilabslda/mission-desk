@@ -27,6 +27,7 @@ All notable changes to Mission Desk. Versions follow [Semantic Versioning](https
 - **When a meeting ends**, choose what the space's assistant does: the summary, your to-dos, what others owe you ("Waiting on"), a follow-up e-mail draft (opened in your Gmail or Outlook, never sent), notes for the space's memory and a follow-up event (both as proposals). The transcript goes to the assistant with no tools, so nothing said in a meeting can make it act.
 - **Find them later** in the calendar event's card, on Home ("Meetings today") and on the new meetings page. Each space's assistant can read its own meetings ("what did we decide with Acme about pricing?"), never another space's.
 - Removing a space deletes its meetings (Mission Desk asks first). Transcripts can be deleted after 30 or 90 days, keeping the summaries.
+- **Insights during the meeting:** the space's assistant looks at the last minutes every couple of minutes and, only when it's clearly useful, shows a card under the bar: a link to the past, an open commitment or a contradiction, with the real text of its source (memory, past meetings, to-dos or recent messages of that space) and a question worth asking. **Open source**, **Not useful**, and **✦** on the bar for the list and **Pause insights**. On when the space has an assistant; off per space in Settings → Meetings. Each insight is checked before it shows (its source exists, its quote was really said, it doesn't repeat), and nothing said in the meeting can make the assistant act.
 
 ## 0.2.0 — 2026-11-22
 
