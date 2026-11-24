@@ -2,6 +2,15 @@
 
 All notable changes to Mission Desk. Versions follow [Semantic Versioning](https://semver.org). Until 1.0.0 Mission Desk is an early preview: a new minor number (0.2.0) adds features and may change how things work, a patch (0.1.1) fixes bugs. 1.0.0 will be the first version ready for everyone.
 
+## 0.2.1 — 2026-11-24
+
+### Fixes
+- **Insights during the meeting:** pausing the transcription also stops an insight that was being prepared, so nothing new appears while paused.
+- **Not useful** dims the insight in the bar's list at once.
+- In a short meeting window, a long insight card scrolls instead of being cut off, so **Open source** and **Not useful** are always within reach.
+- Insights do less work during a call: past meeting summaries are kept in memory, and only the last minutes of conversation are kept for them.
+- Without a name set in Settings, transcripts and the assistant call you in your language ("Eu", "Yo", "Moi"…) instead of "Me".
+
 ## 0.2.0 — 2026-11-24
 
 ### Languages
