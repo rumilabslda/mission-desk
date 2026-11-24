@@ -75,9 +75,10 @@ export function agendaView(events: CalEvent[], now: Date): AgendaView {
   return { current, next, recent, upcoming, earlier, allDay, tomorrow };
 }
 
-export function greeting(now: Date): string {
+export function greeting(now: Date, name?: string): string {
   const h = now.getHours();
-  return t(h < 12 ? 'home.greeting.morning' : h < 18 ? 'home.greeting.afternoon' : 'home.greeting.evening');
+  const g = t(h < 12 ? 'home.greeting.morning' : h < 18 ? 'home.greeting.afternoon' : 'home.greeting.evening');
+  return name ? t('home.greeting.named', { greeting: g, name }) : g;
 }
 
 /** Open on Today at launch: on by default, never on first run (the welcome screen shows instead). */

@@ -22,6 +22,9 @@ export const settings: Translation<typeof en> = {
   'settings.general.openOnHome': 'Abrir no Início',
   'settings.general.openOnHomeHint': 'Mostra as suas reuniões, tarefas e mensagens não lidas quando o Mission Desk abre.',
   'settings.general.previews': 'Mostrar pré-visualizações das mensagens no Início',
+  'settings.general.name': 'O seu nome',
+  'settings.general.namePlaceholder': 'Como quer ser tratado',
+  'settings.general.nameHint': 'O Início cumprimenta-o com ele, e o assistente e as reuniões sabem quem é. Opcional.',
   'settings.general.previewsHint':
     'O Início lista as conversas e os e-mails novos. Desative esta opção para ocultar o texto: só aparece o remetente ou a conversa. Nada é guardado; a lista é limpa quando sai do Mission Desk.',
   'settings.general.sidebarStyle': 'Estilo da barra lateral',

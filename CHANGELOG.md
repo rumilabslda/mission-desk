@@ -5,6 +5,7 @@ All notable changes to Mission Desk. Versions follow [Semantic Versioning](https
 ## Unreleased
 
 ### Setup
+- **Your name:** the setup's first screen asks it (optional), and Settings → General keeps it. Home greets you with it ("Good afternoon, Armando"), and the assistant and meetings know which person is you.
 - **Language first:** the setup's first screen shows the language Mission Desk is in (your Mac's) and lets you change it before going on; everything switches at once.
 - **The assistant comes after your apps**, so it's chosen for the spaces you just made: Welcome, Spaces, Apps, Assistant, Ready.
 - **Assistant connections in the setup:** pick the Claude Code or Codex on this Mac, OpenRouter, or any connection from Settings → Integrations, or add one with **+ Add another account**. One for every space, or **Choose an assistant for each space**. The permission to read the apps is asked there too.
@@ -27,6 +28,7 @@ All notable changes to Mission Desk. Versions follow [Semantic Versioning](https
 - **When a meeting ends**, choose what the space's assistant does: the summary, your to-dos, what others owe you ("Waiting on"), a follow-up e-mail draft (opened in your Gmail or Outlook, never sent), notes for the space's memory and a follow-up event (both as proposals). The transcript goes to the assistant with no tools, so nothing said in a meeting can make it act.
 - **Find them later** in the calendar event's card, on Home ("Meetings today") and on the new meetings page. Each space's assistant can read its own meetings ("what did we decide with Acme about pricing?"), never another space's.
 - Removing a space deletes its meetings (Mission Desk asks first). Transcripts can be deleted after 30 or 90 days, keeping the summaries.
+- **To-dos only for you:** after a meeting, "Your to-dos" keeps only concrete actions you took on or were asked to do, and "Waiting on" only what someone agreed to deliver to you. Status updates and everyone's own work in a stand-up go to the summary instead of your to-do list.
 - **Insights during the meeting:** the space's assistant looks at the last minutes every couple of minutes and, only when it's clearly useful, shows a card under the bar: a link to the past, an open commitment or a contradiction, with the real text of its source (memory, past meetings, to-dos or recent messages of that space) and a question worth asking. **Open source**, **Not useful**, and **✦** on the bar for the list and **Pause insights**. On when the space has an assistant; off per space in Settings → Meetings. Each insight is checked before it shows (its source exists, its quote was really said, it doesn't repeat), and nothing said in the meeting can make the assistant act.
 
 ## 0.2.0 — 2026-11-22

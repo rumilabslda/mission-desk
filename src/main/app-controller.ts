@@ -152,6 +152,7 @@ export interface AppController {
   dismissMessage(key: string): void;
   clearMessages(): void;
   setMessagePreviews(on: boolean): void;
+  setUserName(name: string): void;
   checkForUpdates(): void;
   /** Brings the window forward on Settings → About (where updates are). */
   showUpdates(): void;
@@ -724,7 +725,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       const r = await calendarWriter.getEvent(e.accountId, e.calendarId, e.googleEventId).catch(() => null);
       return r?.ok ? r.event.guests : [];
     },
-    myName: () => 'Me',
+    myName: () => store.state().userName || 'Me',
     addTodo: (text, tag, extra) => void todos.add(text, tag, extra),
     tagFor: (scope) => todoTagFor(scope),
     saveActions: (scope, actions) => store.setSpaceMeetings(scope, { ...meetingSettingsFor(scope), actions }),
@@ -1245,7 +1246,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
   async function engineSession(conv: Conversation): Promise<AssistantSession> {
     const c = cfg(conv.scope);
     conversations.setEngine(conv.id, engineKey(c)); // another assistant or connection than before: its session isn't resumed
-    const systemPrompt = (): string => assistantPrompt(new Date(), app.getLocale(), scopeLine(conv.scope), memory.list(conv.scope), skills.activeFor(conv.scope));
+    const systemPrompt = (): string => assistantPrompt(new Date(), app.getLocale(), scopeLine(conv.scope), memory.list(conv.scope), skills.activeFor(conv.scope), store.state().userName ?? '');
     if (c.engine === 'codex') {
       const srv = await serverFor(conv.scope);
       const cwd = path.join(app.getPath('userData'), 'assistant', 'codex'); // empty: no project files for Codex to read
@@ -1388,7 +1389,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
           dateLabel: (iso) => day.format(new Date(iso)),
         }),
       retriever: createKeywordRetriever(),
-      myName: 'Me',
+      myName: store.state().userName || 'Me',
       save: (i) => meetingStore.addInsight(scope, m.id, i),
       changed: pushSoon,
     });
@@ -2030,6 +2031,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       openOnToday: s.openOnToday !== false,
       messages: messageViews(homeFeed(), s.homePreviews !== false),
       messagePreviews: s.homePreviews !== false,
+      userName: s.userName ?? '',
       messageSources: [...notified, ...mailAccounts().filter((a) => gmail.working(a.id)).map((a) => a.id)],
       update: { mode: updateMode(process.platform, process.env, app.isPackaged), auto: s.autoUpdate !== false, state: updates.state() },
       todos: todos.list(),
@@ -2340,6 +2342,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       extras.set(accountId, list.filter((t) => t.kind !== tab));
       scheduler.unregister(key(accountId, tab));
       viewManager.close(accountId, tab);
+      if (meetingsOn) detector.viewClosed(accountId, tab); // a meeting in it ends with the tab
       if (wasShowing) show(a, activeKind(a));
       else push();
     },
@@ -2843,6 +2846,11 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       push();
     },
 
+    setUserName(name) {
+      store.setUserName(name);
+      push();
+    },
+
     checkForUpdates() {
       updates.check(true);
     },
@@ -2902,6 +2910,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     finishSetup(plan) {
       if (!setupOpen) return 0; // only from the setup on screen, once (a repeated request adds nothing)
       setupOpen = false;
+      if (plan.userName) store.setUserName(plan.userName);
       // The assistant applies to what is set up here only: a later run never changes the spaces already
       // there. The first run also makes it the default for spaces added later ('off' too: "Not now").
       if (store.state().accounts.length === 0) store.setAssistantPrefs({ defaultEngine: plan.engine });

@@ -1,4 +1,5 @@
 import { isLanguageSetting, LOCALE_NAMES, LOCALES } from '../../shared/i18n/locales';
+import { NameField as UserNameField } from './settings/NameField';
 import { type MessageKey, rich, t } from './i18n';
 import { useEffect, useState } from 'react';
 import { ACCOUNT_COLORS, type AccountView, type AppInfo, type UiSnapshot } from '../../shared/ipc';
@@ -310,6 +311,9 @@ export function SettingsView({ snapshot: snap }: { snapshot: UiSnapshot }): Reac
                 hint={t('settings.general.previewsHint')}
               />
             </div>
+            <h3>{t('settings.general.name')}</h3>
+            <UserNameField value={snap.userName} onSave={(n) => window.missiondesk.setUserName(n)} />
+            <p className="set-muted">{t('settings.general.nameHint')}</p>
             <h3>{t('settings.language.title')}</h3>
             <select className="set-select" value={snap.language} onChange={(e) => isLanguageSetting(e.target.value) && window.missiondesk.setLanguage(e.target.value)}>
               <option value="system">{t('settings.language.system', { name: LOCALE_NAMES[systemLocale()] })}</option>

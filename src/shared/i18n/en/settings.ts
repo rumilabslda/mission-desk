@@ -21,6 +21,9 @@ export const settings = {
   'settings.general.openOnHome': 'Open on Home',
   'settings.general.openOnHomeHint': 'Show your meetings, to-dos and unread messages when Mission Desk starts.',
   'settings.general.previews': 'Show message previews on Home',
+  'settings.general.name': 'Your name',
+  'settings.general.namePlaceholder': 'How you’d like to be called',
+  'settings.general.nameHint': 'Home greets you with it, and the assistant and your meetings know who you are. Optional.',
   'settings.general.previewsHint':
     'Home lists new chats and emails. Turn this off to hide the text: only the sender or conversation shows. Nothing is saved; the list clears when Mission Desk quits.',
   'settings.general.sidebarStyle': 'Sidebar style',

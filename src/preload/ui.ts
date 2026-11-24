@@ -59,6 +59,7 @@ const api: UiApi = {
   dismissMessage: (key) => ipcRenderer.send(IPC.dismissMessage, key),
   clearMessages: () => ipcRenderer.send(IPC.clearMessages),
   setMessagePreviews: (on) => ipcRenderer.send(IPC.setMessagePreviews, on),
+  setUserName: (name) => ipcRenderer.send(IPC.setUserName, name),
   checkForUpdates: () => ipcRenderer.send(IPC.checkForUpdates),
   installUpdate: () => ipcRenderer.send(IPC.installUpdate),
   setAutoUpdate: (on) => ipcRenderer.send(IPC.setAutoUpdate, on),

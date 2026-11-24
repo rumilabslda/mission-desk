@@ -5,6 +5,7 @@ export const home: Translation<typeof en> = {
   // Greeting by time of day (src/shared/today.ts).
   'home.greeting.morning': 'Goedemorgen',
   'home.greeting.afternoon': 'Goedemiddag',
+  'home.greeting.named': '{greeting}, {name}',
   'home.greeting.evening': 'Goedenavond',
 
   // How long ago a message came, on its line (src/shared/messages.ts).

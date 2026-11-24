@@ -27,6 +27,8 @@ export interface SetupPlan {
   spaces: { name: string; apps: SetupApp[]; assistant?: SetupAssistant }[];
   /** Apps outside any space. */
   apps: SetupApp[];
+  /** The user's name, when they gave one (see shared/user.ts). */
+  userName?: string;
 }
 
 /** Brand names (a website is named after its address, see siteName). */
@@ -84,6 +86,8 @@ export interface SetupDraft {
   /** No spaces: every app side by side. */
   together: boolean;
   spaces: { key: string; name: string; apps: DraftApp[]; assistant?: SetupAssistant }[];
+  /** The name typed on the first screen. */
+  userName?: string;
   /** The apps when everything stays together. */
   loose: DraftApp[];
 }
@@ -135,7 +139,8 @@ export function planOf(d: SetupDraft): SetupPlan {
           .map((s) => ({ name: s.name.trim(), apps: named(s.apps), ...(d.perSpace && s.assistant ? { assistant: s.assistant } : {}) })),
     apps: d.together ? named(d.loose) : [],
   };
-  return { ...p, assistantReads: d.reads && assistantsInPlan(p) };
+  const name = d.userName?.replace(/\s+/g, ' ').trim();
+  return { ...p, assistantReads: d.reads && assistantsInPlan(p), ...(name ? { userName: name } : {}) };
 }
 
 /** Why a space name can't be added (null: it can); 'empty' says nothing to the user. */

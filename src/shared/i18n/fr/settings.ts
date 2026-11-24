@@ -22,6 +22,9 @@ export const settings: Translation<typeof en> = {
   'settings.general.openOnHome': 'Ouvrir sur Accueil',
   'settings.general.openOnHomeHint': 'Afficher vos réunions, vos tâches et vos messages non lus au démarrage de Mission Desk.',
   'settings.general.previews': 'Afficher l’aperçu des messages dans Accueil',
+  'settings.general.name': 'Votre nom',
+  'settings.general.namePlaceholder': 'Comment vous appeler',
+  'settings.general.nameHint': 'L’Accueil vous salue avec, et l’assistant et les réunions savent qui vous êtes. Facultatif.',
   'settings.general.previewsHint':
     'Accueil liste les nouvelles discussions et les nouveaux e-mails. Désactivez cette option pour masquer le texte : seul l’expéditeur ou la conversation s’affiche. Rien n’est enregistré ; la liste est effacée lorsque vous quittez Mission Desk.',
   'settings.general.sidebarStyle': 'Style de la barre latérale',

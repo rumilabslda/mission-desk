@@ -45,6 +45,8 @@ export const setup: Translation<typeof en> = {
   'setup.remove': 'Verwijder {name}',
 
   // Welcome
+  'setup.welcome.nameLabel': 'Je naam (optioneel)',
+  'setup.welcome.namePlaceholder': 'Hoe je genoemd wilt worden',
   'setup.welcome.title': 'Welkom bij Mission Desk',
   'setup.welcome.titleAgain': 'Stel meer van Mission Desk in',
   'setup.welcome.lede':

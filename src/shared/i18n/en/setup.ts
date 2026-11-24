@@ -45,6 +45,8 @@ export const setup = {
   'setup.remove': 'Remove {name}',
 
   // Welcome
+  'setup.welcome.nameLabel': 'Your name (optional)',
+  'setup.welcome.namePlaceholder': 'How you’d like to be called',
   'setup.welcome.title': 'Welcome to Mission Desk',
   'setup.welcome.titleAgain': 'Set up more of Mission Desk',
   'setup.welcome.lede':
