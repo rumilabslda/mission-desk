@@ -2342,7 +2342,6 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       extras.set(accountId, list.filter((t) => t.kind !== tab));
       scheduler.unregister(key(accountId, tab));
       viewManager.close(accountId, tab);
-      if (meetingsOn) detector.viewClosed(accountId, tab); // a meeting in it ends with the tab
       if (wasShowing) show(a, activeKind(a));
       else push();
     },
