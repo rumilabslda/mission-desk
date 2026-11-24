@@ -127,6 +127,7 @@ export const meetings: Translation<typeof en> = {
   'meetings.notice.probeUnreliable': 'No se pueden leer los nombres ni el silencio en esta reunión: los demás aparecen como “Otros”.',
   'meetings.notice.failed': 'La transcripción se ha detenido: {reason}',
   // Live insights
+  'meetings.insights.failed': 'El asistente no respondió. Reanude para volver a intentarlo.',
   'meetings.settings.insights': 'Ideas durante las reuniones',
   'meetings.settings.insightsHint': 'Cuando algo dicho enlaza con lo que este espacio sabe, aparece una nota breve bajo la barra de transcripción, con su fuente. Usa el asistente de este espacio.',
   'meetings.settings.insightsNoAssistant': 'Este espacio no tiene asistente.',

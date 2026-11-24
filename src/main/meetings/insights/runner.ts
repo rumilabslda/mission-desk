@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto';
+import { t } from '../../../shared/i18n';
 import type { LiveInsights, MeetingInsight, Segment } from '../../../shared/meeting';
 import { transcriptText } from '../followup';
 import type { Ask } from '../one-shot';
-import { askInsights, buildInsightPrompt, checkInsights, MAX_PER_MEETING } from './insights';
+import { askInsights, buildInsightPrompt, checkInsights, InvalidAnswer, MAX_PER_MEETING } from './insights';
 import type { Retriever, SourceItem } from './retrieve';
 
 const NEW_SPEECH_MS = 90_000;
@@ -56,7 +57,16 @@ export function createInsightRunner(d: InsightRunnerDeps) {
     return !stopped && !paused && !running && list.length < MAX_PER_MEETING && newSpeech >= NEW_SPEECH_MS && d.now() - lastCheck >= BETWEEN_CHECKS_MS;
   }
 
+  /** A check that throws (bad data, a bug) is skipped: it must never break the transcription. */
   function check(): void {
+    try {
+      run();
+    } catch (err) {
+      console.error('[insights] check skipped:', err);
+    }
+  }
+
+  function run(): void {
     const now = d.now();
     newSpeech = 0;
     lastCheck = now;
@@ -84,7 +94,7 @@ export function createInsightRunner(d: InsightRunnerDeps) {
     if (items.length === 0) return;
     const ctrl = new AbortController();
     running = ctrl;
-    const prompt = buildInsightPrompt({ title: d.meeting.title, language: d.meeting.language, myName: d.myName, window, items });
+    const prompt = buildInsightPrompt({ title: d.meeting.title, language: d.meeting.language, myName: d.myName, window, items, shown: list.map((i) => i.text) });
     askInsights(ask, prompt, AbortSignal.any([ctrl.signal, AbortSignal.timeout(timeoutMs)])).then(
       (raw) => {
         if (running !== ctrl || stopped) return;
@@ -112,10 +122,12 @@ export function createInsightRunner(d: InsightRunnerDeps) {
       (err: Error) => {
         if (running !== ctrl || stopped) return; // stopped or paused by us: not a failure
         running = null;
+        // An answer still unusable after the retry: skip this check (logged), it doesn't count.
+        if (err instanceof InvalidAnswer) return void console.warn('[insights]', err.message);
         failures += 1;
         if (failures >= FAILURES_TO_PAUSE) {
           paused = true;
-          reason = err?.message || 'error';
+          reason = t('meetings.insights.failed');
         }
         d.changed();
       },
@@ -154,6 +166,8 @@ export function createInsightRunner(d: InsightRunnerDeps) {
       running = null;
     },
     state(): LiveInsights {
+      // The connection's state as it is now, not as the last check saw it.
+      if (!paused && !stopped) unavailable = d.ask() ? d.unavailable() : '';
       const state: LiveInsights['state'] = paused ? 'paused' : unavailable !== null ? 'unavailable' : 'on';
       const why = paused ? reason : unavailable || undefined;
       return { state, ...(why ? { reason: why } : {}), count: list.length, ...(latest ? { latest } : {}), list: [...list] };

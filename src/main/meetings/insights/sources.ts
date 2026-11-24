@@ -9,6 +9,12 @@ import type { SourceItem } from './retrieve';
 const MAX_TEXT = 300;
 const MAX_MESSAGES = 200;
 
+/** An ISO date, or nothing when the value isn't a date (never throws). */
+function isoOf(v: string | number): string | undefined {
+  const ms = typeof v === 'number' ? v : Date.parse(v);
+  return Number.isFinite(ms) ? new Date(ms).toISOString() : undefined;
+}
+
 /** One line, at most 300 characters. */
 const oneLine = (s: string): string => s.replace(/\s+/g, ' ').trim().slice(0, MAX_TEXT);
 
@@ -39,13 +45,14 @@ export function buildSources(input: SourcesInput): SourceItem[] {
   const id = (prefix: string): string => `${prefix}${(counters[prefix] = (counters[prefix] ?? 0) + 1)}`;
 
   for (const n of input.notes[scope] ?? []) {
-    out.push({ id: id('n'), kind: 'memory', text: oneLine(n.text), date: n.createdAt, label: t('meetings.insights.source.memory'), open: { kind: 'memory', scope } });
+    out.push({ id: id('n'), kind: 'memory', text: oneLine(n.text), date: isoOf(n.createdAt), label: t('meetings.insights.source.memory'), open: { kind: 'memory', scope } });
   }
 
   const past = input.meetings.filter((m) => m.scope === scope && m.id !== input.liveId && m.result?.summary);
   for (const m of past) {
     const s = m.result!.summary!;
-    const date = input.dateLabel(m.startedAt);
+    const started = isoOf(m.startedAt);
+    const date = started ? input.dateLabel(started) : '';
     const parts: [string[], 'decision' | 'point' | 'nextStep'][] = [
       [s.decisions, 'decision'],
       [s.points, 'point'],
@@ -53,7 +60,7 @@ export function buildSources(input: SourcesInput): SourceItem[] {
     ];
     for (const [list, kind] of parts) {
       for (const text of list) {
-        out.push({ id: id('d'), kind: 'meeting', text: oneLine(text), date: m.startedAt, label: t(`meetings.insights.source.${kind}`, { date }), open: { kind: 'meeting', scope, id: m.id } });
+        out.push({ id: id('d'), kind: 'meeting', text: oneLine(text), date: started, label: t(`meetings.insights.source.${kind}`, { date }), open: { kind: 'meeting', scope, id: m.id } });
       }
     }
   }
@@ -61,15 +68,15 @@ export function buildSources(input: SourcesInput): SourceItem[] {
   for (const todo of todosInScope(input.todos, input.accounts, scope)) {
     if (todo.done) continue;
     if (todo.waitingOn) {
-      out.push({ id: id('w'), kind: 'waiting', text: oneLine(todo.text), date: todo.createdAt, label: t('meetings.insights.source.waiting', { who: todo.waitingOn }), open: { kind: 'home' } });
+      out.push({ id: id('w'), kind: 'waiting', text: oneLine(todo.text), date: isoOf(todo.createdAt), label: t('meetings.insights.source.waiting', { who: todo.waitingOn }), open: { kind: 'home' } });
     } else {
-      out.push({ id: id('t'), kind: 'todo', text: oneLine(todo.text), date: todo.createdAt, label: t('meetings.insights.source.todo'), open: { kind: 'home' } });
+      out.push({ id: id('t'), kind: 'todo', text: oneLine(todo.text), date: isoOf(todo.createdAt), label: t('meetings.insights.source.todo'), open: { kind: 'home' } });
     }
   }
 
   for (const { message: m, account: a } of messagesInScope(input.feed, input.accounts, scope).slice(0, MAX_MESSAGES)) {
     const label = `${a.name} · ${m.title}`;
-    out.push({ id: id('x'), kind: 'message', text: oneLine(`${label}: ${m.body}`), date: new Date(m.at).toISOString(), label: oneLine(label), open: { kind: 'message', key: m.key } });
+    out.push({ id: id('x'), kind: 'message', text: oneLine(`${label}: ${m.body}`), date: isoOf(m.at), label: oneLine(label), open: { kind: 'message', key: m.key } });
   }
   return out;
 }

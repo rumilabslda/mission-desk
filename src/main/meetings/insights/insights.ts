@@ -38,7 +38,10 @@ const KINDS: Record<InsightKind, string> = {
   contradiction: '"contradiction": what is being said contradicts something decided or recorded before (cite it).',
 };
 
-export function buildInsightPrompt(o: { title: string; language: string; myName: string; window: Segment[]; items: SourceItem[] }): { system: string; user: string } {
+/** The answer was still unusable after the retry: that check is skipped, it isn't a failure. */
+export class InvalidAnswer extends Error {}
+
+export function buildInsightPrompt(o: { title: string; language: string; myName: string; window: Segment[]; items: SourceItem[]; shown?: string[] }): { system: string; user: string } {
   const system = [
     'You watch a live meeting for the user and point out, rarely, something they would want to know right now. Answer with ONE JSON object only, no prose.',
     `Write in the meeting's language (${o.language}).`,
@@ -50,7 +53,8 @@ export function buildInsightPrompt(o: { title: string; language: string; myName:
     'Shape: { "insights": [ { "kind": "past" | "commitment" | "contradiction", "text": "one line, at most 200 characters", "sources": ["id"], "said": "the words from the transcript, at most 120 characters", "ask": "optional: a question worth asking now, at most 150 characters", "confidence": "high" | "medium" } ] }',
   ].join('\n');
   const user = [
-    `Meeting: ${o.title}`,
+    `Meeting: ${o.title.replace(/\s+/g, ' ')}`,
+    ...(o.shown?.length ? ['Already shown to the user in this meeting (never repeat these, even in other words):', ...o.shown.map((s) => `- ${s}`)] : []),
     'The last minutes of the conversation:',
     '```',
     transcriptText(o.window, o.myName),
@@ -73,7 +77,7 @@ export async function askInsights(ask: Ask, prompt: { system: string; user: stri
       .map((i) => `${i.path.join('.') || 'answer'}: ${i.message}`)
       .join('; ');
   }
-  throw new Error(`The assistant's answer wasn't usable: ${problem}`);
+  throw new InvalidAnswer(`The assistant's answer wasn't usable: ${problem}`);
 }
 
 /** At least 80% of the quote's words appear in the window's words, in the same order. */
@@ -129,7 +133,11 @@ export function checkInsights(
     if (r.confidence !== 'high') continue;
     if (r.kind === 'past' && (items as SourceItem[]).some((i) => !i.date || Date.parse(i.date) >= c.meetingStart)) continue;
     const seen = [...c.previous, ...kept];
-    if (seen.some((p) => sourcesKey(p.sources) === sourcesKey(sources) || overlap(p.text, r.text) >= SAME_TEXT)) continue;
+    const keys = new Set(sources.map((s) => sourcesKey([s])));
+    // The same point again: the same sources, nearly the same words, or the same kind on a source it already used.
+    const repeat = (p: MeetingInsight): boolean =>
+      sourcesKey(p.sources) === sourcesKey(sources) || overlap(p.text, r.text) >= SAME_TEXT || (p.kind === r.kind && p.sources.some((s) => keys.has(sourcesKey([s]))));
+    if (seen.some(repeat)) continue;
     kept.push({ id: c.newId(), at: c.at, kind: r.kind, text: r.text, ...(r.ask ? { ask: r.ask } : {}), said: r.said, sources });
   }
   return kept;

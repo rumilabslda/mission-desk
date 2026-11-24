@@ -127,6 +127,7 @@ export const meetings: Translation<typeof en> = {
   'meetings.notice.probeUnreliable': 'Impossible de lire les noms et l’état des micros dans cette réunion : les autres participants apparaissent sous « Autres ».',
   'meetings.notice.failed': 'Transcription arrêtée : {reason}',
   // Live insights
+  'meetings.insights.failed': 'L’assistant n’a pas répondu. Reprenez pour réessayer.',
   'meetings.settings.insights': 'Éclairages pendant les réunions',
   'meetings.settings.insightsHint': 'Quand ce qui est dit rejoint ce que cet espace sait, une courte note apparaît sous la barre de transcription, avec sa source. Utilise l’assistant de cet espace.',
   'meetings.settings.insightsNoAssistant': 'Cet espace n’a pas d’assistant.',

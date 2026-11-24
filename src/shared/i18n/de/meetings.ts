@@ -130,6 +130,7 @@ export const meetings: Translation<typeof en> = {
   'meetings.notice.probeUnreliable': 'Namen und Stummschaltung können in dieser Besprechung nicht gelesen werden: Andere erscheinen als „Andere“.',
   'meetings.notice.failed': 'Transkription gestoppt: {reason}',
   // Live insights
+  'meetings.insights.failed': 'Der Assistent hat nicht geantwortet. Fortsetzen, um es erneut zu versuchen.',
   'meetings.settings.insights': 'Hinweise während Meetings',
   'meetings.settings.insightsHint': 'Wenn Gesagtes zu dem passt, was dieser Bereich weiß, erscheint unter der Transkriptionsleiste ein kurzer Hinweis mit Quelle. Nutzt den Assistenten dieses Bereichs.',
   'meetings.settings.insightsNoAssistant': 'Dieser Bereich hat keinen Assistenten.',

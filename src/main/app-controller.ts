@@ -1334,13 +1334,16 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
 
   /**
    * The live meeting's insights: the space's own data only, its own connection with no tools and a
-   * low effort. Whether the connection is ready is looked up now and every 10 minutes.
+   * low effort. Whether the connection is ready is looked up when asked, at most once a minute, so a
+   * sign-in during the meeting is noticed soon (and nothing keeps running after it).
    */
   function insightsFor(m: Meeting): InsightRunner | null {
     const scope = m.scope;
     if (cfg(scope).engine === 'off') return null;
     let why: string | null = null;
+    let lookedAt = 0;
     const look = (): void => {
+      lookedAt = Date.now();
       const c = cfg(scope);
       if (c.engine === 'off') return void (why = t('meetings.insights.unavailable'));
       const want = c.connection || BUILTIN[c.engine];
@@ -1357,13 +1360,15 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
         .catch(() => undefined);
     };
     look();
-    const every = setInterval(() => (orchestrator.live()?.id === m.id ? look() : clearInterval(every)), 10 * 60_000);
     const day = new Intl.DateTimeFormat(localeNow.format, { day: '2-digit', month: '2-digit' });
     return createInsightRunner({
       now: () => Date.now(),
       meeting: { scope, id: m.id, title: m.title, language: m.language, startedAt: Date.parse(m.startedAt) },
       ask: () => askFor(scope, 'low'),
-      unavailable: () => why,
+      unavailable: () => {
+        if (Date.now() - lookedAt >= 60_000) look();
+        return why;
+      },
       sources: () =>
         buildSources({
           scope,

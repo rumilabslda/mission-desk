@@ -202,3 +202,15 @@ describe('live insights on the bar', () => {
     }
   });
 });
+
+test('a new meeting starts with the insights list closed', () => {
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  const withList = (id: string): LiveMeeting => ({ ...live, id, insights: { state: 'on', count: 0, list: [] } });
+  act(() => root.render(<MeetingBarView live={withList('m1')} asking={null} spaceName="Acme" localeInstall={null} />));
+  click(host, '✦ 0');
+  expect(host.querySelector('.mb-list')).not.toBeNull();
+  act(() => root.render(<MeetingBarView live={withList('m2')} asking={null} spaceName="Acme" localeInstall={null} />));
+  expect(host.querySelector('.mb-list')).toBeNull();
+});

@@ -143,6 +143,13 @@ export function MeetingBarView({ live, asking, spaceName, localeInstall, mode }:
   const [listOpen, setListOpen] = useState(false);
   /** The insight whose card was closed (a newer one opens a new card). */
   const [dismissed, setDismissed] = useState<string | null>(null);
+  // Another meeting: its bar starts closed (the overlay page outlives meetings).
+  const [forMeeting, setForMeeting] = useState(live?.id ?? null);
+  if ((live?.id ?? null) !== forMeeting) {
+    setForMeeting(live?.id ?? null);
+    setListOpen(false);
+    setDismissed(null);
+  }
   if (asking && mode !== 'live') {
     return (
       <Page>

@@ -95,7 +95,7 @@ test('two failures pause with the reason', async () => {
   const { runner, calls, speak } = setup({ answer: () => Promise.reject(new Error('signed out')) });
   await speak(130, 100);
   await speak(260, 100);
-  expect(runner.state()).toMatchObject({ state: 'paused', reason: 'signed out' });
+  expect(runner.state()).toMatchObject({ state: 'paused', reason: 'The assistant didn’t answer. Resume to try again.' });
   await speak(400, 100);
   expect(calls).toHaveLength(2);
 });
@@ -146,4 +146,57 @@ test('sources are rebuilt every 10 min', async () => {
   expect(sourcesCount()).toBe(1);
   await speak(760, 100);
   expect(sourcesCount()).toBe(2);
+});
+
+describe('review fixes', () => {
+  test('an answer still invalid after the retry is skipped, not counted as a failure', async () => {
+    const { runner, calls, speak } = setup({ answer: () => 'not json at all' });
+    await speak(130, 100);
+    await speak(260, 100);
+    await speak(400, 100);
+    expect(runner.state().state).toBe('on');
+    expect(calls).toHaveLength(6); // 3 checks, each asked twice
+  });
+
+  test('a real failure pauses with a translated reason, not the raw error', async () => {
+    const { runner, speak } = setup({ answer: () => Promise.reject(new Error('Stopped.')) });
+    await speak(130, 100);
+    await speak(260, 100);
+    expect(runner.state().state).toBe('paused');
+    expect(runner.state().reason).not.toContain('Stopped.');
+    expect(runner.state().reason).toBeTruthy();
+  });
+
+  test('the bar shows unavailable as soon as the connection says so, before any check', () => {
+    let why: string | null = null;
+    const { runner } = setup({ unavailable: () => why });
+    expect(runner.state().state).toBe('on');
+    why = 'Not connected';
+    expect(runner.state()).toMatchObject({ state: 'unavailable', reason: 'Not connected' });
+    why = null;
+    expect(runner.state().state).toBe('on');
+  });
+
+  test('a throw while building a check is caught and the meeting goes on', async () => {
+    let boom = true;
+    const { calls, speak } = setup({ sources: () => (boom ? (() => { throw new RangeError('Invalid time value'); })() : ITEMS) });
+    await expect(speak(130, 100)).resolves.toBeUndefined();
+    boom = false;
+    await speak(260, 100);
+    expect(calls).toHaveLength(1);
+  });
+
+  test('earlier insights are listed in the request as already shown', async () => {
+    const prompts: string[] = [];
+    const { speak } = setup({
+      ask: () => async (_s, user) => {
+        prompts.push(user);
+        return JSON.stringify({ insights: [{ kind: 'past', text: 'Faturação já foi falada a 12/11', sources: ['d1'], said: 'faturação atrasada', confidence: 'high' }] });
+      },
+    });
+    await speak(130, 100);
+    await speak(260, 100);
+    expect(prompts[1]).toContain('Already shown');
+    expect(prompts[1]).toContain('Faturação já foi falada a 12/11');
+  });
 });

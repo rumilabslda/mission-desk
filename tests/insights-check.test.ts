@@ -75,3 +75,12 @@ test('askInsights retries once on a bad answer, then throws', async () => {
   expect(calls).toBe(2);
   expect(answer).toEqual([raw()]);
 });
+
+test('a paraphrase that adds a source to an earlier insight of the same kind: dropped', () => {
+  const t2: SourceItem = { ...d1, id: 't2', kind: 'todo', text: 'Enviar calendário de faturação' };
+  const earlier = prev({ text: 'O atraso na faturação já foi falado a 12/11', sources: [{ label: d1.label, text: d1.text, open: d1.open }] });
+  const again = raw({ text: 'Este atraso voltou: a 12/11 combinaram rever o processo e há uma tarefa aberta', sources: ['d1', 't2'] });
+  expect(checkInsights([again], ctx({ sent: [d1, d2, t2], previous: [earlier] }))).toEqual([]);
+  // A different kind on the same source is a different point.
+  expect(checkInsights([{ ...again, kind: 'commitment' }], ctx({ sent: [d1, d2, t2], previous: [earlier] }))).toHaveLength(1);
+});

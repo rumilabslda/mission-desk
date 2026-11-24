@@ -78,3 +78,12 @@ test('at most 200 messages, newest first; text one line, at most 300 characters'
   expect(msgs[0].open).toEqual({ kind: 'message', key: 'k249' });
   expect(msgs.every((m) => !m.text.includes('\n') && m.text.length <= 300)).toBe(true);
 });
+
+test('a bad date never throws: the item keeps no date', () => {
+  const bad = input();
+  bad.notes['space:a'][0].createdAt = 'not a date';
+  bad.feed = [message('m-a', 'acc-a', Number.NaN)];
+  const items = buildSources({ ...bad, dateLabel: (iso) => new Intl.DateTimeFormat('pt-PT').format(new Date(iso)) });
+  expect(items.find((i) => i.kind === 'memory')?.date).toBeUndefined();
+  expect(items.find((i) => i.kind === 'message')?.date).toBeUndefined();
+});
