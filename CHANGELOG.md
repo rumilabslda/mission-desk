@@ -9,7 +9,8 @@ All notable changes to Mission Desk. Versions follow [Semantic Versioning](https
 - **Language first:** the setup's first screen shows the language Mission Desk is in (your Mac's) and lets you change it before going on; everything switches at once.
 - **The assistant comes after your apps**, so it's chosen for the spaces you just made: Welcome, Spaces, Apps, Assistant, Ready.
 - **Assistant connections in the setup:** pick the Claude Code or Codex on this Mac, OpenRouter, or any connection from Settings → Integrations, or add one with **+ Add another account**. One for every space, or **Choose an assistant for each space**. The permission to read the apps is asked there too.
-- **Ready shows each space's assistant** next to its apps.
+- **Meetings in the setup:** on a Mac, when an app has calls, the setup asks whether to transcribe meetings: **Ask at each meeting** (the default), **Always** or **No, thanks**, for every space or each its own, which engine (Apple's, Parakeet or Whisper, downloaded after the setup), and insights during meetings.
+- **Ready shows each space's assistant** (and its transcription) next to its apps.
 - **Meetings on the first screen:** "Meetings transcribed on your Mac" joins the highlights; when your apps include calls, the assistant screen says the space's assistant can sum them up.
 - Running the setup again no longer changes the assistant of the spaces you already have (choosing **Not now** used to turn it off for spaces without their own choice).
 

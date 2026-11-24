@@ -25,7 +25,7 @@ import { createConnections } from './assistant/connections';
 import { openRouterKeyName, sessionEnvFor } from './assistant/connection-env';
 import { createConnectionFlows } from './assistant/connection-flows';
 import { BUILTIN, connectionEnv, type ConnectionInfo, type ConnectionKind, connectionTarget, type ConnectionTarget, isBuiltinId, parseAuthInfo } from '../shared/connections';
-import { DEFAULT_ACTIONS, type EngineId, type EngineStatus, type Meeting, type MeetingAction, type MeetingEndedInfo, meetingLocale, type MeetingGlobalSettings, type SpaceMeetingSettings, spaceMeetingSettings } from '../shared/meeting';
+import { DEFAULT_ACTIONS, type EngineId, type EngineStatus, type Meeting, type MeetingAction, type MeetingMode, type MeetingEndedInfo, meetingLocale, type MeetingGlobalSettings, type SpaceMeetingSettings, spaceMeetingSettings } from '../shared/meeting';
 import { type LanguageSetting, type Locale, type MessageKey, resolveLocale, setLocale, t } from '../shared/i18n';
 import { updateMode } from '../shared/updates';
 import { addMessage, closeMessage, type Feed, messageViews, removeMessage, trimToUnread } from '../shared/messages';
@@ -2916,6 +2916,15 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       const chosen = (own?: SetupAssistant): SetupAssistant => own ?? { engine: plan.engine, connection: plan.connection };
       const looseBefore = store.state().accounts.some((x) => !x.spaceId);
       if (plan.apps.length > 0 && !looseBefore) setScopeConfig('nospace', chosen());
+      // Meetings, when the setup asked: the engine (downloaded now if needed) and each new place's mode.
+      const meet = plan.meetings;
+      if (meet) {
+        if ((store.state().meetings?.engine ?? 'apple') !== meet.engine) store.setMeetingGlobal({ engine: meet.engine });
+        if (meet.engine !== 'apple' && !models.installed(meet.engine)) controller.modelDownload(meet.engine);
+      }
+      const meetingsFor = (mode?: MeetingMode): SpaceMeetingSettings | null => (meet ? { mode: mode ?? meet.mode, ...(meet.insights ? {} : { insights: false }) } : null);
+      const looseMeetings = meetingsFor();
+      if (looseMeetings && plan.apps.length > 0 && !looseBefore) store.setSpaceMeetings('nospace', looseMeetings);
       // Reading is allowed only where the place's assistant is on (an existing place keeps its own assistant).
       const readsIn = (scope: string): boolean => plan.assistantReads && cfg(scope).engine !== 'off';
       const created: string[] = [];
@@ -2946,6 +2955,8 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
         // The new space's assistant, before its apps' reading follows it.
         if (first.spaceId) {
           setScopeConfig(`space:${first.spaceId}`, chosen(sp.assistant));
+          const ms = meetingsFor(sp.meetingMode);
+          if (ms) store.setSpaceMeetings(`space:${first.spaceId}`, ms);
           if (readsIn(`space:${first.spaceId}`)) store.update(first.id, { claudeAccess: 'read' });
         }
         for (const app of sp.apps.slice(1)) add(app, first.spaceId ? { spaceId: first.spaceId } : undefined, colours[i]);

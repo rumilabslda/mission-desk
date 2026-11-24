@@ -98,6 +98,8 @@ export function App(): React.JSX.Element {
           existing={snap.spaces.map((s) => ({ name: s.name, color: snap.accounts.find((x) => x.spaceId === s.id)?.color }))}
           defaultEngine={snap.assistant.defaultEngine}
           userName={snap.userName}
+          meetingEngines={snap.meetings.engines}
+          meetingEngine={snap.meetings.settings.engine}
         />
       )}
       {ended && <MeetingEndedDialog info={ended} onClose={() => setEnded(null)} />}

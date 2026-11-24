@@ -1,4 +1,5 @@
 import type { AssistantEngine } from './assistant-engines';
+import type { EngineId, MeetingMode } from './meeting';
 import type { ServiceId } from './types';
 import { ACCOUNT_COLORS } from './ipc';
 import { t } from './i18n';
@@ -23,12 +24,14 @@ export interface SetupPlan {
   connection: string;
   /** Let each space's assistant read the apps created here. */
   assistantReads: boolean;
-  /** `assistant`: this space's own choice (only when the setup asked space by space). */
-  spaces: { name: string; apps: SetupApp[]; assistant?: SetupAssistant }[];
+  /** `assistant`, `meetingMode`: this space's own choices (only when the setup asked space by space). */
+  spaces: { name: string; apps: SetupApp[]; assistant?: SetupAssistant; meetingMode?: MeetingMode }[];
   /** Apps outside any space. */
   apps: SetupApp[];
   /** The user's name, when they gave one (see shared/user.ts). */
   userName?: string;
+  /** Meetings, when the setup asked (macOS, and an app with calls): every new space's mode, the engine, insights. */
+  meetings?: { mode: MeetingMode; engine: EngineId; insights: boolean };
 }
 
 /** Brand names (a website is named after its address, see siteName). */
@@ -85,9 +88,11 @@ export interface SetupDraft {
   reads: boolean;
   /** No spaces: every app side by side. */
   together: boolean;
-  spaces: { key: string; name: string; apps: DraftApp[]; assistant?: SetupAssistant }[];
+  spaces: { key: string; name: string; apps: DraftApp[]; assistant?: SetupAssistant; meetingMode?: MeetingMode }[];
   /** The name typed on the first screen. */
   userName?: string;
+  /** The meetings step: one mode for every space (or each its own), the engine, insights. */
+  meetings?: { mode: MeetingMode; perSpace: boolean; engine: EngineId; insights: boolean };
   /** The apps when everything stays together. */
   loose: DraftApp[];
 }
@@ -97,15 +102,17 @@ export interface DraftApp {
   url?: string;
 }
 
-export type SetupStep = { kind: 'welcome' | 'assistant' | 'spaces' | 'ready' } | { kind: 'apps'; space: number };
+export type SetupStep = { kind: 'welcome' | 'assistant' | 'meetings' | 'spaces' | 'ready' } | { kind: 'apps'; space: number };
 
 /**
  * The screens in order: one for the apps of each space (-1: all together), then the assistant, which
  * is chosen for the spaces and apps already there (and may be the hardest step: it comes last).
  */
-export function setupSteps(d: Pick<SetupDraft, 'together' | 'spaces'>): SetupStep[] {
+export function setupSteps(d: Pick<SetupDraft, 'together' | 'spaces'> & Partial<Pick<SetupDraft, 'loose'>>, o: { meetings?: boolean } = {}): SetupStep[] {
   const apps: SetupStep[] = d.together ? [{ kind: 'apps', space: -1 }] : d.spaces.map((_, i) => ({ kind: 'apps', space: i }));
-  return [{ kind: 'welcome' }, { kind: 'spaces' }, ...apps, { kind: 'assistant' }, { kind: 'ready' }];
+  // Meetings only where they're transcribed (macOS) and an app has calls.
+  const meetings: SetupStep[] = o.meetings && hasMeetingApps({ loose: [], ...d }) ? [{ kind: 'meetings' }] : [];
+  return [{ kind: 'welcome' }, { kind: 'spaces' }, ...apps, { kind: 'assistant' }, ...meetings, { kind: 'ready' }];
 }
 
 /** Whether any space (or the apps outside spaces) gets an assistant. */
@@ -126,8 +133,9 @@ const named = (apps: DraftApp[]): SetupApp[] => {
   return apps.map((a, i) => ({ service: a.service, name: names[i], ...(a.url ? { url: a.url } : {}) }));
 };
 
-/** The plan sent to Mission Desk: spaces without apps are left out. */
-export function planOf(d: SetupDraft): SetupPlan {
+/** The plan sent to Mission Desk: spaces without apps are left out. `meetings`: the setup showed that step. */
+export function planOf(d: SetupDraft, o: { meetings?: boolean } = {}): SetupPlan {
+  const meet = o.meetings && d.meetings ? d.meetings : null;
   const p: SetupPlan = {
     engine: d.engine,
     connection: d.engine === 'off' ? '' : d.connection,
@@ -136,11 +144,21 @@ export function planOf(d: SetupDraft): SetupPlan {
       ? []
       : d.spaces
           .filter((s) => s.apps.length > 0)
-          .map((s) => ({ name: s.name.trim(), apps: named(s.apps), ...(d.perSpace && s.assistant ? { assistant: s.assistant } : {}) })),
+          .map((s) => ({
+            name: s.name.trim(),
+            apps: named(s.apps),
+            ...(d.perSpace && s.assistant ? { assistant: s.assistant } : {}),
+            ...(meet?.perSpace && s.meetingMode ? { meetingMode: s.meetingMode } : {}),
+          })),
     apps: d.together ? named(d.loose) : [],
   };
   const name = d.userName?.replace(/\s+/g, ' ').trim();
-  return { ...p, assistantReads: d.reads && assistantsInPlan(p), ...(name ? { userName: name } : {}) };
+  return {
+    ...p,
+    assistantReads: d.reads && assistantsInPlan(p),
+    ...(name ? { userName: name } : {}),
+    ...(meet ? { meetings: { mode: meet.mode, engine: meet.engine, insights: meet.insights } } : {}),
+  };
 }
 
 /** Why a space name can't be added (null: it can); 'empty' says nothing to the user. */

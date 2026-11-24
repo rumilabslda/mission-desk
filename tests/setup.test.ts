@@ -162,3 +162,41 @@ describe('space colours (the preview shows what gets created)', () => {
     expect(baseName({ service: 'custom', url: 'https://app.hubspot.com/' })).toBe('Hubspot');
   });
 });
+
+describe('the meetings step', () => {
+  const g = { key: 'g', service: 'google' as const };
+  const s = { key: 's', service: 'slack' as const };
+  const base = (over: Partial<SetupDraft> = {}): SetupDraft => ({ engine: 'claude', connection: '', perSpace: false, reads: true, together: false, spaces: [], loose: [], ...over });
+  const kinds = (d: SetupDraft, meetings: boolean): string[] => setupSteps(d, { meetings }).map((x) => (x.kind === 'apps' ? `apps:${x.space}` : x.kind));
+
+  test('comes after the assistant, only where meetings exist and an app has calls', () => {
+    const withCalls = base({ spaces: [{ key: 'a', name: 'Acme', apps: [g] }] });
+    expect(kinds(withCalls, true)).toEqual(['welcome', 'spaces', 'apps:0', 'assistant', 'meetings', 'ready']);
+    expect(kinds(withCalls, false)).toEqual(['welcome', 'spaces', 'apps:0', 'assistant', 'ready']); // not on this platform
+    expect(kinds(base({ spaces: [{ key: 'a', name: 'Acme', apps: [s] }] }), true)).toEqual(['welcome', 'spaces', 'apps:0', 'assistant', 'ready']); // no calls
+  });
+
+  test('the plan carries the choice, and a space its own mode only when chosen space by space', () => {
+    const d = base({
+      spaces: [{ key: 'a', name: 'Acme', apps: [g], meetingMode: 'always' }, { key: 'b', name: 'Casa', apps: [g] }],
+      meetings: { mode: 'ask', perSpace: false, engine: 'parakeet', insights: false },
+    });
+    expect(planOf(d, { meetings: true }).meetings).toEqual({ mode: 'ask', engine: 'parakeet', insights: false });
+    expect(planOf(d, { meetings: true }).spaces.map((x) => x.meetingMode)).toEqual([undefined, undefined]);
+    const per = { ...d, meetings: { ...d.meetings!, perSpace: true } };
+    expect(planOf(per, { meetings: true }).spaces.map((x) => x.meetingMode)).toEqual(['always', undefined]);
+    expect(planOf(d).meetings).toBeUndefined(); // the step wasn't shown: nothing about meetings
+    expect(planOf(per).spaces.map((x) => x.meetingMode)).toEqual([undefined, undefined]);
+  });
+
+  test('the main process accepts only real modes and engines', () => {
+    const ok = { engine: 'claude', connection: '', assistantReads: true, spaces: [{ name: 'Acme', apps: [{ service: 'google' }], meetingMode: 'off' }], apps: [], meetings: { mode: 'always', engine: 'whisper', insights: true } };
+    const p = parseSetupPlan(ok);
+    expect(p?.meetings).toEqual({ mode: 'always', engine: 'whisper', insights: true });
+    expect(p?.spaces[0].meetingMode).toBe('off');
+    expect(parseSetupPlan({ ...ok, meetings: { mode: 'sometimes', engine: 'whisper', insights: true } })).toBeNull();
+    expect(parseSetupPlan({ ...ok, meetings: { mode: 'ask', engine: 'gpt', insights: true } })).toBeNull();
+    expect(parseSetupPlan({ ...ok, meetings: { mode: 'ask', engine: 'apple', insights: 'yes' } })).toBeNull();
+    expect(parseSetupPlan({ ...ok, spaces: [{ name: 'Acme', apps: [{ service: 'google' }], meetingMode: 'never' }] })).toBeNull();
+  });
+});
