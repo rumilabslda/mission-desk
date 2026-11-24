@@ -25,7 +25,7 @@ export interface SourcesInput {
   /** Every scope's notes (memory.all()). */
   notes: Record<string, MemoryNote[]>;
   /** Candidate meetings; only the scope's ended ones with a summary count. */
-  meetings: Meeting[];
+  meetings: Pick<Meeting, 'id' | 'scope' | 'startedAt' | 'result'>[];
   todos: Todo[];
   feed: Message[];
   accounts: { id: string; name: string; spaceId?: string; claudeAccess?: 'off' | 'read' | 'act' }[];

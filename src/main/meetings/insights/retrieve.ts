@@ -65,24 +65,48 @@ export const MIN_SCORE = 0.5;
 const K1 = 1.2;
 const B = 0.75;
 
-/** BM25 over the items' words, with numbers and names weighing double. */
+interface Index {
+  /** Per item: how often each word appears, and how many words it has. */
+  docs: { tf: Map<string, number>; length: number }[];
+  /** In how many items each word appears. */
+  df: Map<string, number>;
+  avg: number;
+}
+
+function indexOf(items: SourceItem[]): Index {
+  const docs = items.map((it) => {
+    const tf = new Map<string, number>();
+    const ws = words(it.text);
+    for (const w of ws) tf.set(w, (tf.get(w) ?? 0) + 1);
+    return { tf, length: ws.length };
+  });
+  const df = new Map<string, number>();
+  for (const d of docs) for (const w of d.tf.keys()) df.set(w, (df.get(w) ?? 0) + 1);
+  const avg = docs.reduce((n, d) => n + d.length, 0) / docs.length || 1;
+  return { docs, df, avg };
+}
+
+/**
+ * BM25 over the items' words, with numbers and names weighing double. The items are counted once
+ * per list (the runner rebuilds it every 10 minutes), not at every check.
+ */
 export function createKeywordRetriever(opts: { minScore?: number } = {}): Retriever {
   const minScore = opts.minScore ?? MIN_SCORE;
+  const indexes = new WeakMap<SourceItem[], Index>();
   return {
     top(window, items, k) {
       const query = [...new Set(words(window))];
       if (query.length === 0 || items.length === 0) return [];
+      let index = indexes.get(items);
+      if (!index) indexes.set(items, (index = indexOf(items)));
+      const { docs, df, avg } = index;
       const strong = strongWords(window);
-      const docs = items.map((it) => words(it.text));
-      const avg = docs.reduce((n, d) => n + d.length, 0) / docs.length || 1;
-      const df = new Map<string, number>();
-      for (const d of docs) for (const w of new Set(d)) df.set(w, (df.get(w) ?? 0) + 1);
       const n = items.length;
       const scored = items.map((it, i) => {
         const d = docs[i];
         let score = 0;
         for (const q of query) {
-          const tf = d.filter((w) => w === q).length;
+          const tf = d.tf.get(q);
           if (!tf) continue;
           const idf = Math.log(1 + n / (df.get(q) ?? 1));
           const norm = (tf * (K1 + 1)) / (tf + K1 * (1 - B + (B * d.length) / avg));

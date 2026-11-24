@@ -100,6 +100,8 @@ export interface UiSnapshot {
     asking: { scope: string; title: string; switchTo: boolean } | null;
     /** What the bar is showing: the Ask question or the live controls (null: hidden). */
     barMode: 'ask' | 'live' | null;
+    /** The most the bar may take over its meeting view, in px. */
+    barMax?: number;
     /** An Apple language being downloaded from the bar or Settings. */
     localeInstall: { locale: string; fraction: number } | null;
     settings: MeetingGlobalSettings;

@@ -66,6 +66,14 @@ test('prompt: transcript and messages are data; items carry their ids', () => {
   expect(user).toContain('[05:10] João: o atraso na faturação');
 });
 
+test('prompt: names who the user is, and the title is one short line', () => {
+  const { system, user } = buildInsightPrompt({ title: `Acme\nsemanal ${'x'.repeat(400)}`, language: 'pt-PT', myName: 'Ana', window: [{ start: 0, end: 1000, speaker: 'me', text: 'olá' }], items: [d1] });
+  expect(system).toContain('"Ana"');
+  const title = user.split('\n')[0];
+  expect(title.startsWith('Meeting: Acme semanal')).toBe(true);
+  expect(title.length).toBeLessThanOrEqual(209);
+});
+
 test('askInsights retries once on a bad answer, then throws', async () => {
   const signal = new AbortController().signal;
   await expect(askInsights(async () => 'nope', { system: 's', user: 'u' }, signal)).rejects.toThrow();

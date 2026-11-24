@@ -58,7 +58,7 @@ test("only the meeting's scope", () => {
 
 test("never the live meeting, earlier meetings' insights, done to-dos, or messages from unshared accounts", () => {
   const withInsights = input();
-  withInsights.meetings[0].insights = [{ id: 'i1', at: 0, kind: 'past', text: 'um insight antigo', said: 'x', sources: [] }];
+  (withInsights.meetings[0] as Meeting).insights = [{ id: 'i1', at: 0, kind: 'past', text: 'um insight antigo', said: 'x', sources: [] }];
   const text = buildSources(withInsights).map((i) => i.text).join(' | ');
   expect(text).not.toContain('ao vivo');
   expect(text).not.toContain('um insight antigo');

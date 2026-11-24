@@ -139,6 +139,10 @@ export function createInsightRunner(d: InsightRunnerDeps) {
     segments(segs: Segment[]): void {
       if (stopped) return;
       heard.push(...segs);
+      // Only the window is ever sent: older lines are dropped as the meeting goes on.
+      const from = (heard.at(-1)?.end ?? 0) - WINDOW_MS;
+      const old = heard.findIndex((s) => s.end >= from);
+      if (old > 0) heard.splice(0, old);
       if (!paused) for (const s of segs) newSpeech += Math.max(0, s.end - s.start);
       if (due()) check();
     },
@@ -148,6 +152,19 @@ export function createInsightRunner(d: InsightRunnerDeps) {
       reason = why;
       running?.abort();
       running = null;
+      d.changed();
+    },
+    /** The transcription was paused: a running request is dropped (it isn't a failure); insights stay on. */
+    hold(): void {
+      running?.abort();
+      running = null;
+    },
+    /** "Not useful" on one of them: the live list dims it. */
+    notUseful(id: string): void {
+      const at = list.findIndex((i) => i.id === id);
+      if (at < 0) return;
+      list[at] = { ...list[at], notUseful: true };
+      if (latest?.id === id) latest = list[at];
       d.changed();
     },
     resume(): void {

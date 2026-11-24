@@ -55,10 +55,10 @@ beforeEach(() => {
 });
 afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
 
-type FakeRunner = { log: string[]; segments(s: unknown[]): void; pause(): void; resume(): void; stop(): void; state(): { state: 'on'; count: number; list: [] } };
+type FakeRunner = { log: string[]; segments(s: unknown[]): void; pause(): void; resume(): void; hold(): void; notUseful(id: string): void; stop(): void; state(): { state: 'on'; count: number; list: [] } };
 const fakeRunner = (): FakeRunner => {
   const log: string[] = [];
-  return { log, segments: (s) => log.push(`seg:${(s[0] as { text: string }).text}`), pause: () => log.push('pause'), resume: () => log.push('resume'), stop: () => log.push('stop'), state: () => ({ state: 'on', count: 0, list: [] }) };
+  return { log, segments: (s) => log.push(`seg:${(s[0] as { text: string }).text}`), pause: () => log.push('pause'), resume: () => log.push('resume'), hold: () => log.push('hold'), notUseful: (id) => log.push(`notUseful:${id}`), stop: () => log.push('stop'), state: () => ({ state: 'on', count: 0, list: [] }) };
 };
 
 function setup(opts: { mode?: SpaceMeetingSettings['mode']; fellBack?: string; alternate?: boolean; insights?: boolean; runner?: FakeRunner } = {}) {
@@ -312,6 +312,15 @@ describe('live insights', () => {
     o.insightsPause();
     o.insightsResume();
     expect(runner.log).toEqual(['pause', 'resume']);
+  });
+
+  test('pausing the transcription drops a running insights request; Not useful reaches it', async () => {
+    const runner = fakeRunner();
+    const { o, meet } = setup({ runner });
+    await o.start(meet());
+    o.pause();
+    o.insightNotUseful('abc');
+    expect(runner.log).toEqual(['hold', 'notUseful:abc']);
   });
 
   test('ending stops it', async () => {

@@ -18,10 +18,12 @@ interface Props {
   localeInstall: { locale: string; fraction: number } | null;
   /** What this bar was placed for (main decides: over the asking call, or over the live meeting). */
   mode?: 'ask' | 'live' | null;
+  /** The most room main gives the bar: past it, the card and the list scroll inside. */
+  barMax?: number;
 }
 
 /** The overlay's content; it tells main the height it needs (the card or the list make it taller). */
-function Page({ children }: { children: React.ReactNode }): React.JSX.Element {
+function Page({ children, max }: { children: React.ReactNode; max?: number }): React.JSX.Element {
   const ref = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const el = ref.current;
@@ -39,7 +41,7 @@ function Page({ children }: { children: React.ReactNode }): React.JSX.Element {
     return () => ro.disconnect();
   }, []);
   return (
-    <div className="mb-page" ref={ref}>
+    <div className="mb-page" ref={ref} style={max ? { maxHeight: `${max}px` } : undefined}>
       {children}
     </div>
   );
@@ -135,7 +137,7 @@ function InsightList({ insights }: { insights: LiveInsights }): React.JSX.Elemen
 }
 
 /** The bar over a meeting view: Ask, or the live transcription's state and controls. */
-export function MeetingBarView({ live, asking, spaceName, localeInstall, mode }: Props): React.JSX.Element | null {
+export function MeetingBarView({ live, asking, spaceName, localeInstall, mode, barMax }: Props): React.JSX.Element | null {
   const md = window.missiondesk;
   const [copied, setCopied] = useState(false);
   /** The meeting whose notice was copied (the button stands out until then). */
@@ -152,7 +154,7 @@ export function MeetingBarView({ live, asking, spaceName, localeInstall, mode }:
   }
   if (asking && mode !== 'live') {
     return (
-      <Page>
+      <Page max={barMax}>
       <div className="mb-bar">
         <span className="mb-dot ask" aria-hidden />
         <span className="mb-text">{asking.switchTo ? t('meetings.bar.askSwitch') : t('meetings.bar.ask')}</span>
@@ -176,7 +178,7 @@ export function MeetingBarView({ live, asking, spaceName, localeInstall, mode }:
   const ins = live.insights;
   const card = ins?.latest && ins.latest.id !== dismissed && !listOpen ? ins.latest : null;
   return (
-    <Page>
+    <Page max={barMax}>
     <div className={`mb-bar${n ? ' two' : ''}`}>
       <div className="mb-row">
         <span className={`mb-dot${live.paused ? ' paused' : ''}`} aria-hidden />
@@ -251,5 +253,5 @@ export function MeetingBar(): React.JSX.Element | null {
   const m = snap.meetings;
   const scope = m.barMode === 'ask' && m.asking ? m.asking.scope : (m.live?.scope ?? m.asking?.scope);
   const spaceName = snap.assistant.scopes.find((s) => s.key === scope)?.name ?? '';
-  return <MeetingBarView live={m.live} asking={m.asking} spaceName={spaceName} localeInstall={m.localeInstall} mode={m.barMode} />;
+  return <MeetingBarView live={m.live} asking={m.asking} spaceName={spaceName} localeInstall={m.localeInstall} mode={m.barMode} barMax={m.barMax} />;
 }

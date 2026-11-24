@@ -45,6 +45,7 @@ export function buildInsightPrompt(o: { title: string; language: string; myName:
   const system = [
     'You watch a live meeting for the user and point out, rarely, something they would want to know right now. Answer with ONE JSON object only, no prose.',
     `Write in the meeting's language (${o.language}).`,
+    `The user is "${o.myName}" in the transcript.`,
     'Only these kinds:',
     ...Object.values(KINDS).map((k) => `- ${k}`),
     'Every insight must rest on the numbered items given, citing their ids in "sources", and quote in "said" the exact words from the transcript that prompted it.',
@@ -53,7 +54,7 @@ export function buildInsightPrompt(o: { title: string; language: string; myName:
     'Shape: { "insights": [ { "kind": "past" | "commitment" | "contradiction", "text": "one line, at most 200 characters", "sources": ["id"], "said": "the words from the transcript, at most 120 characters", "ask": "optional: a question worth asking now, at most 150 characters", "confidence": "high" | "medium" } ] }',
   ].join('\n');
   const user = [
-    `Meeting: ${o.title.replace(/\s+/g, ' ')}`,
+    `Meeting: ${o.title.replace(/\s+/g, ' ').trim().slice(0, 200)}`,
     ...(o.shown?.length ? ['Already shown to the user in this meeting (never repeat these, even in other words):', ...o.shown.map((s) => `- ${s}`)] : []),
     'The last minutes of the conversation:',
     '```',

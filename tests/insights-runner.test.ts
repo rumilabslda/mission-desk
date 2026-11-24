@@ -200,3 +200,41 @@ describe('review fixes', () => {
     expect(prompts[1]).toContain('Faturação já foi falada a 12/11');
   });
 });
+
+describe('deferred review fixes', () => {
+  test('hold (the transcription paused) drops a running request without pausing insights', async () => {
+    let release!: (v: string) => void;
+    let n = 0;
+    const { runner, calls, saved, speak } = setup({ answer: () => (++n === 1 ? new Promise((r) => (release = r)) : JSON.stringify({ insights: [] })) });
+    await speak(130, 100);
+    expect(calls).toHaveLength(1);
+    runner.hold();
+    release(JSON.stringify({ insights: [{ kind: 'past', text: 'Faturação já foi falada a 12/11', sources: ['d1'], said: 'faturação atrasada', confidence: 'high' }] }));
+    await flush();
+    expect(saved).toHaveLength(0);
+    expect(runner.state().state).toBe('on');
+    await speak(260, 100);
+    expect(calls).toHaveLength(2);
+  });
+
+  test('"Not useful" is reflected in the live list', async () => {
+    const { runner, speak } = setup();
+    await speak(130, 100);
+    const id = runner.state().list[0].id;
+    runner.notUseful(id);
+    expect(runner.state().list[0].notUseful).toBe(true);
+  });
+
+  test('only the last 5 minutes are sent, however long the meeting', async () => {
+    const prompts: string[] = [];
+    const { speak } = setup({
+      ask: () => async (_s: string, user: string) => {
+        prompts.push(user);
+        return JSON.stringify({ insights: [] });
+      },
+    });
+    await speak(60, 60, 'faturação no início');
+    for (let s = 200; s <= 1400; s += 120) await speak(s, 100);
+    expect(prompts.at(-1)).not.toContain('faturação no início');
+  });
+});

@@ -214,3 +214,8 @@ test('a new meeting starts with the insights list closed', () => {
   act(() => root.render(<MeetingBarView live={withList('m2')} asking={null} spaceName="Acme" localeInstall={null} />));
   expect(host.querySelector('.mb-list')).toBeNull();
 });
+
+test('the bar page never grows past the room main gives it: the card and list scroll inside', () => {
+  const host = render({ live, asking: null, spaceName: 'Acme', localeInstall: null, barMax: 210 });
+  expect((host.querySelector('.mb-page') as HTMLElement).style.maxHeight).toBe('210px');
+});

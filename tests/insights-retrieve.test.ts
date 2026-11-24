@@ -31,3 +31,15 @@ test('at most k', () => {
   const items = Array.from({ length: 50 }, (_, i) => item(`i${i}`, `faturação número ${i}`));
   expect(createKeywordRetriever().top('faturação', items, 30)).toHaveLength(30);
 });
+
+test('the same list scores the same on every check (its counts are kept), and a new list is counted anew', () => {
+  const r = createKeywordRetriever();
+  const list: SourceItem[] = [
+    { id: 'a', kind: 'memory', text: 'faturação faturação atrasada', label: 'Memória', open: { kind: 'memory', scope: 'space:a' } },
+    { id: 'b', kind: 'memory', text: 'contrato renovado', label: 'Memória', open: { kind: 'memory', scope: 'space:a' } },
+  ];
+  expect(r.top('a faturação', list, 5).map((i) => i.id)).toEqual(['a']);
+  expect(r.top('o contrato', list, 5).map((i) => i.id)).toEqual(['b']);
+  const next = [{ ...list[1], id: 'c', text: 'faturação em dia' }];
+  expect(r.top('a faturação', next, 5).map((i) => i.id)).toEqual(['c']);
+});

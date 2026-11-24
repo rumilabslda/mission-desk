@@ -14,7 +14,7 @@ import { applyRetention, spacesLeftEmpty } from './meetings/lifecycle';
 import { createModelManager, type Manifest, type ModelId } from './meetings/models';
 import MODEL_MANIFEST from './meetings/model-manifest.json';
 import { createMeetingOverlay } from './views/meeting-overlay';
-import { barTarget, meetingBarBounds } from './views/meeting-bar-bounds';
+import { barTarget, meetingBarBounds, meetingBarMax } from './views/meeting-bar-bounds';
 import { composeUrl } from '../shared/compose-url';
 import { eventsOfScope, matchEvent } from '../shared/meeting-detect';
 import { PROVIDER_NAME } from '../shared/meetings';
@@ -725,7 +725,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       const r = await calendarWriter.getEvent(e.accountId, e.calendarId, e.googleEventId).catch(() => null);
       return r?.ok ? r.event.guests : [];
     },
-    myName: () => store.state().userName || 'Me',
+    myName: () => store.state().userName || t('meetings.transcript.me'),
     addTodo: (text, tag, extra) => void todos.add(text, tag, extra),
     tagFor: (scope) => todoTagFor(scope),
     saveActions: (scope, actions) => store.setSpaceMeetings(scope, { ...meetingSettingsFor(scope), actions }),
@@ -762,6 +762,8 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
   let lastBarMode: 'ask' | 'live' | null = null;
   /** The height the bar page last asked for (its insight card or list open). */
   let barHeight = 36;
+  /** The most the bar may take over the view it's on (sent to the page, which scrolls inside it). */
+  let barMax = 400;
   const meetingBar = createMeetingOverlay(win, { uiPreloadPath });
   /** The bar follows the live (or asking) meeting's view: on it while it's on screen, hidden otherwise. */
   const currentBarTarget = () => barTarget(orchestrator.liveView(), orchestrator.asking(), (accountId, kind) => !!registry.get(accountId, kind)?.getVisible());
@@ -775,6 +777,11 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     }
     const view = target ? registry.get(target.accountId, target.kind) : undefined;
     if (!target || !view) return meetingBar.place(null);
+    const max = meetingBarMax(view.getBounds().height);
+    if (max !== barMax) {
+      barMax = max;
+      pushSoon();
+    }
     const base = target.mode === 'live' && orchestrator.live()?.notice ? 60 : 36;
     // Live, the bar page may need more: an insight card or the list (it reports its height).
     meetingBar.place(meetingBarBounds(view.getBounds(), target.mode === 'live' ? Math.max(base, barHeight) : base));
@@ -1375,21 +1382,15 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
           scope,
           liveId: m.id,
           notes: memory.all(),
-          // The space's 50 latest meetings with a summary.
-          meetings: meetingStore
-            .list(scope, m.id)
-            .filter((x) => x.state === 'ready')
-            .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
-            .slice(0, 50)
-            .map((x) => meetingStore.get(scope, x.id))
-            .filter((x): x is Meeting => !!x),
+          // The space's 50 latest summaries (kept in memory: no file is read).
+          meetings: meetingStore.summaries(scope, 50, m.id),
           todos: todos.list(),
           feed: homeFeed(),
           accounts: store.state().accounts,
           dateLabel: (iso) => day.format(new Date(iso)),
         }),
       retriever: createKeywordRetriever(),
-      myName: store.state().userName || 'Me',
+      myName: store.state().userName || t('meetings.transcript.me'),
       save: (i) => meetingStore.addInsight(scope, m.id, i),
       changed: pushSoon,
     });
@@ -2052,6 +2053,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
           return q && a ? { scope: scopeOfAccount(a, 'space'), title: q.title, switchTo: q.switchTo } : null;
         })(),
         barMode: meetingsOn ? (currentBarTarget()?.mode ?? null) : null,
+        barMax,
         localeInstall,
         settings: (({ nospace: _n, ...rest }) => rest)(s.meetings ?? {}),
         spaces: Object.fromEntries([
@@ -3060,7 +3062,9 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     },
     meetingInsightNotUseful(id) {
       const l = orchestrator.live();
-      if (l && meetingStore.markInsight(l.scope, l.id, id, true)) push();
+      if (!l || !meetingStore.markInsight(l.scope, l.id, id, true)) return;
+      orchestrator.insightNotUseful(id);
+      push();
     },
     /** Opens what the saved insight points to (never a place the page names). */
     meetingInsightOpen(id, source) {

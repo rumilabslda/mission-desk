@@ -1405,6 +1405,8 @@ html.meeting-bar-page #root { height: 100vh; }
 .mb-lang { max-width: 130px; appearance: none; -webkit-appearance: none; }
 /* Live insights: the ✦ count on the bar, the newest one's card and the list, under the bar. */
 .mb-page { display: flex; flex-direction: column; gap: 6px; }
+/* Past the room main gives the page (its max-height), the card and the list scroll; the bar keeps its line. */
+.mb-page > .mb-card, .mb-page > .mb-list { flex: 0 1 auto; min-height: 0; overflow-y: auto; }
 .mb-bar .mb-insights.on { background: #4f46e5; }
 .mb-card, .mb-list {
   background: rgba(24, 25, 30, 0.94); color: #f3f4f6; border-radius: 14px; padding: 10px 12px;

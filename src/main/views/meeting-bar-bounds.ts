@@ -5,8 +5,13 @@
  */
 export function meetingBarBounds(view: { x: number; y: number; width: number; height: number }, height: number): { x: number; y: number; width: number; height: number } {
   const width = Math.max(0, Math.min(560, view.width - 16));
-  const max = Math.max(36, Math.min(400, Math.round(view.height * 0.6)));
+  const max = meetingBarMax(view.height);
   return { x: view.x + Math.round((view.width - width) / 2), y: view.y + 8, width, height: Math.max(36, Math.min(max, Math.round(height))) };
+}
+
+/** The most the bar may take over a meeting view this tall (the page fits its card and list in it). */
+export function meetingBarMax(viewHeight: number): number {
+  return Math.max(36, Math.min(400, Math.round(viewHeight * 0.6)));
 }
 
 type View = { accountId: string; kind: string };

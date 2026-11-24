@@ -76,6 +76,9 @@ export interface LiveInsightRunner {
   segments(segs: Segment[]): void;
   pause(): void;
   resume(): void;
+  /** The transcription was paused: drop a running request. */
+  hold(): void;
+  notUseful(id: string): void;
   stop(): void;
   state(): LiveInsights;
 }
@@ -283,6 +286,7 @@ export function createOrchestrator(deps: OrchestratorDeps) {
       if (!live || live.paused) return;
       live.paused = true;
       live.pausedAt = elapsed();
+      live.insights?.hold();
       deps.push();
     },
     resume(): void {
@@ -334,6 +338,10 @@ export function createOrchestrator(deps: OrchestratorDeps) {
     },
     insightsResume(): void {
       live?.insights?.resume();
+    },
+    /** "Not useful" on one of the live meeting's insights. */
+    insightNotUseful(id: string): void {
+      live?.insights?.notUseful(id);
     },
     /** Where the live meeting runs (for the bar). */
     liveView: (): { accountId: string; kind: ViewKind } | null => (live ? { accountId: live.accountId, kind: live.kind } : null),

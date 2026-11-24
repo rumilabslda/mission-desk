@@ -13,8 +13,18 @@ const ID = /^[\w-]{1,40}$/;
 type Patch = Partial<Pick<Meeting, 'endedAt' | 'language' | 'engine' | 'result' | 'applied' | 'actions' | 'title' | 'event'>>;
 
 /** What lists need of a meeting (kept in memory per scope, so a snapshot reads no files). */
-type Head = Pick<Meeting, 'id' | 'scope' | 'title' | 'startedAt' | 'endedAt' | 'event'> & { hasResult: boolean };
-const headOf = (m: Meeting): Head => ({ id: m.id, scope: m.scope, title: m.title, startedAt: m.startedAt, endedAt: m.endedAt, event: m.event, hasResult: !!m.result });
+type Summary = NonNullable<NonNullable<Meeting['result']>['summary']>;
+type Head = Pick<Meeting, 'id' | 'scope' | 'title' | 'startedAt' | 'endedAt' | 'event'> & { hasResult: boolean; summary?: Summary };
+const headOf = (m: Meeting): Head => ({
+  id: m.id,
+  scope: m.scope,
+  title: m.title,
+  startedAt: m.startedAt,
+  endedAt: m.endedAt,
+  event: m.event,
+  hasResult: !!m.result,
+  ...(m.result?.summary ? { summary: m.result.summary } : {}),
+});
 
 export function createMeetingStore(dir: string, now: () => Date = () => new Date()) {
   /** scope → id → head; a scope is read from disk once, then kept current by every write. */
@@ -126,6 +136,15 @@ export function createMeetingStore(dir: string, now: () => Date = () => new Date
       return [...headsOf(scope).values()]
         .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
         .map((m) => item(m, liveId));
+    },
+    /** The scope's `n` latest summaries (live insights cite them), from memory: no file is read. */
+    summaries(scope: string, n: number, liveId?: string): { id: string; scope: string; startedAt: string; result: { summary: Summary } }[] {
+      if (!scopeDir(scope)) return [];
+      return [...headsOf(scope).values()]
+        .filter((m) => m.summary && m.id !== liveId)
+        .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
+        .slice(0, n)
+        .map((m) => ({ id: m.id, scope: m.scope, startedAt: m.startedAt, result: { summary: m.summary! } }));
     },
     listAll(scopes: string[], liveId?: string): MeetingListItem[] {
       return scopes.flatMap((s) => store.list(s, liveId)).sort((a, b) => b.startedAt.localeCompare(a.startedAt));

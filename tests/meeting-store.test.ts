@@ -146,3 +146,17 @@ test('markInsight on an unknown id returns null', () => {
   expect(s.markInsight('space:a', m.id, 'nope', true)).toBeNull();
   expect(s.markInsight('space:b', m.id, 'nope', true)).toBeNull();
 });
+
+test('summaries come from memory, newest first, without the live one', () => {
+  const s = store();
+  const a = s.create({ ...base('space:a'), startedAt: '2026-11-01T10:00:00Z' });
+  const b = s.create({ ...base('space:a'), startedAt: '2026-11-02T10:00:00Z' });
+  const live = s.create({ ...base('space:a'), startedAt: '2026-11-03T10:00:00Z' });
+  s.create(base('space:a'));
+  s.list('space:a'); // the scope is read from disk once
+  const summary = { decisions: ['Preço fixo'], points: [], nextSteps: [] };
+  for (const m of [a, b, live]) s.update('space:a', m.id, { result: { summary } });
+  fs.rmSync(path.join(dir, 'space-a', `${a.id}.json`));
+  expect(s.summaries('space:a', 50, live.id).map((x) => x.id)).toEqual([b.id, a.id]);
+  expect(s.summaries('space:a', 1, live.id)).toEqual([{ id: b.id, scope: 'space:a', startedAt: '2026-11-02T10:00:00Z', result: { summary } }]);
+});
