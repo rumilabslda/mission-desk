@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { isScopeKey } from '../../shared/assistant-scope';
-import type { Meeting, MeetingListItem, Segment } from '../../shared/meeting';
+import type { Meeting, MeetingInsight, MeetingListItem, Segment } from '../../shared/meeting';
 
 /**
  * Transcribed meetings, one JSON file each, in one folder per scope ('space:<id>' → space-<id>,
@@ -95,6 +95,20 @@ export function createMeetingStore(dir: string, now: () => Date = () => new Date
       const m = store.get(scope, id);
       if (m && segs.length) write({ ...m, segments: [...m.segments, ...segs] });
     },
+    /** An insight shown during the meeting. */
+    addInsight(scope: string, id: string, i: MeetingInsight): void {
+      const m = store.get(scope, id);
+      if (m) write({ ...m, insights: [...(m.insights ?? []), i] });
+    },
+    /** "Not useful" on one of the meeting's insights; null when there's no such insight. */
+    markInsight(scope: string, id: string, insightId: string, notUseful: boolean): MeetingInsight | null {
+      const m = store.get(scope, id);
+      const i = m?.insights?.find((x) => x.id === insightId);
+      if (!m || !i) return null;
+      const marked = { ...i, notUseful };
+      write({ ...m, insights: m.insights!.map((x) => (x.id === insightId ? marked : x)) });
+      return marked;
+    },
     gap(scope: string, id: string, g: { start: number; end: number }): void {
       const m = store.get(scope, id);
       if (m) write({ ...m, gaps: [...m.gaps, g] });
@@ -161,7 +175,9 @@ export function createMeetingStore(dir: string, now: () => Date = () => new Date
         if (!scope) continue;
         for (const m of all(scope)) {
           if (!m.endedAt || Date.parse(m.endedAt) >= cutoff || m.transcriptPruned) continue;
-          write({ ...m, segments: [], gaps: [], transcriptPruned: true });
+          // Insights quote the transcript: they go with it.
+          const { insights: _quoted, ...rest } = m;
+          write({ ...rest, segments: [], gaps: [], transcriptPruned: true });
           pruned += 1;
         }
       }

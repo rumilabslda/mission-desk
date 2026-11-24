@@ -125,3 +125,24 @@ test('I8: listing (every snapshot) reads no files once a scope is known; writes 
   s.remove('space:a', m.id);
   expect(s.list('space:a')).toHaveLength(1);
 });
+
+const insight = (id: string): import('../src/shared/meeting').MeetingInsight => ({ id, at: 1000, kind: 'past', text: `insight ${id}`, said: 'x', sources: [{ label: 'Memory', text: 'note', open: { kind: 'memory', scope: 'space:a' } }] });
+
+test('insights are saved and marked', () => {
+  const s = store();
+  const m = s.create(base('space:a'));
+  s.addInsight('space:a', m.id, insight('i1'));
+  s.addInsight('space:a', m.id, insight('i2'));
+  expect(s.markInsight('space:a', m.id, 'i2', true)?.notUseful).toBe(true);
+  expect(s.get('space:a', m.id)?.insights?.map((i) => [i.id, !!i.notUseful])).toEqual([
+    ['i1', false],
+    ['i2', true],
+  ]);
+});
+
+test('markInsight on an unknown id returns null', () => {
+  const s = store();
+  const m = s.create(base('space:a'));
+  expect(s.markInsight('space:a', m.id, 'nope', true)).toBeNull();
+  expect(s.markInsight('space:b', m.id, 'nope', true)).toBeNull();
+});

@@ -42,3 +42,14 @@ test('retention prunes old transcripts only when it is set', () => {
   expect(applyRetention(store, 30)).toBe(1);
   expect(store.get('space:a', m.id)!.segments).toEqual([]);
 });
+
+test('a pruned transcript loses its insights', () => {
+  const now = new Date('2026-11-22T10:00:00Z');
+  const store = createMeetingStore(dir, () => now);
+  const m = store.create({ scope: 'space:a', accountId: '1', provider: 'meet', url: 'u', title: 'Old', startedAt: '2026-09-01T10:00:00.000Z', language: 'pt-PT', engine: 'apple' });
+  store.append('space:a', m.id, [{ start: 0, end: 1, speaker: 'me', text: 'x' }]);
+  store.addInsight('space:a', m.id, { id: 'i1', at: 0, kind: 'past', text: 't', said: 'x', sources: [] });
+  store.update('space:a', m.id, { endedAt: '2026-09-01T11:00:00.000Z' });
+  applyRetention(store, 30);
+  expect(store.get('space:a', m.id)!.insights).toBeUndefined();
+});
