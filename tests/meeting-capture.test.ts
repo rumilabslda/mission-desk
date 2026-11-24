@@ -1,5 +1,6 @@
 import { EventEmitter } from 'node:events';
 import { toPcm16 } from '../src/renderer/src/meetings/pcm';
+import { playBack } from '../src/renderer/src/meetings/playback';
 import { createCaptureHost } from '../src/main/meetings/capture-host';
 
 test('two 48 kHz channels become 16 kHz mono Int16 at the same level', () => {
@@ -62,4 +63,21 @@ test('the page’s state is passed on, and stop tells the page', async () => {
   expect(states).toEqual([{ me: true, call: false, error: 'tab capture failed' }]);
   host.stop();
   expect(page.sent.at(-1)).toEqual(['capture:stop']);
+});
+
+test('the captured call is played back to the speakers, since tab capture takes it off them', () => {
+  const destination = { id: 'speakers' };
+  const connected: unknown[] = [];
+  const stream = { id: 'call' } as unknown as MediaStream;
+  let from: unknown = null;
+  const ctx = {
+    destination,
+    createMediaStreamSource: (s: MediaStream) => {
+      from = s;
+      return { connect: (to: unknown) => connected.push(to) };
+    },
+  };
+  playBack(ctx as never, stream);
+  expect(from).toBe(stream);
+  expect(connected).toEqual([destination]);
 });
