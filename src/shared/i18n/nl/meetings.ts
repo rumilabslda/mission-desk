@@ -127,6 +127,10 @@ export const meetings: Translation<typeof en> = {
   'meetings.notice.probeUnreliable': 'Namen en dempen kunnen niet worden uitgelezen in deze vergadering: anderen worden getoond als “Anderen”.',
   'meetings.notice.failed': 'Transcriptie gestopt: {reason}',
   // Live insights
+  'meetings.settings.insights': 'Inzichten tijdens vergaderingen',
+  'meetings.settings.insightsHint': 'Als iets wat gezegd wordt aansluit bij wat deze ruimte weet, verschijnt onder de transcriptiebalk een korte notitie met de bron. Gebruikt de assistent van deze ruimte.',
+  'meetings.settings.insightsNoAssistant': 'Deze ruimte heeft geen assistent.',
+  'meetings.transcript.insights': 'Inzichten',
   'meetings.insights.unavailable': 'De assistent van deze ruimte is niet verbonden.',
   'meetings.insights.title': 'Inzichten',
   'meetings.insights.count': '✦ {count}',

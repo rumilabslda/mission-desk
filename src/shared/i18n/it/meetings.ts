@@ -127,6 +127,10 @@ export const meetings: Translation<typeof en> = {
   'meetings.notice.probeUnreliable': 'Impossibile leggere nomi e stato del microfono da questa riunione: gli altri compaiono come “Altri”.',
   'meetings.notice.failed': 'Trascrizione interrotta: {reason}',
   // Live insights
+  'meetings.settings.insights': 'Spunti durante le riunioni',
+  'meetings.settings.insightsHint': 'Quando qualcosa di detto si collega a ciò che questo spazio sa, sotto la barra di trascrizione appare una breve nota con la fonte. Usa l’assistente di questo spazio.',
+  'meetings.settings.insightsNoAssistant': 'Questo spazio non ha un assistente.',
+  'meetings.transcript.insights': 'Spunti',
   'meetings.insights.unavailable': 'L’assistente di questo spazio non è collegato.',
   'meetings.insights.title': 'Spunti',
   'meetings.insights.count': '✦ {count}',

@@ -92,3 +92,23 @@ test('retention and the notice are saved', async () => {
   });
   expect(calls).toContainEqual(['setMeetingGlobal', { retentionDays: 30 }]);
 });
+
+test('each space card has Insights during meetings, on by default; turning it off saves insights: false', async () => {
+  const host = await render();
+  const card = host.querySelector('[data-scope="space:s1"]')!;
+  const box = [...card.querySelectorAll('label')].find((l) => l.textContent?.includes('Insights during meetings'))!.querySelector('input')!;
+  expect(box.checked).toBe(true);
+  act(() => box.click());
+  expect(calls).toContainEqual(['setSpaceMeetings', 'space:s1', { mode: 'ask', language: 'pt-PT', insights: false }]);
+});
+
+test('insights are disabled with the hint when the space has no assistant', async () => {
+  const host = document.createElement('div');
+  document.body.append(host);
+  const noAssistant = { ...snap, assistant: { configs: { 'space:s1': { engine: 'off' } } } } as unknown as UiSnapshot;
+  await act(async () => createRoot(host).render(<MeetingsSettings snap={noAssistant} />));
+  const card = host.querySelector('[data-scope="space:s1"]')!;
+  const label = [...card.querySelectorAll('label')].find((l) => l.textContent?.includes('Insights during meetings'))!;
+  expect(label.querySelector('input')!.disabled).toBe(true);
+  expect(card.textContent).toContain('This space has no assistant');
+});

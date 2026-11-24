@@ -127,6 +127,10 @@ export const meetings = {
   'meetings.notice.probeUnreliable': 'Names and mute can’t be read from this meeting: others show as “Others”.',
   'meetings.notice.failed': 'Transcription stopped: {reason}',
   // Live insights
+  'meetings.settings.insights': 'Insights during meetings',
+  'meetings.settings.insightsHint': 'When something said links to what this space knows, a short note shows under the transcription bar, with its source. Uses this space’s assistant.',
+  'meetings.settings.insightsNoAssistant': 'This space has no assistant.',
+  'meetings.transcript.insights': 'Insights',
   'meetings.insights.unavailable': 'This space’s assistant isn’t connected.',
   'meetings.insights.title': 'Insights',
   'meetings.insights.count': '✦ {count}',

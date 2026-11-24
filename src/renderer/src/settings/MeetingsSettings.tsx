@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { UiSnapshot } from '../../../shared/ipc';
-import { DEFAULT_ACTIONS, type EngineId, type EngineStatus, MEETING_ACTIONS, MEETING_LOCALES, type MeetingAction, meetingLocale, type MeetingMode, MAX_NOTICE, type SpaceMeetingSettings } from '../../../shared/meeting';
+import { DEFAULT_ACTIONS, type EngineId, type EngineStatus, MEETING_ACTIONS, MEETING_LOCALES, type MeetingAction, meetingLocale, type MeetingMode, MAX_NOTICE, type SpaceMeetingSettings, insightsOn } from '../../../shared/meeting';
 import { intlLocale, type MessageKey, t } from '../i18n';
 
 /** Meeting transcription is a macOS feature. */
@@ -47,6 +47,8 @@ export function MeetingsSettings({ snap }: { snap: UiSnapshot }): React.JSX.Elem
   const settingsOf = (key: string): SpaceMeetingSettings => m.spaces[key] ?? { mode: 'ask' };
   const set = (key: string, patch: Partial<SpaceMeetingSettings>): void => md.setSpaceMeetings(key, { ...settingsOf(key), ...patch });
   const chosen = m.settings.engine ?? 'apple';
+  /** Insights need the space's assistant: a space with none can't have them. */
+  const noAssistant = (key: string): boolean => snap.assistant?.configs?.[key]?.engine === 'off';
   /** What a space without a language of its own uses: the interface language, in the Mac's region. */
   const defaultLanguage = meetingLocale(md.locale?.locale ?? 'en', md.locale?.format ?? 'en');
   const wantedLanguages = [...new Set(scopes.filter((s) => settingsOf(s.key).mode !== 'off').map((s) => settingsOf(s.key).language ?? defaultLanguage))];
@@ -162,6 +164,13 @@ export function MeetingsSettings({ snap }: { snap: UiSnapshot }): React.JSX.Elem
                     ))}
                   </div>
                 </div>
+                <label className="set-toggle mt-insights-toggle">
+                  <input type="checkbox" checked={!noAssistant(s.key) && insightsOn(st)} disabled={noAssistant(s.key)} onChange={(e) => set(s.key, { insights: e.target.checked })} />
+                  <span>
+                    {t('meetings.settings.insights')}
+                    <small>{noAssistant(s.key) ? t('meetings.settings.insightsNoAssistant') : t('meetings.settings.insightsHint')}</small>
+                  </span>
+                </label>
               </>
             )}
           </div>

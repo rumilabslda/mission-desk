@@ -116,3 +116,17 @@ test('the transcript shows speakers, gaps and a pruned note', async () => {
   const pruned = await render(<TranscriptView meeting={{ ...meeting, segments: [], transcriptPruned: true }} onClose={() => {}} />);
   expect(pruned.textContent).toContain('deleted');
 });
+
+test("the transcript view lists the meeting's insights, marking Not useful ones", async () => {
+  const insights = [
+    { id: 'i1', at: 65_000, kind: 'past' as const, text: 'Já falado a 12/11', said: 'x', sources: [{ label: 'Meeting of 12/11 · Decision', text: 'Rever em dezembro', open: { kind: 'home' as const } }] },
+    { id: 'i2', at: 130_000, kind: 'commitment' as const, text: 'Proposta por enviar', said: 'x', sources: [], notUseful: true },
+  ];
+  const host = await render(<TranscriptView meeting={{ ...meeting, insights }} onClose={() => {}} />);
+  const section = host.querySelector('.mt-insights')!;
+  expect(section.textContent).toContain('Insights');
+  expect(section.textContent).toContain('[01:05] Link to the past: Já falado a 12/11');
+  expect(section.textContent).toContain('Meeting of 12/11 · Decision: “Rever em dezembro”');
+  expect(section.querySelector('.not-useful')?.textContent).toContain('Proposta por enviar');
+  expect(section.querySelector('.not-useful')?.textContent).toContain('Not useful');
+});
