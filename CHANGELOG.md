@@ -2,6 +2,15 @@
 
 All notable changes to Mission Desk. Versions follow [Semantic Versioning](https://semver.org). Until 1.0.0 Mission Desk is an early preview: a new minor number (0.2.0) adds features and may change how things work, a patch (0.1.1) fixes bugs. 1.0.0 will be the first version ready for everyone.
 
+## 0.2.2 — 2026-11-25
+
+### Links
+- **Links open inside Mission Desk:** a link to another website, from Slack, an email or a chat, opens as a tab next to the app it came from, signed in as that app, instead of in whichever browser window you used last. Every app gets the tab strip once a link tab is open; close a tab with its ×.
+- Inside a link tab you can browse as in a browser. The orange address at the top right shows which site it is; click it to open the page in your browser.
+- **⌘-click** (Ctrl-click on Windows and Linux) or a middle click opens a link in your browser, as before.
+- **The right Chrome profile:** on a Mac, browser links go to the Chrome profile that belongs to the space. On **Automatic**, a Gmail account's links go to the profile signed in to the same address or company, the space's other apps follow it, and a website app follows its own domain. Or choose the profile in **Settings → Spaces → Browser links open in**. Settings shows where each app's links go.
+- Prefer the browser for everything? Turn off **Settings → General → Open links inside Mission Desk**.
+
 ## 0.2.1 — 2026-11-24
 
 ### Fixes

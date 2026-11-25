@@ -1,7 +1,7 @@
 {
   "name": "mission-desk",
   "productName": "Mission Desk",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Free, open-source desktop app: all your web apps (Google, Microsoft 365, Slack, WhatsApp and more) side by side, organised in spaces, with one Home for your day and an assistant per space.",
   "author": "Rumi Labs, Lda.",
   "license": "GPL-3.0-or-later",
