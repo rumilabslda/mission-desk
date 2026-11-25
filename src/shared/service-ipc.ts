@@ -11,6 +11,8 @@ export const SERVICE_IPC = {
   meetingProbeControl: 'service:meeting-probe-control',
   /** Page → main: one reading ({ speaking, muted }). */
   meetingProbe: 'service:meeting-probe',
+  /** Page → main: a mouse button went down, with the modifier keys held ({ meta, ctrl, middle }). */
+  linkClick: 'service:link-click',
 } as const;
 
 /** Image URLs a service page shows for its account (untrusted; checked in main). */

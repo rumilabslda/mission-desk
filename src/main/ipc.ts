@@ -179,6 +179,8 @@ export function registerIpc(win: BrowserWindow, controller: AppController): void
   on(IPC.dismissMessage, (key) => typeof key === 'string' && key.length <= 600 && controller.dismissMessage(key));
   on(IPC.clearMessages, () => controller.clearMessages());
   on(IPC.setMessagePreviews, (on) => typeof on === 'boolean' && controller.setMessagePreviews(on));
+  on(IPC.setLinksInApp, (on) => typeof on === 'boolean' && controller.setLinksInApp(on));
+  on(IPC.openTabInBrowser, (id) => isString(id) && controller.openTabInBrowser(id));
   on(IPC.setUserName, (name) => {
     const n = cleanUserName(name);
     if (n !== null) controller.setUserName(n);
@@ -311,6 +313,7 @@ export function registerIpc(win: BrowserWindow, controller: AppController): void
   on(IPC.setSpaceAlwaysOpen, (id, v) => isString(id) && bool(v) && controller.setSpaceAlwaysOpen(id, v));
   on(IPC.setSpaceShareGoogle, (id, v) => isString(id) && bool(v) && controller.setSpaceShareGoogle(id, v));
   on(IPC.setSpaceGoogleAccount, (id, acc) => isString(id) && isString(acc) && controller.setSpaceGoogleAccount(id, acc));
+  on(IPC.setSpaceChromeProfile, (id, dir) => isString(id) && (dir === null || isString(dir)) && controller.setSpaceChromeProfile(id, dir));
   on(IPC.ungroupSpace, (id) => isString(id) && controller.ungroupSpace(id));
   on(IPC.setSidebarStyle, (v) => {
     const style = parseSidebarStyle(v);

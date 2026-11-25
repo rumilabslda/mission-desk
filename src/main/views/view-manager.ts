@@ -9,6 +9,8 @@ import type { ViewRegistry } from './registry';
 export interface ViewManagerDeps {
   registry: ViewRegistry<WebContentsView>;
   preloadPath: string;
+  /** The account shows a tab strip above its page (default: it has several apps). */
+  hasTabStrip?: (account: Account) => boolean;
   /** Called once per new view so the controller can attach its listeners. */
   onViewCreated(account: Account, kind: ViewKind, view: WebContentsView): void;
   /** Called after a view is hidden or shown, for the hibernation scheduler. */
@@ -62,7 +64,7 @@ export function createViewManager(win: BrowserWindow, deps: ViewManagerDeps): Vi
 
   function bounds(account: Account): Electron.Rectangle {
     const { width, height } = win.getContentBounds();
-    const top = (hasTabs(account.service) ? GOOGLE_TABSTRIP_HEIGHT : 0) + (deps.topInset?.(account.id) ?? 0);
+    const top = ((deps.hasTabStrip?.(account) ?? hasTabs(account.service)) ? GOOGLE_TABSTRIP_HEIGHT : 0) + (deps.topInset?.(account.id) ?? 0);
     const right = deps.rightInset?.() ?? 0;
     return { x: SIDEBAR_WIDTH, y: top, width: Math.max(0, width - SIDEBAR_WIDTH - right), height: Math.max(0, height - top) };
   }

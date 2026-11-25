@@ -71,4 +71,5 @@ export const app: Translation<typeof en> = {
   'app.tab.close': 'Fechar {title}',
   'app.tab.offsite': 'Esta página está em {host}, fora de {app}',
   'app.tab.offsiteNoName': 'Esta página está em {host}, fora da app',
+  'app.tab.openInBrowser': "Clique para a abrir no seu navegador.",
 };

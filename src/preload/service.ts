@@ -16,6 +16,20 @@ if (shouldPatchPage(location.hostname)) {
   watchPageUnread();
 }
 watchMeetingProbe();
+watchLinkClicks();
+
+/**
+ * Which keys were held on the last click, so a Cmd-click (Ctrl-click) or a middle click opens the
+ * link in the browser. Apps like Slack open links from their own scripts, which hides the keys
+ * from Mission Desk otherwise. Read on mousedown, before the page acts on the click.
+ */
+function watchLinkClicks(): void {
+  window.addEventListener(
+    'mousedown',
+    (e) => ipcRenderer.send(SERVICE_IPC.linkClick, { meta: e.metaKey, ctrl: e.ctrlKey, middle: e.button === 1 }),
+    { capture: true, passive: true },
+  );
+}
 
 /** While Mission Desk transcribes this page's meeting: who's speaking and the mute state, once a second (read-only). */
 function watchMeetingProbe(): void {

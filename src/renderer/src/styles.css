@@ -1004,6 +1004,8 @@ html.space-panel-page, html.space-panel-page body { background: transparent; }
   color: color-mix(in srgb, #d97706 80%, var(--text));
 }
 .tab-offsite::before { content: '↗ '; }
+button.tab-offsite { border: 0; font-family: inherit; line-height: inherit; cursor: pointer; }
+button.tab-offsite:hover { filter: brightness(1.08); text-decoration: underline; }
 
 /* ---------- Home: agenda ---------- */
 .ag-head { display: flex; align-items: baseline; justify-content: space-between; }
@@ -1530,3 +1532,9 @@ html.meeting-bar-page #root { height: 100vh; }
 .mem-ask { flex: none; display: inline-flex; gap: 8px; align-items: center; font-size: 12.5px; }
 .mem-add { display: flex; gap: 8px; margin-bottom: 16px; }
 .dialog .mem-add input { flex: 1; }
+
+/* Settings: where each app's browser links open */
+.set-links { list-style: none; margin: 6px 0 0; padding: 0; font-size: 13px; color: var(--text-muted); }
+.set-links li { display: flex; gap: 8px; padding: 2px 0; }
+.set-links li span:first-child { min-width: 140px; color: var(--text); }
+.set-links-value { align-self: center; font-size: 13px; }

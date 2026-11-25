@@ -17,7 +17,9 @@ export function GoogleTabStrip({ snapshot }: { snapshot: UiSnapshot }): React.JS
   const tabs = id ? snapshot.googleTabs[id] : undefined;
   if (!id || !tabs) return null;
   const service = snapshot.accounts.find((a) => a.id === id)?.service;
-  const logos = service ? (TAB_LOGO[service] ?? {}) : {};
+  // An app without tabs of its own (Slack, WhatsApp…) shows its logo on its main tab once a link tab opens.
+  const own = service ? (LOGOS as Record<string, string | undefined>)[service] : undefined;
+  const logos: Partial<Record<ViewKind, string>> = service ? (TAB_LOGO[service] ?? (own ? { main: own } : {})) : {};
   return (
     <div className="tabstrip" role="tablist">
       {tabs.tabs.map((tab) => {
@@ -52,9 +54,13 @@ export function GoogleTabStrip({ snapshot }: { snapshot: UiSnapshot }): React.JS
         );
       })}
       {tabs.offsite && (
-        <span className="tab-offsite" title={offsiteTitle(tabs.offsite, snapshot.accounts.find((a) => a.id === id)?.name)}>
+        <button
+          className="tab-offsite"
+          title={`${offsiteTitle(tabs.offsite, snapshot.accounts.find((a) => a.id === id)?.name)}. ${t('app.tab.openInBrowser')}`}
+          onClick={() => window.missiondesk.openTabInBrowser(id)}
+        >
           {tabs.offsite}
-        </span>
+        </button>
       )}
     </div>
   );

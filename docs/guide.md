@@ -25,6 +25,7 @@ Mission Desk looks for new versions on GitHub a minute after it starts and every
 - Add Google, Microsoft 365, Slack, WhatsApp, Telegram, LinkedIn, Discord, Zoom, Notion, Proton Mail, iCloud Mail, Fastmail or any website from the **+** button. Zoom is its web version (Team Chat, meetings, calendar); a **Join** on a Zoom meeting still opens the Zoom app when it's installed, and otherwise your Zoom account here (only one in the same space; otherwise your browser). Notion opens the pages it links to as tabs, like any website. Proton Mail, iCloud Mail and Fastmail show the Inbox's unread count when their page shows it in its title. Add the same service as many times as you like (two Google accounts, three Slack workspaces).
 - Every app is isolated: its own cookies, logins and storage.
 - Google apps get Gmail, Calendar, Drive and Meet tabs; Microsoft 365 gets Outlook and Teams. Document links open inside the same account.
+- **Links open inside Mission Desk.** A link to another website (from Slack, an email, a chat) opens as a tab next to the app it came from, signed in as that app. Inside the tab you can browse as in a browser; the orange address at the top right shows which site it is, and clicking it opens the page in your browser. Close the tab with its ×. **⌘-click** (Ctrl-click on Windows and Linux) or a middle click opens the link in your browser instead. Turn it off in **Settings → General → Open links inside Mission Desk**.
 - Right-click an app to rename, recolour, mute, reload or remove it, or to choose what the assistant may do in it.
 - Pages you haven't used for 10 minutes go to sleep. Apps you rarely use can sleep completely ("Hibernate when not in use").
 - ⌘1–⌘9 switch apps, ⌘R reloads, ⌘[ and ⌘] go back and forward.
@@ -41,6 +42,10 @@ Group apps by company, project or part of your life (for example Personal, Acme,
   - **Folders with panel:** clicking a space shows its apps, with their names, in a panel next to the sidebar.
   - **Sections:** every space is always open, with its name above it.
 - ⌘1–⌘9 count the apps from top to bottom, including those inside closed spaces.
+
+### Which Chrome profile links open in
+
+If you use several Chrome profiles (one per company, one personal), Mission Desk sends each space's browser links to the right one. On **Automatic** (the default), a Gmail account's links go to the Chrome profile signed in to the same address, or to one at the same company; the space's other apps (Slack, WhatsApp…) follow its Gmail account, and a website app follows its own domain. Or choose the profile yourself in **Settings → Spaces → Browser links open in**. Settings shows where each app's links go. Gmail's address is known once the account has loaded since Mission Desk started; until then, and when nothing matches, links open in your default browser. On a Mac only; elsewhere links use the default browser.
 
 ### Shared Google sign-in
 

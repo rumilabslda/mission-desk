@@ -55,6 +55,8 @@ export interface Space {
   googleAccountId?: string;
   /** Meeting transcription in this space (unset: Ask). */
   meetings?: import('./meeting').SpaceMeetingSettings;
+  /** The Chrome profile (its folder, e.g. "Profile 2") the space's links open in when they go to the browser (unset: the default browser). */
+  chromeProfile?: string;
 }
 
 export type SidebarStyle = 'folders' | 'panel' | 'sections';
@@ -88,6 +90,8 @@ export interface AppState {
   openOnToday?: boolean;
   /** Home's message list shows the start of each message (false: only who sent it). */
   homePreviews?: boolean;
+  /** A link to another site opens as a tab beside the app (default on; false: in the browser). Cmd-click always goes to the browser. */
+  linksInApp?: boolean;
   /** Check GitHub for new versions in the background (false: only when asked). */
   autoUpdate?: boolean;
   /** The assistant panel's choices (model, effort, width). */

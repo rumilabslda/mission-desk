@@ -26,6 +26,12 @@ export interface LinkInput {
   popup?: boolean;
   /** Tabs that must not be replaced right now (e.g. Meet or Teams during a call). */
   busySubApps?: SubApp[];
+  /** "Open links inside Mission Desk": a link to another site opens as a tab beside the app. */
+  inApp?: boolean;
+  /** The user Cmd-clicked (Ctrl-clicked) the link: it goes to the browser. */
+  toBrowser?: boolean;
+  /** The view is a link tab (an extra tab): moving around the site it shows stays in it. */
+  browsing?: boolean;
 }
 
 function hostOf(url: string | undefined): string | null {
@@ -179,7 +185,7 @@ export function chainStep(service: ServiceId, raw: string, chain: RedirectChain,
  * service or its own sign-in, it is followed; elsewhere only during this account's sign-in or
  * the app's own load; otherwise it goes to the browser (an open redirect, an OAuth error page).
  */
-export function routeRedirect({ service, url: raw, chain, homeHosts = [] }: { service: ServiceId; url: string; chain: RedirectChain; homeHosts?: string[] }): 'allow' | 'external' {
+export function routeRedirect({ service, url: raw, chain, homeHosts = [], browsing = false }: { service: ServiceId; url: string; chain: RedirectChain; homeHosts?: string[]; browsing?: boolean }): 'allow' | 'external' {
   let url: URL;
   try {
     url = new URL(raw);
@@ -187,6 +193,7 @@ export function routeRedirect({ service, url: raw, chain, homeHosts = [] }: { se
     return 'external';
   }
   if (url.protocol !== 'https:' && url.protocol !== 'http:') return 'external';
+  if (browsing) return 'allow'; // a link tab follows short links and the like, as a browser would
   if (isSitePage(service, url, homeHosts) || isAuthHost(service, url.hostname)) return 'allow';
   if (service === 'custom' && isHomeHost('custom', url.hostname, homeHosts)) return 'external'; // http: a downgrade
   if (signInFor(service, raw, homeHosts) === true) return 'allow'; // a sign-in that returns to the service
@@ -219,7 +226,7 @@ export function routePopup(service: ServiceId, url: string, currentUrl: string, 
   return 'external';
 }
 
-export function routeLink({ service, url: raw, disposition, currentUrl, signingIn = false, homeHosts = [], popup = false, busySubApps = [] }: LinkInput): LinkDecision {
+export function routeLink({ service, url: raw, disposition, currentUrl, signingIn = false, homeHosts = [], popup = false, busySubApps = [], inApp = false, toBrowser = false, browsing = false }: LinkInput): LinkDecision {
   // MSAL (Outlook, Teams) and many sites open a blank popup, then send it to the sign-in page
   // (every navigation in it is checked: routePopup).
   if ((service === 'microsoft' || service === 'custom' || service === 'notion') && raw === 'about:blank' && disposition === 'new-window') return { kind: 'auth-popup' };
@@ -241,6 +248,9 @@ export function routeLink({ service, url: raw, disposition, currentUrl, signingI
     if (forUs === false || (service === 'custom' && forUs !== true)) return { kind: 'external', url: href };
     return disposition === 'new-window' ? { kind: 'auth-popup' } : { kind: 'stay' };
   }
+
+  // Cmd-click (Ctrl-click): the user asked for the browser.
+  if (toBrowser) return { kind: 'external', url: href };
 
   if (service === 'google' && isHomeHost('google', url.hostname)) {
     if (disposition === 'navigate') return { kind: 'stay' };
@@ -280,8 +290,10 @@ export function routeLink({ service, url: raw, disposition, currentUrl, signingI
     // only while this account is signing in.
     const current = hostOf(currentUrl);
     if (current !== null && signingIn && (isAuthHost(service, current) || !isHomeHost(service, current, homeHosts))) return { kind: 'stay' };
+    // A link tab is a small browser: the site it shows may link anywhere.
+    if (browsing) return { kind: 'stay' };
   }
-  return { kind: 'external', url: href };
+  return inApp ? { kind: 'extra-tab', url: href } : { kind: 'external', url: href };
 }
 
 const SAFE_EXTERNAL_PROTOCOLS = new Set(['https:', 'http:', 'mailto:', 'tel:']);

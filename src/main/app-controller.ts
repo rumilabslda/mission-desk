@@ -81,7 +81,9 @@ import { emailFromGmailTitle, iconCandidates, type PageIdentity } from './avatar
 import { SERVICE_IPC } from '../shared/service-ipc';
 import { backgroundKinds, IDLE_MS, STAGGER_MS, startupPlan, viewPolicy } from './hibernation/policy';
 import { createHibernationScheduler } from './hibernation/scheduler';
-import { isHomeHost } from './accounts/services';
+import { isHomeHost, SERVICES } from './accounts/services';
+import { listChromeProfiles, openInChromeProfile, pickChromeProfile } from './links/chrome-profiles';
+import { type LinkClick, parseLinkClick, wantsBrowser } from './links/click';
 import { chainStep, isNotionSamlHandoff, isSafeExternal, type LinkDecision, type RedirectChain, routeLink, routePopup, routeRedirect, signInFor } from './links/router';
 import { accountIdForShortcut } from './menu/shortcuts';
 import { registerNotificationBridge } from './notifications/bridge';
@@ -152,6 +154,8 @@ export interface AppController {
   dismissMessage(key: string): void;
   clearMessages(): void;
   setMessagePreviews(on: boolean): void;
+  setLinksInApp(on: boolean): void;
+  openTabInBrowser(accountId: string): void;
   setUserName(name: string): void;
   checkForUpdates(): void;
   /** Brings the window forward on Settings → About (where updates are). */
@@ -215,6 +219,7 @@ export interface AppController {
   setSpaceAlwaysOpen(id: string, on: boolean): void;
   setSpaceShareGoogle(id: string, on: boolean): void;
   setSpaceGoogleAccount(id: string, accountId: string): void;
+  setSpaceChromeProfile(id: string, dir: string | null): void;
   ungroupSpace(id: string): void;
   setWeekStart(v: 0 | 1 | 'auto'): void;
   setSpaceMeetings(scope: string, s: SpaceMeetingSettings): void;
@@ -345,6 +350,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     const next = { ...current, ...patch, service: a.service };
     if (JSON.stringify(next) === JSON.stringify(current)) return;
     identities.set(accountId, next);
+    if (next.email !== current.email) push(); // Settings shows which Chrome profile the address matches
     void refreshIcon(a, next);
   }
 
@@ -389,6 +395,16 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     const str = (v: unknown): string | undefined => (typeof v === 'string' && v.length < 2048 ? v : undefined);
     updateIdentity(owner.accountId, { photoUrl: str(payload?.photoUrl), companyIconUrl: str(payload?.companyIconUrl) });
   });
+
+  // The keys held on the last click in a page: Cmd-click (Ctrl-click) opens the link in the browser.
+  const lastClick = new WeakMap<WebContents, LinkClick>();
+  ipcMain.on(SERVICE_IPC.linkClick, (e, raw: unknown) => {
+    if (!registry.accountFor(e.sender.id)) return;
+    const click = parseLinkClick(raw, Date.now());
+    if (click) lastClick.set(e.sender, click);
+  });
+  const linksInApp = (): boolean => store.state().linksInApp !== false;
+  const isLinkTab = (kind: ViewKind): boolean => kind.startsWith('extra:') && linksInApp();
 
   ipcMain.on(SERVICE_IPC.unread, (e, count: unknown) => {
     const owner = registry.accountFor(e.sender.id);
@@ -441,6 +457,8 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
   const unread = createUnreadTracker();
   const hibernated = new Set<string>(); // account ids whose main view is hibernated
   const extras = new Map<string, { kind: `extra:${number}`; title: string }[]>();
+  /** The account shows a tab strip: it has several apps (Google, Microsoft 365…) or a link tab is open beside it. */
+  const showsTabs = (a: Account): boolean => hasTabs(a.service) || (extras.get(a.id)?.length ?? 0) > 0;
   let nextExtra = 1;
 
   const key = (accountId: string, kind: ViewKind): string => `${accountId}|${kind}`;
@@ -462,6 +480,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     registry,
     preloadPath,
     isHomeUrl: (a, url) => isHomeUrl(account(a.id) ?? a, url),
+    hasTabStrip: (a) => showsTabs(account(a.id) ?? a),
     onViewCreated: (a, kind, view) => {
       scheduler.register(key(a.id, kind), viewPolicy(a, kind));
       wireView(a, kind, view);
@@ -536,6 +555,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
   let calendarOpen = false;
   let settingsOpen = false;
   let settingsSection: string | null = null; // the section Settings opens on (e.g. Assistant from the chat)
+  let chromeProfiles = listChromeProfiles(); // read again each time Settings opens (a profile added in Chrome)
   // The first-run setup is on screen. Known from the start, so the first snapshot already says so
   // (no flash of the empty screen before it).
   let setupOpen = needsSetup(store.state());
@@ -827,7 +847,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     orchestrator.onProbe(owner.accountId, owner.kind, { speaking, muted: typeof o.muted === 'boolean' ? o.muted : null });
   });
   const isGoogleAccount = (id: string): boolean => account(id)?.service === 'google';
-  const tabbed = (id: string): boolean => { const a = account(id); return !!a && hasTabs(a.service); };
+  const tabbed = (id: string): boolean => { const a = account(id); return !!a && showsTabs(a); };
   const NOT_ALLOWED = { ok: false, error: 'error' } as const;
   const MEET_ERRORS: Record<WriteError, MessageKey> = {
     'signed-out': 'main.meet.errorSignedOut',
@@ -1741,8 +1761,26 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
   const busySubApps = (accountId: string): SubApp[] =>
     (['calendar', 'drive', 'meet', 'teams'] as const).filter((k) => inCall.has(key(accountId, k)));
 
-  function openExternal(url: string): void {
-    if (isSafeExternal(url)) void shell.openExternal(url);
+  /** The Chrome profile this app's browser links open in (chosen for its space, or matched by email): null for the default browser. */
+  function linkProfile(a: Account): { dir: string; auto: boolean } | null {
+    const s = store.state();
+    const mates = a.spaceId ? s.accounts.filter((x) => x.spaceId === a.spaceId && x.id !== a.id) : [];
+    return pickChromeProfile({
+      profiles: chromeProfiles,
+      manual: a.spaceId ? s.spaces?.find((sp) => sp.id === a.spaceId)?.chromeProfile : undefined,
+      email: identities.get(a.id)?.email,
+      spaceEmails: mates.map((x) => identities.get(x.id)?.email).filter((e): e is string => !!e),
+      hosts: a.service === 'custom' ? homeHostsOf(a) : [],
+    });
+  }
+
+  /** Hands a link to the system; a web link from an app with a Chrome profile opens in that profile. */
+  function openExternal(url: string, accountId?: string): void {
+    if (!isSafeExternal(url)) return;
+    const a = accountId ? account(accountId) : undefined;
+    const profile = a ? linkProfile(a) : null;
+    if (profile && /^https?:/.test(url) && openInChromeProfile(url, profile.dir)) return;
+    void shell.openExternal(url);
   }
 
   /** Acts on a link decision. Returns true if the original navigation may proceed. */
@@ -1752,7 +1790,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       case 'auth-popup':
         return true;
       case 'external':
-        openExternal(decision.url);
+        openExternal(decision.url, a.id);
         return false;
       case 'subapp': {
         const kind = subAppToKind(decision.subApp);
@@ -1772,7 +1810,9 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
     const open = extras.get(a.id) ?? [];
     if (open.length >= MAX_EXTRA_TABS) controller.closeGoogleTab(a.id, open[0].kind); // a page can't open tabs without end
     const kind = `extra:${nextExtra++}` as const;
+    const hadStrip = showsTabs(a);
     extras.set(a.id, [...(extras.get(a.id) ?? []), { kind, title: t('common.loading') }]);
+    if (!hadStrip) viewManager.layout(); // Slack, WhatsApp…: the strip appears with the first link tab
     viewManager.ensure(a, kind, url);
     if (select) controller.selectGoogleTab(a.id, kind);
     else push();
@@ -1791,6 +1831,10 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
         popup: disposition === 'new-window', // window.open with a size: a popup that talks to its opener
         homeHosts: homeHostsOf(current),
         busySubApps: busySubApps(a.id),
+        currentUrl: wc.getURL(),
+        inApp: linksInApp(),
+        toBrowser: wantsBrowser(lastClick.get(wc), disposition, process.platform, Date.now()),
+        browsing: isLinkTab(kind),
       });
       // A blank popup is filled by whoever opened it: only the service's own page may (not an embedded
       // third-party frame, which could draw a fake sign-in in a window with no address bar). A page
@@ -1848,7 +1892,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
         const acct = account(a.id);
         if (acct && routePopup(acct.service, e.url, cwc.getURL(), childSigningIn, homeHostsOf(acct)) === 'stay') return;
         e.preventDefault();
-        if (acct) openExternal(e.url);
+        if (acct) openExternal(e.url, a.id);
         if (!acct || !/^https?:/.test(cwc.getURL())) child.close(); // nothing of the service was ever shown
       };
       cwc.on('will-navigate', check);
@@ -1858,14 +1902,23 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
         if (forUs !== null) childSigningIn = forUs;
       });
       cwc.setWindowOpenHandler(({ url }) => {
-        openExternal(url);
+        openExternal(url, a.id);
         return { action: 'deny' };
       });
     });
     wc.on('will-navigate', (e) => {
       const current = account(a.id);
       if (!current) return;
-      const decision = routeLink({ service: current.service, url: e.url, disposition: 'navigate', currentUrl: wc.getURL(), signingIn: signingIn.get(wc) ?? false, homeHosts: homeHostsOf(current) });
+      const decision = routeLink({
+        service: current.service,
+        url: e.url,
+        disposition: 'navigate',
+        currentUrl: wc.getURL(),
+        signingIn: signingIn.get(wc) ?? false,
+        homeHosts: homeHostsOf(current),
+        inApp: linksInApp(),
+        browsing: isLinkTab(kind),
+      });
       if (!follow(current, decision)) {
         e.preventDefault();
       }
@@ -1891,12 +1944,12 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       if (!details.isMainFrame) return;
       const acct = account(a.id);
       const chain = chains.get(wc) ?? { signIn: false, trusted: false };
-      if (acct && routeRedirect({ service: acct.service, url: details.url, chain, homeHosts: homeHostsOf(acct) }) === 'allow') {
+      if (acct && routeRedirect({ service: acct.service, url: details.url, chain, homeHosts: homeHostsOf(acct), browsing: isLinkTab(kind) }) === 'allow') {
         chains.set(wc, chainStep(acct.service, details.url, chain, homeHostsOf(acct)));
         return;
       }
       details.preventDefault();
-      if (acct && !assistantNavigation.has(wc)) openExternal(details.url); // a page Claude opened goes nowhere outside
+      if (acct && !assistantNavigation.has(wc)) openExternal(details.url, a.id); // a page Claude opened goes nowhere outside
     });
     wc.on('render-process-gone', (_e, details) => {
       if (details.reason === 'clean-exit') return;
@@ -1990,7 +2043,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
   const lastOffsite = new Map<string, string | undefined>();
   function pushIfOffsiteChanged(accountId: string): void {
     const a = account(accountId);
-    if (!a || !hasTabs(a.service)) return;
+    if (!a || !showsTabs(a)) return;
     const cur = viewManager.current();
     const host = offsiteHost(a, cur?.accountId === a.id ? cur.kind : activeKind(a));
     if (lastOffsite.get(a.id) === host) return;
@@ -2000,7 +2053,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
 
   function googleTabs(a: Account): { tabs: GoogleTab[]; active: ViewKind; offsite?: string } {
     const tabs: GoogleTab[] = [
-      ...(SERVICE_TABS[a.service] ?? []).map((t) => ({ id: t.kind, title: t.title })),
+      ...(SERVICE_TABS[a.service] ?? [{ kind: 'main' as const, title: SERVICES[a.service].label }]).map((t) => ({ id: t.kind, title: t.title })),
       ...(extras.get(a.id) ?? []).map((t) => ({ id: t.kind, title: t.title })),
     ];
     const current = viewManager.current();
@@ -2018,7 +2071,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       icon: resolveIcon(a, iconContext),
     }));
     const tabs: UiSnapshot['googleTabs'] = {};
-    for (const a of s.accounts) if (hasTabs(a.service)) tabs[a.id] = googleTabs(a);
+    for (const a of s.accounts) if (showsTabs(a)) tabs[a.id] = googleTabs(a);
     return {
       accounts,
       activeAccountId: s.activeAccountId,
@@ -2032,6 +2085,15 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       openOnToday: s.openOnToday !== false,
       messages: messageViews(homeFeed(), s.homePreviews !== false),
       messagePreviews: s.homePreviews !== false,
+      linksInApp: s.linksInApp !== false,
+      chromeProfiles: chromeProfiles.map(({ dir, name }) => ({ dir, name })),
+      linkProfiles: Object.fromEntries(
+        s.accounts.flatMap((a) => {
+          const p = linkProfile(a);
+          const name = p && chromeProfiles.find((x) => x.dir === p.dir)?.name;
+          return name ? [[a.id, { name, auto: p.auto }]] : [];
+        }),
+      ),
       userName: s.userName ?? '',
       messageSources: [...notified, ...mailAccounts().filter((a) => gmail.working(a.id)).map((a) => a.id)],
       update: { mode: updateMode(process.platform, process.env, app.isPackaged), auto: s.autoUpdate !== false, state: updates.state() },
@@ -2325,8 +2387,8 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
 
     selectGoogleTab(accountId, tab) {
       let a = account(accountId);
-      if (!a || !hasTabs(a.service)) return;
-      if (!tab.startsWith('extra:') && !hasTab(a.service, tab)) return; // e.g. Drive on a Microsoft account
+      if (!a || !showsTabs(a)) return;
+      if (!tab.startsWith('extra:') && !hasTab(a.service, tab) && !(tab === 'main' && !hasTabs(a.service))) return; // e.g. Drive on a Microsoft account
       const firstTeams = tab === 'teams' && !a.teamsInBackground;
       if (firstTeams) a = store.update(accountId, { teamsInBackground: true }); // from now on Teams runs in the background
       const sub = kindToSubApp(tab);
@@ -2342,6 +2404,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       if (!a || !list.some((t) => t.kind === tab)) return;
       const wasShowing = viewManager.current()?.accountId === accountId && viewManager.current()?.kind === tab;
       extras.set(accountId, list.filter((t) => t.kind !== tab));
+      if (!showsTabs(a)) viewManager.layout(); // the last link tab of an app without tabs: the strip goes away
       scheduler.unregister(key(accountId, tab));
       viewManager.close(accountId, tab);
       if (wasShowing) show(a, activeKind(a));
@@ -2847,6 +2910,19 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       push();
     },
 
+    setLinksInApp(on) {
+      store.setLinksInApp(on);
+      push();
+    },
+
+    openTabInBrowser(accountId) {
+      const a = account(accountId);
+      if (!a) return;
+      const cur = viewManager.current();
+      const url = registry.get(a.id, cur?.accountId === a.id ? cur.kind : activeKind(a))?.webContents.getURL() ?? '';
+      if (/^https?:/.test(url)) openExternal(url, a.id);
+    },
+
     setUserName(name) {
       store.setUserName(name);
       push();
@@ -2979,6 +3055,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
 
     openSettings(section) {
       settingsSection = section ?? null;
+      chromeProfiles = listChromeProfiles();
       setupOpen = false;
       settingsOpen = true;
       todayOpen = false;
@@ -3031,6 +3108,12 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
 
     setSpaceGoogleAccount(id, accountId) {
       store.setSpaceGoogleAccount(id, accountId);
+      push();
+    },
+
+    setSpaceChromeProfile(id, dir) {
+      if (dir !== null && !chromeProfiles.some((p) => p.dir === dir)) return; // only a profile Chrome lists
+      store.setSpaceChromeProfile(id, dir);
       push();
     },
 

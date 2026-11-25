@@ -24,6 +24,8 @@ export const settings = {
   'settings.general.name': 'Your name',
   'settings.general.namePlaceholder': 'How you’d like to be called',
   'settings.general.nameHint': 'Home greets you with it, and the assistant and your meetings know who you are. Optional.',
+  'settings.general.linksInApp': "Open links inside Mission Desk",
+  'settings.general.linksInAppHint': "A link to another website opens as a tab next to the app it came from. ⌘-click (Ctrl-click on Windows and Linux) opens it in your browser.",
   'settings.general.previewsHint':
     'Home lists new chats and emails. Turn this off to hide the text: only the sender or conversation shows. Nothing is saved; the list clears when Mission Desk quits.',
   'settings.general.sidebarStyle': 'Sidebar style',
@@ -72,6 +74,13 @@ export const settings = {
   'settings.space.shareGoogle': 'Share Google sign-in',
   'settings.space.shareGoogleHint': "Sign in to Google once; the space's other apps (e.g. Slack) reuse it. WhatsApp is never touched.",
   'settings.space.googleFrom': 'Google sign-in from',
+  'settings.space.chromeProfile': "Browser links open in",
+  'settings.space.chromeProfileDefault': "Automatic",
+  'settings.space.chromeProfileOption': "Chrome – {name}",
+  'settings.space.chromeProfileHint': "Automatic uses the Chrome profile signed in to the same email as an app, or as a Gmail account in this space. Links you ⌘-click open there.",
+  'settings.links.label': "Browser links",
+  'settings.links.defaultBrowser': "Default browser",
+  'settings.links.auto': "{target} (automatic)",
 
   // Calendar
   'settings.calendar.intro': "Accounts shown in All calendars (⌘0). It shows the calendars you have ticked in each account's Google Calendar.",

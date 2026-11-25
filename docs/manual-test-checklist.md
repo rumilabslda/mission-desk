@@ -33,7 +33,11 @@ Run with your real accounts before adopting a new version. Tick each line.
 ## Google tabs and links
 - [ ] Gmail, Calendar, Drive and Meet tabs work for each Google account.
 - [ ] A Docs link in account A's email opens in a tab signed in as A; the same for account B.
-- [ ] An external link in an email opens in the default browser.
+- [ ] An external link in an email opens as a tab next to Gmail; ⌘-click opens it in the browser instead.
+- [ ] A link in Slack opens as a tab next to Slack (the tab strip appears); closing the last link tab hides the strip.
+- [ ] Inside a link tab, clicking around the site stays in the tab; clicking the orange address opens the page in the browser.
+- [ ] Settings → General → Open links inside Mission Desk off: links go to the browser as before.
+- [ ] Settings → Spaces shows each app's Chrome profile; ⌘-click opens that profile (Automatic and one chosen by hand).
 - [ ] The selected tab per account is remembered after a restart.
 
 ## Calls

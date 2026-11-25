@@ -71,4 +71,5 @@ export const app = {
   'app.tab.close': 'Close {title}',
   'app.tab.offsite': 'This page is on {host}, outside {app}',
   'app.tab.offsiteNoName': 'This page is on {host}, outside the app',
+  'app.tab.openInBrowser': "Click to open it in your browser.",
 } satisfies Record<string, Msg>;

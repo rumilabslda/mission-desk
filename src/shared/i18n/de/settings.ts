@@ -25,6 +25,8 @@ export const settings: Translation<typeof en> = {
   'settings.general.name': 'Ihr Name',
   'settings.general.namePlaceholder': 'Wie Sie genannt werden möchten',
   'settings.general.nameHint': 'Die Startseite begrüßt Sie damit, und der Assistent und Ihre Meetings wissen, wer Sie sind. Optional.',
+  'settings.general.linksInApp': "Links in Mission Desk öffnen",
+  'settings.general.linksInAppHint': "Ein Link zu einer anderen Website öffnet sich als Tab neben der App, aus der er kommt. ⌘-Klick (Strg-Klick unter Windows und Linux) öffnet ihn im Browser.",
   'settings.general.previewsHint':
     'Start listet neue Chats und E-Mails auf. Deaktiviere diese Option, um den Text auszublenden: Dann erscheinen nur Absender oder Unterhaltung. Nichts wird gespeichert; die Liste wird geleert, wenn Mission Desk beendet wird.',
   'settings.general.sidebarStyle': 'Stil der Seitenleiste',
@@ -73,6 +75,13 @@ export const settings: Translation<typeof en> = {
   'settings.space.shareGoogle': 'Google-Anmeldung teilen',
   'settings.space.shareGoogleHint': 'Melde dich einmal bei Google an; die anderen Apps des Bereichs (z. B. Slack) verwenden die Anmeldung mit. WhatsApp bleibt unberührt.',
   'settings.space.googleFrom': 'Google-Anmeldung von',
+  'settings.space.chromeProfile': "Browser-Links öffnen in",
+  'settings.space.chromeProfileDefault': "Automatisch",
+  'settings.space.chromeProfileOption': "Chrome – {name}",
+  'settings.space.chromeProfileHint': "Automatisch nimmt das Chrome-Profil, das mit derselben E-Mail-Adresse angemeldet ist wie eine App oder ein Gmail-Konto in diesem Bereich. Links mit ⌘-Klick öffnen sich dort.",
+  'settings.links.label': "Browser-Links",
+  'settings.links.defaultBrowser': "Standardbrowser",
+  'settings.links.auto': "{target} (automatisch)",
 
   // Calendar
   'settings.calendar.intro': 'Konten, die in „Alle Kalender“ (⌘0) angezeigt werden. Es zeigt die Kalender, die du in Google Kalender des jeweiligen Kontos markiert hast.',

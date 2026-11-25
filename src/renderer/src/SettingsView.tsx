@@ -159,6 +159,12 @@ function AccountCard({ a, snap }: { a: AccountView; snap: UiSnapshot }): React.J
             </option>
           ))}
         </select>
+        {snap.chromeProfiles.length > 0 && (
+          <>
+            <span className="set-label">{t('settings.links.label')}</span>
+            <span className="set-links-value">{linksTarget(snap, a.id)}</span>
+          </>
+        )}
         <span className="set-label">{t('settings.account.icon')}</span>
         <select
           className="set-select"
@@ -203,6 +209,14 @@ function AccountCard({ a, snap }: { a: AccountView; snap: UiSnapshot }): React.J
       </div>
     </div>
   );
+}
+
+/** Where an app's browser links open: its Chrome profile (chosen, or matched by email) or the default browser. */
+function linksTarget(snap: UiSnapshot, accountId: string): string {
+  const p = snap.linkProfiles[accountId];
+  if (!p) return t('settings.links.defaultBrowser');
+  const target = t('settings.space.chromeProfileOption', { name: p.name });
+  return p.auto ? t('settings.links.auto', { target }) : target;
 }
 
 function SpaceCard({ sp, snap }: { sp: Space; snap: UiSnapshot }): React.JSX.Element {
@@ -251,6 +265,36 @@ function SpaceCard({ sp, snap }: { sp: Space; snap: UiSnapshot }): React.JSX.Ele
             ))}
           </select>
         </div>
+      )}
+      {snap.chromeProfiles.length > 0 && (
+        <>
+          <div className="set-grid">
+            <span className="set-label">{t('settings.space.chromeProfile')}</span>
+            <select
+              className="set-select"
+              value={sp.chromeProfile ?? ''}
+              onChange={(e) => window.missiondesk.setSpaceChromeProfile(sp.id, e.target.value || null)}
+            >
+              <option value="">{t('settings.space.chromeProfileDefault')}</option>
+              {snap.chromeProfiles.map((p) => (
+                <option key={p.dir} value={p.dir}>
+                  {t('settings.space.chromeProfileOption', { name: p.name })}
+                </option>
+              ))}
+            </select>
+          </div>
+          {!sp.chromeProfile && members.length > 0 && (
+            <ul className="set-links">
+              {members.map((m) => (
+                <li key={m.id}>
+                  <span>{m.name}</span>
+                  <span>→ {linksTarget(snap, m.id)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="set-muted">{t('settings.space.chromeProfileHint')}</p>
+        </>
       )}
     </div>
   );
@@ -309,6 +353,12 @@ export function SettingsView({ snapshot: snap }: { snapshot: UiSnapshot }): Reac
                 onChange={(v) => window.missiondesk.setMessagePreviews(v)}
                 label={t('settings.general.previews')}
                 hint={t('settings.general.previewsHint')}
+              />
+              <Toggle
+                checked={snap.linksInApp}
+                onChange={(v) => window.missiondesk.setLinksInApp(v)}
+                label={t('settings.general.linksInApp')}
+                hint={t('settings.general.linksInAppHint')}
               />
             </div>
             <h3>{t('settings.general.name')}</h3>

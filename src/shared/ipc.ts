@@ -40,6 +40,12 @@ export interface UiSnapshot {
   messages: MessageView[];
   /** Show the start of each message on Home (Settings → General). */
   messagePreviews: boolean;
+  /** Links to other sites open as tabs beside the app (Settings → General). */
+  linksInApp: boolean;
+  /** Chrome's profiles on this Mac, for a space's "Open links in" choice (empty without Chrome, or off a Mac). */
+  chromeProfiles: { dir: string; name: string }[];
+  /** Per account: the Chrome profile its browser links open in (auto: matched by email, not chosen). Absent: the default browser. */
+  linkProfiles: Record<string, { name: string; auto: boolean }>;
   /** The user's name ('' when none). */
   userName: string;
   /** Accounts that sent a notification this session (their apps' notifications are on). */
@@ -212,6 +218,9 @@ export interface UiApi {
   dismissMessage(key: string): void;
   clearMessages(): void;
   setMessagePreviews(on: boolean): void;
+  setLinksInApp(on: boolean): void;
+  /** The page on screen in this account goes to the browser (the space's Chrome profile, if it has one). */
+  openTabInBrowser(accountId: string): void;
   /** The user's name ('' forgets it). */
   setUserName(name: string): void;
   checkForUpdates(): void;
@@ -306,6 +315,8 @@ export interface UiApi {
   setSpaceAlwaysOpen(id: string, on: boolean): void;
   setSpaceShareGoogle(id: string, on: boolean): void;
   setSpaceGoogleAccount(id: string, accountId: string): void;
+  /** null: the default browser. */
+  setSpaceChromeProfile(id: string, dir: string | null): void;
   ungroupSpace(id: string): void;
   setSidebarStyle(style: SidebarStyle): void;
   setWeekStart(v: 0 | 1 | 'auto'): void;
@@ -428,6 +439,8 @@ export const IPC = {
   dismissMessage: 'ui:dismiss-message',
   clearMessages: 'ui:clear-messages',
   setMessagePreviews: 'ui:set-message-previews',
+  setLinksInApp: 'ui:set-links-in-app',
+  openTabInBrowser: 'ui:open-tab-in-browser',
   setUserName: 'ui:set-user-name',
   checkForUpdates: 'ui:check-for-updates',
   installUpdate: 'ui:install-update',
@@ -488,6 +501,7 @@ export const IPC = {
   setSpaceAlwaysOpen: 'ui:set-space-always-open',
   setSpaceShareGoogle: 'ui:set-space-share-google',
   setSpaceGoogleAccount: 'ui:set-space-google-account',
+  setSpaceChromeProfile: 'ui:set-space-chrome-profile',
   ungroupSpace: 'ui:ungroup-space',
   setSidebarStyle: 'ui:set-sidebar-style',
   setWeekStart: 'ui:set-week-start',

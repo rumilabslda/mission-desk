@@ -25,6 +25,8 @@ export const settings: Translation<typeof en> = {
   'settings.general.name': 'Seu nome',
   'settings.general.namePlaceholder': 'Como você quer ser chamado',
   'settings.general.nameHint': 'O Início cumprimenta você com ele, e o assistente e as reuniões sabem quem você é. Opcional.',
+  'settings.general.linksInApp': "Abrir links dentro do Mission Desk",
+  'settings.general.linksInAppHint': "Um link para outro site abre em uma aba ao lado do app de onde veio. ⌘-clique (Ctrl-clique no Windows e Linux) abre no seu navegador.",
   'settings.general.previewsHint':
     'O Início lista novas conversas e e-mails. Desative para ocultar o texto: só aparece o remetente ou a conversa. Nada é salvo; a lista é apagada quando o Mission Desk é encerrado.',
   'settings.general.sidebarStyle': 'Estilo da barra lateral',
@@ -73,6 +75,13 @@ export const settings: Translation<typeof en> = {
   'settings.space.shareGoogle': 'Compartilhar login do Google',
   'settings.space.shareGoogleHint': 'Faça login no Google uma vez; os outros apps do espaço (ex.: Slack) reaproveitam esse login. O WhatsApp nunca é afetado.',
   'settings.space.googleFrom': 'Login do Google de',
+  'settings.space.chromeProfile': "Links do navegador abrem em",
+  'settings.space.chromeProfileDefault': "Automático",
+  'settings.space.chromeProfileOption': "Chrome – {name}",
+  'settings.space.chromeProfileHint': "Automático usa o perfil do Chrome conectado ao mesmo e-mail de um app, ou de uma conta do Gmail deste espaço. Links abertos com ⌘-clique abrem ali.",
+  'settings.links.label': "Links do navegador",
+  'settings.links.defaultBrowser': "Navegador padrão",
+  'settings.links.auto': "{target} (automático)",
 
   // Calendar
   'settings.calendar.intro': 'Contas mostradas em Todos os calendários (⌘0). Aparecem os calendários que você marcou no Google Agenda de cada conta.',

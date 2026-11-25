@@ -25,6 +25,8 @@ export const settings: Translation<typeof en> = {
   'settings.general.name': 'Je naam',
   'settings.general.namePlaceholder': 'Hoe je genoemd wilt worden',
   'settings.general.nameHint': 'Start begroet je ermee, en de assistent en je vergaderingen weten wie je bent. Optioneel.',
+  'settings.general.linksInApp': "Links openen in Mission Desk",
+  'settings.general.linksInAppHint': "Een link naar een andere website opent als tabblad naast de app waar hij vandaan komt. ⌘-klik (Ctrl-klik op Windows en Linux) opent hem in je browser.",
   'settings.general.previewsHint':
     'Start toont nieuwe chats en e-mails. Zet dit uit om de tekst te verbergen: alleen de afzender of het gesprek is zichtbaar. Er wordt niets bewaard; de lijst wordt gewist wanneer Mission Desk stopt.',
   'settings.general.sidebarStyle': 'Stijl van navigatiekolom',
@@ -73,6 +75,13 @@ export const settings: Translation<typeof en> = {
   'settings.space.shareGoogle': 'Deel Google-login',
   'settings.space.shareGoogleHint': 'Log één keer in bij Google; de andere apps in de ruimte (bv. Slack) gebruiken die login opnieuw. WhatsApp wordt nooit aangeraakt.',
   'settings.space.googleFrom': 'Google-login van',
+  'settings.space.chromeProfile': "Browserlinks openen in",
+  'settings.space.chromeProfileDefault': "Automatisch",
+  'settings.space.chromeProfileOption': "Chrome – {name}",
+  'settings.space.chromeProfileHint': "Automatisch kiest het Chrome-profiel dat is ingelogd met hetzelfde e-mailadres als een app, of als een Gmail-account in deze ruimte. Links met ⌘-klik openen daar.",
+  'settings.links.label': "Browserlinks",
+  'settings.links.defaultBrowser': "Standaardbrowser",
+  'settings.links.auto': "{target} (automatisch)",
 
   // Calendar
   'settings.calendar.intro': 'Accounts die in Alle agenda’s (⌘0) staan. Je ziet de agenda’s die je in Google Agenda van elk account hebt aangevinkt.',

@@ -40,6 +40,8 @@ export interface Store {
   setSpaceShareGoogle(id: string, on: boolean): void;
   /** Which Google account in the space shares its sign-in (must be a Google member). */
   setSpaceGoogleAccount(id: string, accountId: string): void;
+  setSpaceChromeProfile(id: string, dir: string | null): void;
+  setLinksInApp(on: boolean): void;
   ungroup(id: string): void;
   moveToSpace(accountId: string, spaceId: string | null): void;
   /** Applies a sidebar drop; returns the accounts to group when a new space must be named first. */
@@ -302,6 +304,25 @@ export function createStore(filePath: string): Store {
     setOpenOnToday(on) {
       const { openOnToday: _drop, ...rest } = state;
       state = on ? rest : { ...rest, openOnToday: false };
+      save();
+    },
+
+    setLinksInApp(on) {
+      const { linksInApp: _drop, ...rest } = state;
+      state = on ? rest : { ...rest, linksInApp: false };
+      save();
+    },
+
+    setSpaceChromeProfile(id, dir) {
+      if (!state.spaces?.some((s) => s.id === id)) return;
+      state = {
+        ...state,
+        spaces: state.spaces.map((s) => {
+          if (s.id !== id) return s;
+          const { chromeProfile: _drop, ...rest } = s;
+          return dir ? { ...rest, chromeProfile: dir } : rest;
+        }),
+      };
       save();
     },
 
