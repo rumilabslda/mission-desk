@@ -11,7 +11,7 @@ const accounts: Record<string, Account> = {
   own: acct({ id: 'own', iconMode: 'custom' }),
   chain: acct({ id: 'chain', iconMode: 'account', iconSourceAccountId: 'globex' }),
 };
-const ctx = { image: (key: string) => images[key] ?? null, account: (id: string) => accounts[id] };
+const ctx = { image: (key: string) => images[key] ?? null, account: (id: string) => accounts[id], accounts: () => Object.values(accounts) };
 
 test('automatic: the fetched logo or photo', () => {
   expect(resolveIcon(acct(), ctx)).toEqual({ kind: 'image', src: 'data:a' });
@@ -19,6 +19,19 @@ test('automatic: the fetched logo or photo', () => {
 test('automatic without an image: WhatsApp shows its logo, others the letter', () => {
   expect(resolveIcon(acct({ id: 'w', service: 'whatsapp' }), ctx)).toEqual({ kind: 'service' });
   expect(resolveIcon(acct({ id: 's', service: 'slack' }), ctx)).toEqual({ kind: 'letter' });
+});
+test("automatic for an app Mission Desk reads no photo from (LinkedIn, Telegram…): its logo, not a bare letter", () => {
+  expect(resolveIcon(acct({ id: 'li', service: 'linkedin' }), ctx)).toEqual({ kind: 'service' });
+  expect(resolveIcon(acct({ id: 't', service: 'telegram' }), ctx)).toEqual({ kind: 'service' });
+  expect(resolveIcon(acct({ id: 'm', service: 'microsoft' }), ctx)).toEqual({ kind: 'service' });
+});
+test('…but with two of the same app, the letter and colour tell them apart', () => {
+  const two = [acct({ id: 'li1', service: 'linkedin' }), acct({ id: 'li2', service: 'linkedin' })];
+  const ctx2 = { ...ctx, accounts: () => [...Object.values(accounts), ...two] };
+  expect(resolveIcon(two[0], ctx2)).toEqual({ kind: 'letter' });
+});
+test('automatic for a website without an icon: the letter (there is no logo to show)', () => {
+  expect(resolveIcon(acct({ id: 'c', service: 'custom' }), ctx)).toEqual({ kind: 'letter' });
 });
 test('letter and service logo are always honoured', () => {
   expect(resolveIcon(acct({ iconMode: 'letter' }), ctx)).toEqual({ kind: 'letter' });

@@ -37,7 +37,12 @@ const IMAGE_RULES: Record<ServiceId, Rule[]> = {
   custom: [], // a custom app's icon is its site's favicon (iconCandidates)
 };
 
-const GOOGLE_PHOTO = /^https:\/\/lh\d\.google(usercontent)?\.com\//;
+/** Whether Mission Desk ever reads a photo or logo from this service's pages. */
+export function readsPhoto(service: ServiceId): boolean {
+  return IMAGE_RULES[service].length > 0;
+}
+
+const GOOGLE_PHOTO =/^https:\/\/lh\d\.google(usercontent)?\.com\//;
 
 /** The account button holds a decorative ring and the photo; take the photo. */
 export function pickGooglePhoto(srcs: string[]): string | undefined {

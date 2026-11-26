@@ -372,6 +372,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
   const iconContext = {
     image: (key: string) => avatars.get(key)?.dataUrl ?? null,
     account,
+    accounts: () => store.state().accounts,
   };
 
   async function chooseCustomImage(a: Account): Promise<void> {
