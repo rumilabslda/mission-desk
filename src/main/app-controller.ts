@@ -84,6 +84,7 @@ import { createHibernationScheduler } from './hibernation/scheduler';
 import { isHomeHost, SERVICES } from './accounts/services';
 import { listChromeProfiles, openInChromeProfile, pickChromeProfile } from './links/chrome-profiles';
 import { type LinkClick, parseLinkClick, wantsBrowser } from './links/click';
+import { signInPopupOptions } from './links/popup';
 import { chainStep, isNotionSamlHandoff, isSafeExternal, type LinkDecision, type RedirectChain, routeLink, routePopup, routeRedirect, signInFor } from './links/router';
 import { accountIdForShortcut } from './menu/shortcuts';
 import { registerNotificationBridge } from './notifications/bridge';
@@ -1843,12 +1844,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       if (decision.kind === 'auth-popup') {
         return {
           action: 'allow',
-          overrideBrowserWindowOptions: {
-            width: 520,
-            height: 680,
-            parent: win,
-            webPreferences: { session: accountSession(a.id, a.service), contextIsolation: true, sandbox: true },
-          },
+          overrideBrowserWindowOptions: signInPopupOptions(win, accountSession(a.id, a.service)),
         };
       }
       follow(current, decision);
