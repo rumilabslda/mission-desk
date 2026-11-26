@@ -2,8 +2,11 @@ import type { MeetingProviderId } from '../../shared/meeting';
 import { meetingKey } from '../../shared/meeting-detect';
 import type { ViewKind } from '../../shared/types';
 
-/** How long a meeting that seems over is kept, so a reload or a quick rejoin continues it. */
-export const END_HOLD = 120_000;
+/**
+ * How long a meeting that seems over is kept: hanging up ends it almost at once, while a reload of
+ * the meeting page (its call stops and comes back) still continues the same meeting.
+ */
+export const END_HOLD = 10_000;
 
 interface Started {
   accountId: string;
@@ -84,6 +87,16 @@ export function createDetector(deps: {
       v.inCall = false;
       v.url = '';
       evaluate(accountId, kind);
+    },
+    /**
+     * Mission Desk closed the view (the user closed its tab): its meeting ends now, no hold. The page
+     * dies without reporting its call over, and its 'destroyed' never reaches onViewGone.
+     */
+    viewClosed(accountId: string, kind: ViewKind): void {
+      const v = view(accountId, kind);
+      v.inCall = false;
+      v.url = '';
+      end(accountId, kind, v);
     },
   };
 }

@@ -2404,6 +2404,7 @@ export function createAppController({ win, store, preloadPath, uiPreloadPath }: 
       if (!showsTabs(a)) viewManager.layout(); // the last link tab of an app without tabs: the strip goes away
       scheduler.unregister(key(accountId, tab));
       viewManager.close(accountId, tab);
+      if (meetingsOn) detector.viewClosed(accountId, tab); // a meeting in it ends with the tab
       if (wasShowing) show(a, activeKind(a));
       else push();
     },

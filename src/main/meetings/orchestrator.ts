@@ -30,7 +30,7 @@ interface Live {
   startMs: number;
   paused: boolean;
   pausedAt: number;
-  /** The call itself stopped (hung up, in the 2-minute hold): nothing is transcribed until it's back. */
+  /** The call itself stopped (hung up, in the detector's 10-second hold): nothing is transcribed until it's back. */
   held: boolean;
   heldAt: number;
   engine: EngineId;

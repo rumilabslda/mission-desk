@@ -37,7 +37,7 @@ function setup() {
     onStart: (m) => events.push(`start ${m.accountId}/${m.kind} ${m.key}`),
     onEnd: (acc, kind, key) => events.push(`end ${acc}/${kind} ${key}`),
     setTimer: (fn, ms) => {
-      expect(ms).toBe(120_000);
+      expect(ms).toBe(10_000);
       timers.set(next, fn);
       return next++;
     },
@@ -66,7 +66,7 @@ test('a meeting starts with a call on a meeting page, in either order', () => {
   expect(b.events).toEqual(['start g1/meet meet:abc-defg-hij']);
 });
 
-test('a reload or a rejoin within 2 minutes continues the same meeting', () => {
+test('a reload that brings the call back within 10 seconds continues the same meeting', () => {
   const { d, events, fire, timers } = setup();
   d.callChanged('g1', 'meet', true, MEET);
   d.callChanged('g1', 'meet', false, MEET);
@@ -77,7 +77,7 @@ test('a reload or a rejoin within 2 minutes continues the same meeting', () => {
   expect(events).toEqual(['start g1/meet meet:abc-defg-hij']);
 });
 
-test('leaving ends the meeting after the 2-minute hold', () => {
+test('leaving ends the meeting after the 10-second hold', () => {
   const { d, events, fire } = setup();
   d.callChanged('g1', 'meet', true, MEET);
   d.urlChanged('g1', 'meet', 'https://meet.google.com/landing');
@@ -93,7 +93,7 @@ test('another meeting ends the first at once and starts the second', () => {
   expect(events).toEqual(['start g1/meet meet:abc-defg-hij', 'end g1/meet meet:abc-defg-hij', 'start g1/meet meet:xyz-abcd-efg']);
 });
 
-test('a view that goes away is held the same 2 minutes', () => {
+test('a view that goes away is held the same 10 seconds', () => {
   const { d, events, fire, timers } = setup();
   d.callChanged('g1', 'meet', true, MEET);
   d.viewGone('g1', 'meet');
@@ -101,6 +101,26 @@ test('a view that goes away is held the same 2 minutes', () => {
   expect(events).toHaveLength(1);
   fire();
   expect(events.at(-1)).toBe('end g1/meet meet:abc-defg-hij');
+});
+
+test('a tab the user closes ends its meeting at once, with no hold', () => {
+  const { d, events, timers } = setup();
+  d.callChanged('g1', 'extra:1', true, MEET);
+  d.viewClosed('g1', 'extra:1');
+  expect(timers.size).toBe(0);
+  expect(events).toEqual(['start g1/extra:1 meet:abc-defg-hij', 'end g1/extra:1 meet:abc-defg-hij']);
+  d.viewClosed('g1', 'extra:1'); // nothing left to end
+  expect(events).toHaveLength(2);
+});
+
+test('closing a tab cancels a hold already running', () => {
+  const { d, events, timers } = setup();
+  d.callChanged('g1', 'extra:1', true, MEET);
+  d.callChanged('g1', 'extra:1', false, MEET);
+  expect(timers.size).toBe(1);
+  d.viewClosed('g1', 'extra:1');
+  expect(timers.size).toBe(0);
+  expect(events.at(-1)).toBe('end g1/extra:1 meet:abc-defg-hij');
 });
 
 import { matchEvent } from '../src/shared/meeting-detect';
