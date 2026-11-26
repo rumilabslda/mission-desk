@@ -774,6 +774,10 @@ html.space-panel-page, html.space-panel-page body { background: transparent; }
 .cal-editor-grid { display: grid; grid-template-columns: 96px 1fr; gap: 10px 12px; align-items: center; font-size: 13px; }
 .cal-editor-grid > span { color: var(--text-muted); }
 .cal-editor textarea { resize: vertical; }
+/* Scoped under the dialog so they outrank `.cal button`'s reset and `.dialog label`'s column layout (the editor renders inside .cal). */
+.cal-editor .actions .primary { background: var(--accent); color: #fff; border: 0; border-radius: 8px; padding: 8px 16px; font-weight: 600; }
+.dialog .cal-check-row { flex-direction: row; font-weight: 400; }
+.dialog .cal-check-row input { width: auto; padding: 0; margin: 0; }
 .cal-when { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .cal-guests { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; border: 1px solid var(--border); border-radius: 6px; padding: 4px; }
 .cal-guests input { border: 0 !important; flex: 1; min-width: 160px; }
