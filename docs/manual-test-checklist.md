@@ -85,6 +85,8 @@ Run with your real accounts before adopting a new version. Tick each line.
 
 ## Shared Google sign-in (spaces)
 - [ ] A space with a signed-in Gmail and a Slack: Slack's "Sign in with Google" shows the account chooser, not a password prompt.
+- [ ] Add LinkedIn to a space whose Gmail is signed in: LinkedIn's "Sign in with Google" finds Google already signed in (account chooser or one click, no password). Same for Zoom and Notion.
+- [ ] An "Any website" app in the space does not get the space's Google sign-in (its "Sign in with Google" asks for the email).
 - [ ] Signing out of Google in the space's Gmail: Slack's Google sign-in asks for the email again.
 - [ ] Moving the Slack out of the space: its Google sign-in asks for the email again; its own Slack session stays.
 - [ ] Two Google accounts in one space: "Google sign-in from" switches which one is shared; the other's Gmail stays signed in as itself.

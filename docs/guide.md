@@ -57,7 +57,7 @@ On a Mac with Touch ID, an app can sign in with a passkey instead of a password.
 
 ### Shared Google sign-in
 
-A space signs in to Google once for all its apps. When Gmail in the space is signed in, the space's Slack (and any app that offers "Sign in with Google") finds Google already signed in, so it's one click, with no password or phone.
+A space signs in to Google once for all its apps. When Gmail in the space is signed in, the space's Slack, LinkedIn, Zoom and Notion find Google already signed in at "Sign in with Google", so it's one click, with no password or phone. Apps added with "Any website" don't get it: any site would see the space's Google account.
 
 - Only Google's sign-in cookies are shared, and only between apps in the same space. Each app keeps its own session, and WhatsApp is never touched.
 - With two Google accounts in a space, right-click the space → **Google sign-in from** to choose which one is shared.

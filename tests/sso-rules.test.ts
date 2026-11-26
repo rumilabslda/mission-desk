@@ -40,6 +40,21 @@ describe('ssoGroups', () => {
     expect(ssoGroups([acc('g1', 'google', 'S'), acc('s1', 'slack', 'S')], [space('S', { shareGoogle: false })])).toEqual([]);
   });
 
+  test.each(['linkedin', 'zoom', 'notion'] as const)('%s ("Sign in with Google") joins the space\'s Google sign-in', (service) => {
+    expect(ssoGroups([acc('g1', 'google', 'S'), acc('x', service, 'S')], [space('S')])).toEqual([
+      { spaceId: 'S', identityId: 'g1', members: ['g1', 'x'] },
+    ]);
+  });
+
+  test('an app added later to a space with Gmail and Slack joins the same group', () => {
+    const before = [acc('g1', 'google', 'S'), acc('s1', 'slack', 'S')];
+    expect(ssoGroups([...before, acc('li', 'linkedin', 'S')], [space('S')])[0].members).toEqual(['g1', 's1', 'li']);
+  });
+
+  test.each(['whatsapp', 'telegram', 'discord', 'proton', 'icloud', 'fastmail', 'microsoft', 'custom'] as const)('%s never joins', (service) => {
+    expect(ssoGroups([acc('g1', 'google', 'S'), acc('x', service, 'S')], [space('S')])).toEqual([]);
+  });
+
   test('WhatsApp never joins', () => {
     expect(ssoGroups([acc('g1', 'google', 'S'), acc('w', 'whatsapp', 'S')], [space('S')])).toEqual([]);
     expect(ssoGroups([acc('g1', 'google', 'S'), acc('w', 'whatsapp', 'S'), acc('s', 'slack', 'S')], [space('S')])[0].members).toEqual(['g1', 's']);
