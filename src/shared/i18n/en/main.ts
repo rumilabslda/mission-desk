@@ -176,4 +176,9 @@ export const main = {
   'main.about.licenseSummary':
     'Free and open source. Anyone, people and companies alike, may use it for anything, including work, and change and share it. Whoever shares Mission Desk or a changed version must share its source code under the same license, so it can never become a closed product.',
   'main.space.memory': 'Memory…',
+  // Passkeys: the Touch ID prompt (macOS writes "Mission Desk" is trying to …; $1 is the site) and the account chooser.
+  'main.passkey.promptReason': 'sign in to $1 with a passkey',
+  'main.passkey.chooseTitle': 'Which account do you want to use on {site}?',
+  'main.passkey.chooseDetail': 'Passkeys saved in Mission Desk on this Mac.',
+  'main.passkey.account': 'Account',
 } satisfies Record<string, Msg>;

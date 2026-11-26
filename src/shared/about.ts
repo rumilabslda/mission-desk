@@ -8,6 +8,8 @@ export const APP_NAME = 'Mission Desk';
  * Installed copies only accept an update with the same id. Never change it.
  */
 export const APP_ID = 'pt.rumilabs.missiondesk';
+/** The Apple Developer team that signs the Mac app (Developer ID Application: RUMI LABS, LDA). */
+export const APPLE_TEAM_ID = 'WY943M5DF7';
 export const COMPANY = 'Rumi Labs, Lda.';
 export const COPYRIGHT = `© 2026 ${COMPANY}`;
 /** Mission Desk's own website: downloads, features, questions. */

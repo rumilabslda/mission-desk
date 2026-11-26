@@ -25,7 +25,10 @@ mac:
   hardenedRuntime: true
   gatekeeperAssess: false
   entitlements: build/entitlements.mac.plist
-  entitlementsInherit: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.inherit.plist
+  # Developer ID provisioning profile for pt.rumilabs.missiondesk: it allows the keychain entitlement
+  # passkeys need (docs/RELEASING.md, "Passkeys"). Signing fails without it rather than shipping an app that won't open.
+  provisioningProfile: build/Mission_Desk_Developer_ID.provisionprofile
   # The on-device transcription helper (scripts/build-transcriber.sh); signed with the app.
   extraResources:
     - from: build/bin/md-transcriber

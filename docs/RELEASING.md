@@ -27,6 +27,19 @@ macOS opens apps from outside the App Store without warnings only if they are si
 
 Secrets are added in GitHub under **Settings → Secrets and variables → Actions**. Never commit them.
 
+### 3. The provisioning profile (passkeys)
+
+Mission Desk keeps passkeys in the Mac's keychain (`src/main/passkeys`). The keychain entitlement in `build/entitlements.mac.plist` is allowed only by a provisioning profile embedded in the app. A signed build without it doesn't open at all, so `npm run dist:mac` and the Release workflow stop with an error instead. An Admin or the Account Holder makes it once:
+
+1. At [developer.apple.com/account/resources/identifiers](https://developer.apple.com/account/resources/identifiers), click **+** → **App IDs** → **App**. Description *Mission Desk*, **Explicit** Bundle ID `pt.rumilabs.missiondesk`. No capabilities are needed. Register it (skip if it already exists).
+2. At [Profiles](https://developer.apple.com/account/resources/profiles/list), click **+** → **Developer ID** (under Distribution) → the App ID above → the Developer ID Application certificate. Name it *Mission Desk Developer ID* and download it.
+3. Save it as `build/Mission_Desk_Developer_ID.provisionprofile` and commit it. A profile holds no secret: only the App ID, the team and the certificate's public part.
+4. Check: `security cms -D -i build/Mission_Desk_Developer_ID.provisionprofile | grep -A3 keychain-access-groups` should show `WY943M5DF7.*`.
+
+The profile expires with the certificate (Apple shows the date). Renew both together and commit the new profile.
+
+The passkeys are on only in a build that carries the profile. `npm run dev` and the unsigned `npm run dist` leave them off: sites then don't offer a passkey and ask for the password.
+
 ### Windows and Linux
 
 Windows and Linux builds are not signed for now. Windows shows "Windows protected your PC" the first time; users choose **More info → Run anyway**. To sign later, add a code-signing certificate (for example Azure Trusted Signing) to the Release workflow.

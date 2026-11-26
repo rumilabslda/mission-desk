@@ -12,5 +12,16 @@
   <true/>
   <key>com.apple.security.device.audio-input</key>
   <true/>
+  <!-- Passkeys (src/main/passkeys): Mission Desk keeps them in this keychain group, unlocked with
+       Touch ID. These three are allowed only by the provisioning profile embedded in the app
+       (build/Mission_Desk_Developer_ID.provisionprofile, docs/RELEASING.md); a signed build without it won't open. -->
+  <key>com.apple.application-identifier</key>
+  <string>WY943M5DF7.pt.rumilabs.missiondesk</string>
+  <key>com.apple.developer.team-identifier</key>
+  <string>WY943M5DF7</string>
+  <key>keychain-access-groups</key>
+  <array>
+    <string>WY943M5DF7.pt.rumilabs.missiondesk.webauthn</string>
+  </array>
 </dict>
 </plist>

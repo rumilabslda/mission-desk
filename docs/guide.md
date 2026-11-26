@@ -47,6 +47,14 @@ Group apps by company, project or part of your life (for example Personal, Acme,
 
 If you use several Chrome profiles (one per company, one personal), Mission Desk sends each space's browser links to the right one. On **Automatic** (the default), a Gmail account's links go to the Chrome profile signed in to the same address, or to one at the same company; the space's other apps (Slack, WhatsApp…) follow its Gmail account, and a website app follows its own domain. Or choose the profile yourself in **Settings → Spaces → Browser links open in**. Settings shows where each app's links go. Gmail's address is known once the account has loaded since Mission Desk started; until then, and when nothing matches, links open in your default browser. On a Mac only; elsewhere links use the default browser.
 
+### Passkeys
+
+On a Mac with Touch ID, an app can sign in with a passkey instead of a password. Mission Desk keeps its own passkeys: add one from inside the app (in Google, **Manage your Google Account → Security → Passkeys → Create a passkey**), and the next sign-in is a touch of the finger.
+
+- Each app keeps its own passkeys, like its sign-in: a passkey made in one Gmail account isn't offered in another.
+- They stay on this Mac. The passkeys in your iPhone, iCloud Keychain or Safari can't be used in Mission Desk: Apple lets only web browsers use them. Sign in with the password and code instead, or open the page in your browser.
+- With several passkeys for one site, Mission Desk asks which account to use.
+
 ### Shared Google sign-in
 
 A space signs in to Google once for all its apps. When Gmail in the space is signed in, the space's Slack (and any app that offers "Sign in with Google") finds Google already signed in, so it's one click, with no password or phone.

@@ -176,4 +176,9 @@ export const main: Translation<typeof en> = {
   'main.about.licenseSummary':
     'Kostenlos und Open Source. Alle, Privatpersonen wie Unternehmen, dürfen es für alles nutzen, auch für die Arbeit, und es verändern und weitergeben. Wer Mission Desk oder eine veränderte Version weitergibt, muss den Quellcode unter derselben Lizenz weitergeben, damit es nie zu einem geschlossenen Produkt werden kann.',
   "main.space.memory": "Gedächtnis …",
+  // Passkeys: the Touch ID prompt (macOS writes "Mission Desk" is trying to …; $1 is the site) and the account chooser.
+  'main.passkey.promptReason': 'dich mit einem Passkey bei $1 anzumelden',
+  'main.passkey.chooseTitle': 'Welchen Account möchtest du auf {site} verwenden?',
+  'main.passkey.chooseDetail': 'In Mission Desk auf diesem Mac gesicherte Passkeys.',
+  'main.passkey.account': 'Account',
 };

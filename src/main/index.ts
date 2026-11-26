@@ -6,6 +6,7 @@ import { createAppController } from './app-controller';
 import { registerIpc } from './ipc';
 import { buildAppMenu } from './menu/menu';
 import { aboutPanelOptions } from './about-panel';
+import { enablePasskeys, watchPasskeySessions } from './passkeys';
 import { setElectronUserAgent } from './views/session';
 import { chromeUserAgent } from './views/user-agent';
 import { APP_ID, APP_NAME } from '../shared/about';
@@ -67,6 +68,7 @@ function createWindow(): void {
   };
   controller.setMenuBuilder(applyLanguage);
   applyLanguage();
+  enablePasskeys(() => win); // after the controller: the Touch ID prompt is written in the interface language
   if (!app.isPackaged) (globalThis as Record<string, unknown>).__missiondeskDev = { controller }; // dev-only inspection
 
   let saveTimer: ReturnType<typeof setTimeout> | undefined;
@@ -132,6 +134,7 @@ if (!isPrimaryInstance) {
     // Remove the Claude socket file; the process is exiting either way.
     void controllerRef?.shutdown();
   });
+  watchPasskeySessions(); // before any app's session exists
   app.whenReady().then(createWindow);
   app.on('window-all-closed', () => app.quit());
 }

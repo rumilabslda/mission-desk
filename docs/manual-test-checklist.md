@@ -21,6 +21,9 @@ Run with your real accounts before adopting a new version. Tick each line.
 - [ ] Add a Slack workspace and sign in (including "Sign in with Google" if you use it).
 - [ ] Add WhatsApp and scan the QR code.
 - [ ] Quit (⌘Q) and reopen: every account is still signed in, same order, same account selected.
+- [ ] Passkeys (release build on a Mac with Touch ID): in Gmail, **Manage your Google Account → Security → Create a passkey** asks for Touch ID ("Mission Desk is trying to sign in to google.com with a passkey"). Sign out and back in with **Use your passkey**: Touch ID, no password.
+- [ ] The same Google account in another app or space isn't offered that passkey. Two passkeys for one site: Mission Desk asks which account.
+- [ ] A Google account whose only passkey is in iCloud Keychain: Google offers **Try another way**, and the password + code sign-in works (nothing hangs).
 
 ## Unread counts and notifications
 - [ ] Gmail badge matches the Inbox count. Opening "Sent" does not reset the badge.
