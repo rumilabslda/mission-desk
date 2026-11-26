@@ -4,6 +4,7 @@ import { isBuiltinId, isConnectionRef } from '../shared/connections';
 import { cleanUserName } from '../shared/user';
 import { isEngine } from '../shared/assistant-engines';
 import { cleanSiteUrl } from '../shared/custom-site';
+import { defaultAccountName } from '../shared/account-name';
 import type { NewAccountInput } from '../shared/ipc';
 import { cleanSpaceName, type DragRef, type DropZone } from '../shared/spaces';
 import type { Account, CalendarRange, EventDraft, Reply, SendUpdates, ServiceId, SidebarStyle, WriteScope } from '../shared/types';
@@ -36,15 +37,18 @@ function parseSpaceChoice(v: unknown): NewAccountInput['space'] | null {
 export function parseNewAccount(input: unknown): NewAccountInput | null {
   if (typeof input !== 'object' || input === null) return null;
   const { service, name, color, space, url } = input as Record<string, unknown>;
-  const n = cleanName(name);
+  // The name is optional: left empty, the app is named after its service (or its site).
+  const unnamed = name === undefined || (typeof name === 'string' && name.trim() === '');
+  const n = unnamed ? '' : cleanName(name);
   const c = cleanColor(color);
-  if (!SERVICES.includes(service as ServiceId) || !n || !c) return null;
+  if (!SERVICES.includes(service as ServiceId) || n === null || !c) return null;
   const parsed: NewAccountInput = { service: service as ServiceId, name: n, color: c };
   if (service === 'custom') {
     const site = cleanSiteUrl(url);
     if (!site) return null;
     parsed.url = site;
   }
+  if (unnamed) parsed.name = defaultAccountName(parsed.service, parsed.url);
   if (space !== undefined && space !== null) {
     const choice = parseSpaceChoice(space);
     if (!choice) return null;

@@ -72,6 +72,7 @@ Run with your real accounts before adopting a new version. Tick each line.
 - [ ] Wi-Fi off: the last events stay, with "Offline — showing the last update".
 
 ## Spaces
+- [ ] + → add LinkedIn to a space with the name left empty: Add works, the app is called "LinkedIn" and its icon is LinkedIn's logo (not an "L"). A second LinkedIn shows letters and colours on both, to tell them apart.
 - [ ] Dragging an account onto the middle of another asks for a name and creates a space; Cancel changes nothing.
 - [ ] Dragging an account to the top or bottom edge of another places it there, inside or outside a space.
 - [ ] Right-click an account → Move to space → a space / None / New space… works.

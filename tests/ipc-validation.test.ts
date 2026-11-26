@@ -9,7 +9,7 @@ test('accepts a valid new account and trims the name', () => {
 
 test.each([
   [{ service: 'teams', name: 'X', color: '#000000' }],
-  [{ service: 'google', name: '   ', color: '#000000' }],
+  [{ service: 'google', name: 5, color: '#000000' }], // an empty name gets the service's (account-name.test.ts)
   [{ service: 'google', name: 'X', color: 'red' }],
   [{ service: 'google', name: 'x'.repeat(61), color: '#000000' }],
   [null],

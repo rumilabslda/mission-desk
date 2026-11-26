@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ACCOUNT_COLORS, type AccountView } from '../../shared/ipc';
 import type { ServiceId, Space } from '../../shared/types';
 import { SERVICE_LABEL, ServiceLogo } from './service-glyph';
 import { cleanSiteUrl } from '../../shared/custom-site';
+import { defaultAccountName, nameFromSite } from '../../shared/account-name';
 import { t } from './i18n';
 
 export type DialogState = { mode: 'add' } | { mode: 'edit'; accountId: string };
@@ -23,17 +24,6 @@ const HINT: Record<ServiceId, string> = {
   notion: t('app.account.hint.notion'),
   custom: t('app.account.hint.custom'),
 };
-
-/** A name from a site address: "app.notion.so" → "Notion". */
-function nameFromSite(url: string): string {
-  try {
-    const labels = new URL(url).hostname.split('.').filter((l) => !['www', 'app', 'web', 'my'].includes(l));
-    const first = labels[0] ?? '';
-    return first.charAt(0).toUpperCase() + first.slice(1);
-  } catch {
-    return '';
-  }
-}
 
 export function AccountDialog({
   state,
@@ -57,15 +47,29 @@ export function AccountDialog({
   const [spaceChoice, setSpaceChoice] = useState('');
   const [newSpace, setNewSpace] = useState('');
   const newSpaceOk = spaceChoice !== '+new' || (newSpace.trim().length > 0 && newSpace.trim().length <= 40);
-  const valid = name.trim().length > 0 && name.trim().length <= 60 && newSpaceOk && siteOk;
+  // The name is optional (the space already says whose app it is): left empty, the service's name.
+  const nameOk = name.trim().length <= 60;
+  const valid = nameOk && newSpaceOk && siteOk;
+  const fallbackName = editing && account ? defaultAccountName(account.service, account.url) : service === 'custom' && !siteUrl ? '' : defaultAccountName(service, siteUrl ?? undefined);
+  const finalName = name.trim() || fallbackName;
+  // Add stays clickable; a click with something missing says what, next to the field.
+  const [tried, setTried] = useState(false);
+  const siteRef = useRef<HTMLInputElement>(null);
+  const newSpaceRef = useRef<HTMLInputElement>(null);
+  const siteMissing = !editing && service === 'custom' && site.trim() === '';
+  const siteBad = !editing && service === 'custom' && site.trim() !== '' && siteUrl === null;
 
   async function submit(e: React.FormEvent): Promise<void> {
     e.preventDefault();
-    if (!valid) return;
-    if (editing && account) window.missiondesk.updateAccount(account.id, { name: name.trim(), color });
+    if (!valid) {
+      setTried(true);
+      (!siteOk ? siteRef : newSpaceRef).current?.focus();
+      return;
+    }
+    if (editing && account) window.missiondesk.updateAccount(account.id, { name: finalName, color });
     else {
       const space = spaceChoice === '+new' ? { newName: newSpace.trim() } : spaceChoice ? { id: spaceChoice } : undefined;
-      await window.missiondesk.addAccount({ service, name: name.trim(), color, ...(service === 'custom' && siteUrl ? { url: siteUrl } : {}), ...(space ? { space } : {}) });
+      await window.missiondesk.addAccount({ service, name: finalName, color, ...(service === 'custom' && siteUrl ? { url: siteUrl } : {}), ...(space ? { space } : {}) });
     }
     onClose();
   }
@@ -96,16 +100,18 @@ export function AccountDialog({
           <label>
             {t('app.account.address')}
             <input
+              ref={siteRef}
               autoFocus
               value={site}
               maxLength={2048}
               inputMode="url"
               placeholder={t('app.account.addressPlaceholder')}
-              aria-invalid={site.trim() !== '' && siteUrl === null}
+              aria-invalid={siteBad || (tried && siteMissing)}
               onChange={(e) => setSite(e.target.value)}
               onBlur={() => siteUrl && !name.trim() && setName(nameFromSite(siteUrl))}
             />
-            {site.trim() !== '' && siteUrl === null && <small className="field-error">{t('app.account.addressError')}</small>}
+            {siteBad && <small className="field-error">{t('app.account.addressError')}</small>}
+            {tried && siteMissing && <small className="field-error">{t('app.account.addressRequired')}</small>}
           </label>
         )}
         {editing && account?.service === 'custom' && account.url && <p className="hint">{account.url}</p>}
@@ -115,7 +121,7 @@ export function AccountDialog({
             autoFocus={service !== 'custom' || editing}
             value={name}
             maxLength={60}
-            placeholder={t('app.account.namePlaceholder')}
+            placeholder={fallbackName || t('app.account.namePlaceholder')}
             onChange={(e) => setName(e.target.value)}
           />
         </label>
@@ -150,14 +156,23 @@ export function AccountDialog({
         {!editing && spaceChoice === '+new' && (
           <label className="space-field">
             {t('app.account.spaceName')}
-            <input autoFocus value={newSpace} maxLength={40} placeholder={t('app.space.namePlaceholder')} onChange={(e) => setNewSpace(e.target.value)} />
+            <input
+              ref={newSpaceRef}
+              autoFocus
+              value={newSpace}
+              maxLength={40}
+              placeholder={t('app.space.namePlaceholder')}
+              aria-invalid={tried && !newSpaceOk}
+              onChange={(e) => setNewSpace(e.target.value)}
+            />
+            {tried && !newSpaceOk && <small className="field-error">{t('app.account.spaceNameRequired')}</small>}
           </label>
         )}
         <div className="actions">
           <button type="button" onClick={onClose}>
             {t('common.cancel')}
           </button>
-          <button type="submit" className="primary" disabled={!valid}>
+          <button type="submit" className="primary">
             {editing ? t('common.save') : t('common.add')}
           </button>
         </div>
