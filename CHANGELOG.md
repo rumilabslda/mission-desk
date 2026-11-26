@@ -2,6 +2,26 @@
 
 All notable changes to Mission Desk. Versions follow [Semantic Versioning](https://semver.org). Until 1.0.0 Mission Desk is an early preview: a new minor number (0.2.0) adds features and may change how things work, a patch (0.1.1) fixes bugs. 1.0.0 will be the first version ready for everyone.
 
+## 0.2.3 — 2026-11-26
+
+### Passkeys
+- **Sign in with Touch ID on the Mac:** sites can offer a passkey inside Mission Desk. Mission Desk keeps its own passkeys in the Mac's keychain, unlocked with Touch ID. They stay on this Mac, and each app keeps its own, like its sign-in. With several passkeys for one site, Mission Desk asks which account to use.
+- iCloud Keychain passkeys can't be used (Apple gives them only to web browsers): sign in with the password and code instead, as before.
+
+### Shared Google sign-in
+- **LinkedIn, Zoom and Notion** now find the space's Google sign-in already there, like Slack: "Sign in with Google" is one click, with no password or phone. Apps added with "Any website" still don't get it.
+- With Mission Desk full screen, the "Sign in with Google" window now floats over it, instead of opening full screen and leaving a black screen when it closed.
+
+### Apps
+- **The name is optional** when adding an app: left empty, it takes its service's name ("LinkedIn"). With something missing, **Add** says what next to the field.
+- Apps that never show a photo (LinkedIn, Telegram, Microsoft 365, Discord, Zoom, Notion, Proton, iCloud, Fastmail) show their logo instead of a letter. Two apps of the same service keep their letters and colours, to tell them apart.
+
+### Meetings
+- Hanging up ends the meeting within 10 seconds instead of 2 minutes (a reload of the meeting page still continues it), and closing the meeting's tab ends it at once.
+
+### Calendar
+- The full event editor shows a proper **Save** button, and its checkboxes sit beside their labels.
+
 ## 0.2.2 — 2026-11-25
 
 ### Links
